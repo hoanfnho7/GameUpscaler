@@ -1,7 +1,9 @@
 package com.nho.upscaler
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
@@ -17,16 +19,36 @@ import android.widget.*
 import rikka.shizuku.Shizuku
 import kotlin.concurrent.thread
 
-data class AppItem(val name: String, val pkg: String, val icon: Drawable)
+data class AppItem(val name: String, val pkg: String, val icon: Drawable, var isPinned: Boolean = false)
 
 class MainActivity : Activity() {
     private val allApps = mutableListOf<AppItem>()
     private val filteredApps = mutableListOf<AppItem>()
     private lateinit var adapter: BaseAdapter
+    private lateinit var prefs: SharedPreferences
+    private val pinnedPkgs = mutableSetOf<String>()
     private var selectedFactor = 125
+    private var currentQuery = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        prefs = getSharedPreferences("upscaler_prefs", Context.MODE_PRIVATE)
+        selectedFactor = prefs.getInt("saved_factor", 125)
+
+        val defaultPins = setOf(
+            "com.activision.callofduty.shooter",
+            "com.garena.game.codm",
+            "com.vng.pubgmobile",
+            "com.tencent.ig"
+        )
+        val savedSet = prefs.getStringSet("pinned_pkgs", null)
+        if (savedSet == null) {
+            pinnedPkgs.addAll(defaultPins)
+            prefs.edit().putStringSet("pinned_pkgs", HashSet(pinnedPkgs)).apply()
+        } else {
+            pinnedPkgs.addAll(savedSet)
+        }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -43,30 +65,40 @@ class MainActivity : Activity() {
         root.addView(title)
 
         val subTitle = TextView(this).apply {
-            text = "Chạm vào game để tự động kích SSAA và tự Reset khi thoát"
+            text = "Chạm tên game để kích SSAA • Bấm ⭐ để ghim lên đầu"
             textSize = 12f
             setTextColor(Color.parseColor("#9E9E9E"))
-            setPadding(0, 6, 0, 24)
+            setPadding(0, 6, 0, 20)
         }
         root.addView(subTitle)
 
+        // Hàng chọn 4 mức Upscale: 1.10x - 1.15x - 1.20x - 1.25x
         val radioGroup = RadioGroup(this).apply {
             orientation = RadioGroup.HORIZONTAL
             setPadding(0, 0, 0, 20)
         }
-        val scales = listOf(115 to "1.15x (Mát)", 120 to "1.20x (Vừa)", 125 to "1.25x (Chuẩn)")
+        val scales = listOf(
+            110 to "1.10x",
+            115 to "1.15x",
+            120 to "1.20x",
+            125 to "1.25x"
+        )
         scales.forEach { (factor, label) ->
             val rb = RadioButton(this).apply {
                 text = label
                 textSize = 13f
                 setTextColor(Color.WHITE)
                 id = factor
-                isChecked = (factor == 125)
-                setOnClickListener { selectedFactor = factor }
+                isChecked = (factor == selectedFactor)
+                layoutParams = RadioGroup.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                setOnClickListener {
+                    selectedFactor = factor
+                    prefs.edit().putInt("saved_factor", factor).apply()
+                }
             }
             radioGroup.addView(rb)
         }
-        root.addView(radioGroup)
+        root.addView(radioGroup, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         val resetBtn = Button(this).apply {
             text = "🔄 RESET MÀN HÌNH VỀ MẶC ĐỊNH NGAY"
@@ -94,7 +126,10 @@ class MainActivity : Activity() {
                 cornerRadius = 20f
             }
             addTextChangedListener(object : TextWatcher {
-                override fun afterTextChanged(s: Editable?) { filterList(s.toString()) }
+                override fun afterTextChanged(s: Editable?) {
+                    currentQuery = s?.toString() ?: ""
+                    sortAndFilterApps()
+                }
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             })
@@ -116,8 +151,11 @@ class MainActivity : Activity() {
                     gravity = Gravity.CENTER_VERTICAL
                     setPadding(24, 24, 24, 24)
                     background = GradientDrawable().apply {
-                        setColor(Color.parseColor("#1A1D24"))
+                        setColor(if (item.isPinned) Color.parseColor("#1E2822") else Color.parseColor("#1A1D24"))
                         cornerRadius = 24f
+                        if (item.isPinned) {
+                            setStroke(2, Color.parseColor("#00E676"))
+                        }
                     }
                 }
                 val img = ImageView(this@MainActivity).apply {
@@ -132,7 +170,7 @@ class MainActivity : Activity() {
                     text = item.name
                     textSize = 16f
                     setTypeface(null, Typeface.BOLD)
-                    setTextColor(Color.WHITE)
+                    setTextColor(if (item.isPinned) Color.parseColor("#00E676") else Color.WHITE)
                 }
                 val pkgTv = TextView(this@MainActivity).apply {
                     text = item.pkg
@@ -141,8 +179,20 @@ class MainActivity : Activity() {
                 }
                 textCol.addView(nameTv)
                 textCol.addView(pkgTv)
+
+                val pinBtn = TextView(this@MainActivity).apply {
+                    text = if (item.isPinned) "⭐" else "☆"
+                    textSize = 22f
+                    setTextColor(if (item.isPinned) Color.parseColor("#FFD600") else Color.parseColor("#616161"))
+                    setPadding(24, 12, 12, 12)
+                    setOnClickListener {
+                        togglePin(item)
+                    }
+                }
+
                 row.addView(img)
                 row.addView(textCol)
+                row.addView(pinBtn)
 
                 row.setOnClickListener { launchGameWithUpscale(item) }
                 return row
@@ -154,6 +204,34 @@ class MainActivity : Activity() {
         setContentView(root)
         checkShizuku()
         loadInstalledApps()
+    }
+
+    private fun togglePin(item: AppItem) {
+        if (pinnedPkgs.contains(item.pkg)) {
+            pinnedPkgs.remove(item.pkg)
+            item.isPinned = false
+            Toast.makeText(this, "Đã bỏ ghim ${item.name}", Toast.LENGTH_SHORT).show()
+        } else {
+            pinnedPkgs.add(item.pkg)
+            item.isPinned = true
+            Toast.makeText(this, "⭐ Đã ghim ${item.name} lên đầu!", Toast.LENGTH_SHORT).show()
+        }
+        prefs.edit().putStringSet("pinned_pkgs", HashSet(pinnedPkgs)).apply()
+        sortAndFilterApps()
+    }
+
+    private fun sortAndFilterApps() {
+        allApps.forEach { it.isPinned = pinnedPkgs.contains(it.pkg) }
+        allApps.sortWith(compareByDescending<AppItem> { it.isPinned }.thenBy { it.name.lowercase() })
+
+        val q = currentQuery.trim().lowercase()
+        filteredApps.clear()
+        if (q.isEmpty()) {
+            filteredApps.addAll(allApps)
+        } else {
+            filteredApps.addAll(allApps.filter { it.name.lowercase().contains(q) || it.pkg.lowercase().contains(q) })
+        }
+        adapter.notifyDataSetChanged()
     }
 
     private fun checkShizuku(): Boolean {
@@ -179,23 +257,15 @@ class MainActivity : Activity() {
             val temp = resolves.mapNotNull { r ->
                 val pkg = r.activityInfo.packageName
                 if (pkg == packageName) return@mapNotNull null
-                AppItem(r.loadLabel(pm).toString(), pkg, r.loadIcon(pm))
-            }.distinctBy { it.pkg }.sortedBy { it.name.lowercase() }
+                AppItem(r.loadLabel(pm).toString(), pkg, r.loadIcon(pm), pinnedPkgs.contains(pkg))
+            }.distinctBy { it.pkg }
 
             runOnUiThread {
                 allApps.clear()
                 allApps.addAll(temp)
-                filterList("")
+                sortAndFilterApps()
             }
         }
-    }
-
-    private fun filterList(query: String) {
-        val q = query.trim().lowercase()
-        filteredApps.clear()
-        if (q.isEmpty()) filteredApps.addAll(allApps)
-        else filteredApps.addAll(allApps.filter { it.name.lowercase().contains(q) || it.pkg.lowercase().contains(q) })
-        adapter.notifyDataSetChanged()
     }
 
     private fun launchGameWithUpscale(app: AppItem) {
