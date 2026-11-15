@@ -15,8 +15,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import rikka.shizuku.Shizuku
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import kotlin.concurrent.thread
 
 data class AppItem(val name: String, val pkg: String, val icon: Drawable)
@@ -47,12 +45,12 @@ class MainActivity : Activity() {
         val subTitle = TextView(this).apply {
             text = "Chạm vào game để tự động kích SSAA + 144Hz và tự Reset khi thoát"
             textSize = 12f
+            setTextColor(null)
             setTextColor(Color.parseColor("#9E9E9E"))
             setPadding(0, 6, 0, 24)
         }
         root.addView(subTitle)
 
-        // Hàng chọn mức Upscale
         val radioGroup = RadioGroup(this).apply {
             orientation = RadioGroup.HORIZONTAL
             setPadding(0, 0, 0, 20)
@@ -71,7 +69,6 @@ class MainActivity : Activity() {
         }
         root.addView(radioGroup)
 
-        // Nút Reset Khẩn Cấp
         val resetBtn = Button(this).apply {
             text = "🔄 RESET MÀN HÌNH VỀ MẶC ĐỊNH NGAY"
             setTextColor(Color.WHITE)
@@ -88,7 +85,6 @@ class MainActivity : Activity() {
         }
         root.addView(resetBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 24 })
 
-        // Ô tìm kiếm Game
         val searchBox = EditText(this).apply {
             hint = "🔍 Gõ tên game hoặc package để lọc nhanh..."
             setHintTextColor(Color.parseColor("#757575"))
@@ -106,7 +102,6 @@ class MainActivity : Activity() {
         }
         root.addView(searchBox, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 20 })
 
-        // Danh sách Game
         val listView = ListView(this).apply {
             divider = null
             dividerHeight = 16
@@ -208,36 +203,23 @@ class MainActivity : Activity() {
         if (!checkShizuku()) return
         Toast.makeText(this, "🚀 Đang kích ${selectedFactor}% cho ${app.name}...", Toast.LENGTH_SHORT).show()
 
-        val script = """
-            PHYS_RES=${'$'}(wm size | grep "Physical size" | cut -d: -f2 | tr -d ' \r')
-            PHYS_DEN=${'$'}(wm density | grep "Physical density" | cut -d: -f2 | tr -d ' \r')
-            W=${'$'}(echo ${'$'}PHYS_RES | cut -dx -f1)
-            H=${'$'}(echo ${'$'}PHYS_RES | cut -dx -f2)
-            NEW_W=${'$'}(( W * $selectedFactor / 100 ))
-            NEW_H=${'$'}(( H * $selectedFactor / 100 ))
-            NEW_DEN=${'$'}(( PHYS_DEN * $selectedFactor / 100 ))
-
-            wm size ${'$'}{NEW_W}x${'$'}{NEW_H}
-            wm density ${'$'}{NEW_DEN}
-            settings put system peak_refresh_rate 144.0
-            settings put system min_refresh_rate 144.0
-            settings put global vivo_screen_refresh_rate_mode 144
-
-            sleep 1
-            ACT=${'$'}(cmd package resolve-activity --brief ${app.pkg} | tr -d '\r' | tail -n 1)
-            am start --user 0 -n "${'$'}ACT" > /dev/null 2>&1
-
-            (
-                sleep 8
-                while pidof ${app.pkg} > /dev/null; do
-                    sleep 3
-                done
-                wm size reset
-                wm density reset
-                settings put system min_refresh_rate 1.0
-                settings put global vivo_screen_refresh_rate_mode 0
-            ) &
-        """.trimIndent()
+        val dl = "$"
+        val script = "PHYS_RES=" + dl + "(wm size | grep 'Physical size' | cut -d: -f2 | tr -d ' \\r'); " +
+                "PHYS_DEN=" + dl + "(wm density | grep 'Physical density' | cut -d: -f2 | tr -d ' \\r'); " +
+                "W=" + dl + "(echo " + dl + "PHYS_RES | cut -dx -f1); " +
+                "H=" + dl + "(echo " + dl + "PHYS_RES | cut -dx -f2); " +
+                "NEW_W=" + dl + "(( W * " + selectedFactor + " / 100 )); " +
+                "NEW_H=" + dl + "(( H * " + selectedFactor + " / 100 )); " +
+                "NEW_DEN=" + dl + "(( PHYS_DEN * " + selectedFactor + " / 100 )); " +
+                "wm size " + dl + "{NEW_W}x" + dl + "{NEW_H}; " +
+                "wm density " + dl + "{NEW_DEN}; " +
+                "settings put system peak_refresh_rate 144.0; " +
+                "settings put system min_refresh_rate 144.0; " +
+                "settings put global vivo_screen_refresh_rate_mode 144; " +
+                "sleep 1; " +
+                "ACT=" + dl + "(cmd package resolve-activity --brief " + app.pkg + " | tr -d '\\r' | tail -n 1); " +
+                "am start --user 0 -n \"" + dl + "ACT\" > /dev/null 2>&1; " +
+                "nohup sh -c 'sleep 8; while pidof " + app.pkg + " > /dev/null; do sleep 3; done; wm size reset; wm density reset; settings put system min_refresh_rate 1.0; settings put global vivo_screen_refresh_rate_mode 0' >/dev/null 2>&1 &"
 
         runShizukuScript(script)
     }
