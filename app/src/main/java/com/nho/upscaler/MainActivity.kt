@@ -43,7 +43,7 @@ class MainActivity : Activity() {
         root.addView(title)
 
         val subTitle = TextView(this).apply {
-            text = "Chạm vào game để tự động kích SSAA + 144Hz và tự Reset khi thoát"
+            text = "Chạm vào game để tự động kích SSAA và tự Reset khi thoát"
             textSize = 12f
             setTextColor(Color.parseColor("#9E9E9E"))
             setPadding(0, 6, 0, 24)
@@ -77,7 +77,7 @@ class MainActivity : Activity() {
             }
             setOnClickListener {
                 if (checkShizuku()) {
-                    runShizukuScript("wm size reset; wm density reset; settings put system min_refresh_rate 1.0; settings put global vivo_screen_refresh_rate_mode 0")
+                    runShizukuScript("wm size reset; wm density reset")
                     Toast.makeText(context, "Đã Reset màn hình về gốc!", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -212,13 +212,10 @@ class MainActivity : Activity() {
                 "NEW_DEN=" + dl + "(( PHYS_DEN * " + selectedFactor + " / 100 )); " +
                 "wm size " + dl + "{NEW_W}x" + dl + "{NEW_H}; " +
                 "wm density " + dl + "{NEW_DEN}; " +
-                "settings put system peak_refresh_rate 144.0; " +
-                "settings put system min_refresh_rate 144.0; " +
-                "settings put global vivo_screen_refresh_rate_mode 144; " +
                 "sleep 1; " +
                 "ACT=" + dl + "(cmd package resolve-activity --brief " + app.pkg + " | tr -d '\\r' | tail -n 1); " +
                 "am start --user 0 -n \"" + dl + "ACT\" > /dev/null 2>&1; " +
-                "nohup sh -c 'sleep 8; while pidof " + app.pkg + " > /dev/null; do sleep 3; done; wm size reset; wm density reset; settings put system min_refresh_rate 1.0; settings put global vivo_screen_refresh_rate_mode 0' >/dev/null 2>&1 &"
+                "nohup sh -c 'sleep 8; while pidof " + app.pkg + " > /dev/null; do sleep 3; done; wm size reset; wm density reset' >/dev/null 2>&1 &"
 
         runShizukuScript(script)
     }

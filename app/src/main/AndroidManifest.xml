@@ -7,7 +7,8 @@
 
     <application
         android:label="iQOO Upscaler"
-        android:icon="@android:drawable/sym_def_app_icon"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
         <activity
