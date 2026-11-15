@@ -1,4 +1,4 @@
-﻿package com.nho.upscaler
+package com.nho.upscaler
 
 import android.app.Activity
 import android.content.Intent
@@ -45,7 +45,6 @@ class MainActivity : Activity() {
         val subTitle = TextView(this).apply {
             text = "Chạm vào game để tự động kích SSAA + 144Hz và tự Reset khi thoát"
             textSize = 12f
-            setTextColor(null)
             setTextColor(Color.parseColor("#9E9E9E"))
             setPadding(0, 6, 0, 24)
         }

@@ -1,5 +1,9 @@
-﻿name: Build APK
+name: Build APK
 on: [push, workflow_dispatch]
+
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -7,16 +11,19 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install Gradle 8.4 directly (Bypass GitHub Cache Outage)
+      - name: Install Gradle 8.4
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip -P /tmp
           sudo unzip -q -d /opt/gradle /tmp/gradle-8.4-bin.zip
           echo "/opt/gradle/gradle-8.4/bin" >> $GITHUB_PATH
+
+      - name: Accept Android SDK Licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null || true
 
       - name: Build Debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
