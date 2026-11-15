@@ -430,7 +430,7 @@ class MainActivity : Activity() {
         } else {
             Notification.Builder(this)
         }
-        builder.setSmallIcon(android.R.drawable.ic_Dialog_Info)
+        builder.setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("⚡ Đang kích SSAA $scaleStr cho $gameName")
             .setContentText("Chạm vào đây để Khôi phục màn hình gốc ngay lập tức")
             .setContentIntent(pi)
