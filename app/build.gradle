@@ -7,12 +7,31 @@ android {
     namespace 'com.nho.upscaler'
     compileSdk 34
 
+    signingConfigs {
+        fixedKey {
+            storeFile file("upscaler.jks")
+            storePassword "123456"
+            keyAlias "upscaler"
+            keyPassword "123456"
+        }
+    }
+
     defaultConfig {
         applicationId "com.nho.upscaler"
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode project.hasProperty('versionCode') ? project.property('versionCode').toInteger() : 1
+        versionName "1.0." + (project.hasProperty('versionCode') ? project.property('versionCode') : "1")
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.fixedKey
+        }
+        release {
+            signingConfig signingConfigs.fixedKey
+            minifyEnabled false
+        }
     }
 
     compileOptions {

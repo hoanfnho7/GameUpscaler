@@ -16,6 +16,17 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Generate Persistent Signing Key (If not exists in repo)
+        run: |
+          if [ ! -f app/upscaler.jks ]; then
+            keytool -genkey -v -keystore app/upscaler.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upscaler -storepass 123456 -keypass 123456 -dname "CN=Nho, OU=Dev, O=Nho, L=HCM, S=HCM, C=VN"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add app/upscaler.jks
+            git commit -m "Chore: Add persistent signing keystore for seamless APK updates"
+            git push
+          fi
+
       - name: Install Gradle 8.4
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip -P /tmp
@@ -25,8 +36,10 @@ jobs:
       - name: Accept Android SDK Licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null || true
 
-      - name: Build Debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+      - name: Build Signed APK
+        env:
+          RUN_NUM: ${{ github.run_number }}
+        run: gradle assembleDebug -PversionCode=$RUN_NUM --no-daemon --stacktrace
 
       - name: Publish APK to Releases
         uses: softprops/action-gh-release@v2
