@@ -46,6 +46,13 @@ class FpsOverlayService : Service() {
     private var lastFps = 0
     private var lastTemp = 0f
     private var isOverCloseZone = false
+
+    // Biến theo dõi bộ đếm khung hình SurfaceFlinger TimeStats
+    private var lastFramesCount = -1L
+    private var lastSampleTimeMs = 0L
+    private var lastTrackedSource = ""
+    private var clearedForPkg = ""
+
     private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -151,7 +158,6 @@ class FpsOverlayService : Service() {
                 WindowManager.LayoutParams.TYPE_PHONE
             }
 
-            // 1. Tạo vòng tròn vùng X ở cạnh dưới màn hình (ẩn mặc định, chỉ hiện khi kéo thanh đo)
             val closeTv = TextView(this).apply {
                 text = "✕"
                 textSize = 22f
@@ -181,7 +187,6 @@ class FpsOverlayService : Service() {
             }
             windowManager?.addView(closeTv, closeParams)
 
-            // 2. Tạo thanh đo FPS & Nhiệt độ
             val tv = TextView(this).apply {
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.parseColor("#00E676"))
@@ -232,7 +237,6 @@ class FpsOverlayService : Service() {
                                 params.y = initialY + dy
                                 windowManager?.updateViewLayout(overlayView, params)
 
-                                // Kiểm tra khoảng cách tới vòng tròn X ở đáy màn hình
                                 val dm = resources.displayMetrics
                                 val targetCenterX = dm.widthPixels / 2f
                                 val targetCenterY = dm.heightPixels - 90f - 68f
@@ -365,6 +369,9 @@ class FpsOverlayService : Service() {
 
     private fun startTelemetryLoop() {
         thread {
+            // Kích hoạt & làm sạch bảng thống kê TimeStats của SurfaceFlinger
+            execShizuku("dumpsys SurfaceFlinger --timestats -clear -enable")
+
             var graceTicks = 0
             while (isRunning) {
                 try {
@@ -393,57 +400,68 @@ class FpsOverlayService : Service() {
         }
     }
 
-    private fun getTopForegroundPackage(): String {
-        val out = execShizuku("dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | head -n 1")
-        val regex = Regex("([a-zA-Z0-9_]+\\.[a-zA-Z0-9_.]+)/")
-        return regex.find(out)?.groupValues?.getOrNull(1) ?: ""
-    }
-
     private fun measureRealFps(pkg: String): Int {
-        val activePkg = if (pkg.isNotEmpty()) pkg else getTopForegroundPackage()
+        // Phương pháp 1 (Chuẩn Android 14-17): Đọc bộ đếm khung hình trực tiếp từ SurfaceFlinger TimeStats
+        val dump = execShizuku("dumpsys SurfaceFlinger --timestats -dump")
+        if (dump.isNotEmpty()) {
+            var statsEnabled = true
+            var globalFrames = -1L
+            var currentLayer = ""
+            val matchingLayers = mutableListOf<Pair<String, Long>>()
 
-        if (activePkg.isNotEmpty()) {
-            val rawLayers = execShizuku("dumpsys SurfaceFlinger --list | grep '$activePkg'")
-            val candidates = rawLayers.lines()
-                .map { it.trim() }
-                .filter { it.isNotEmpty() && !it.startsWith("Background for") && !it.contains("Splash") }
-                .sortedByDescending { line ->
-                    when {
-                        line.contains("(BLAST)") -> 3
-                        line.contains("SurfaceView") -> 2
-                        else -> 1
+            for (rawLine in dump.lines()) {
+                val line = rawLine.trim()
+                if (line.startsWith("statsEnabled = 0")) {
+                    statsEnabled = false
+                } else if (line.startsWith("layerName =")) {
+                    currentLayer = line.substringAfter("=").trim()
+                } else if (line.startsWith("totalFrames =")) {
+                    val frames = line.substringAfter("=").trim().toLongOrNull() ?: -1L
+                    if (currentLayer.isEmpty()) {
+                        globalFrames = frames
+                    } else if (pkg.isNotEmpty() && currentLayer.contains(pkg) && !currentLayer.contains("Splash")) {
+                        matchingLayers.add(currentLayer to frames)
                     }
                 }
-                .take(6)
+            }
 
-            for (layer in candidates) {
-                val latencyRaw = execShizuku("dumpsys SurfaceFlinger --latency \"$layer\"")
-                val lines = latencyRaw.lines().filter { it.trim().isNotEmpty() }
-                if (lines.size < 5) continue
+            if (!statsEnabled) {
+                execShizuku("dumpsys SurfaceFlinger --timestats -clear -enable")
+            }
 
-                val timestamps = mutableListOf<Long>()
-                for (i in 1 until lines.size) {
-                    val cols = lines[i].trim().split(Regex("\\s+"))
-                    if (cols.size >= 3) {
-                        val presentTime = cols[1].toLongOrNull() ?: 0L
-                        if (presentTime > 0L && presentTime != Long.MAX_VALUE) {
-                            timestamps.add(presentTime)
-                        }
-                    }
-                }
+            val bestLayer = matchingLayers.maxByOrNull { it.second }
+            if (pkg.isNotEmpty() && bestLayer == null && clearedForPkg != pkg) {
+                // Dọn chỗ trống trong bảng 200 layer của TimeStats để nhận diện game mới mở
+                execShizuku("dumpsys SurfaceFlinger --timestats -clear -enable")
+                clearedForPkg = pkg
+            }
 
-                if (timestamps.size >= 4) {
-                    val durationNs = timestamps.last() - timestamps.first()
-                    if (durationNs > 0L) {
-                        val fps = ((timestamps.size - 1) * 1_000_000_000.0 / durationNs).roundToInt()
+            val sourceKey = bestLayer?.first ?: "GLOBAL"
+            val currentFrames = bestLayer?.second ?: globalFrames
+            val nowMs = System.currentTimeMillis()
+
+            if (currentFrames >= 0L) {
+                if (sourceKey == lastTrackedSource && lastFramesCount >= 0L && currentFrames >= lastFramesCount) {
+                    val dt = (nowMs - lastSampleTimeMs) / 1000.0
+                    val df = currentFrames - lastFramesCount
+                    lastFramesCount = currentFrames
+                    lastSampleTimeMs = nowMs
+                    if (dt > 0.25) {
+                        val fps = (df / dt).roundToInt()
                         if (fps in 1..165) return fps
+                        if (fps == 0) return lastFps
                     }
+                } else {
+                    lastTrackedSource = sourceKey
+                    lastFramesCount = currentFrames
+                    lastSampleTimeMs = nowMs
+                    if (lastFps > 0) return lastFps
                 }
             }
         }
 
-        // Dự phòng: Đọc trực tiếp bộ đếm FPS phần cứng của driver hiển thị Qualcomm Snapdragon
-        val drmOut = execShizuku("cat /sys/class/drm/sde-crtc-0/measured_fps 2>/dev/null").trim()
+        // Phương pháp 2 (Dự phòng): Đọc trực tiếp driver hiển thị Qualcomm
+        val drmOut = execShizuku("cat /sys/class/drm/sde-crtc-0/measured_fps /sys/class/drm/card0/sde-crtc-0/measured_fps 2>/dev/null").trim()
         if (drmOut.contains("fps:")) {
             val fpsVal = Regex("fps:\\s*([0-9.]+)").find(drmOut)?.groupValues?.getOrNull(1)?.toFloatOrNull()
             if (fpsVal != null && fpsVal > 0f) {
