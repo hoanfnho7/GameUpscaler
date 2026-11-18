@@ -18,8 +18,10 @@ import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.Icon
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
@@ -48,6 +50,9 @@ class MainActivity : Activity() {
     private val pinnedPkgs = mutableSetOf<String>()
     private var selectedFactor = 125
     private var showPinnedOnly = false
+    private var enableFpsOverlay = true
+    private var overlaySizeLevel = 1
+    private var isPreviewing = false
     private var currentQuery = ""
     private var physW = 1440
     private var physH = 3168
@@ -59,6 +64,8 @@ class MainActivity : Activity() {
         prefs = getSharedPreferences("upscaler_prefs", Context.MODE_PRIVATE)
         selectedFactor = prefs.getInt("saved_factor", 125)
         showPinnedOnly = prefs.getBoolean("show_pinned_only", false)
+        enableFpsOverlay = prefs.getBoolean("enable_fps_overlay", true)
+        overlaySizeLevel = prefs.getInt("overlay_size_level", 1)
 
         if (handleIncomingIntent(intent)) {
             finish()
@@ -107,7 +114,6 @@ class MainActivity : Activity() {
         }
         root.addView(subTitle)
 
-        // Khung hiển thị trực tiếp thông số Pixel & DPI thực tế
         previewTv = TextView(this).apply {
             text = "Đang đọc độ phân giải vật lý..."
             textSize = 12.5f
@@ -120,12 +126,11 @@ class MainActivity : Activity() {
                 setStroke(1, Color.parseColor("#263238"))
             }
         }
-        root.addView(previewTv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 16 })
+        root.addView(previewTv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 14 })
 
-        // Hàng chọn 4 mức Upscale chung
         val radioGroup = RadioGroup(this).apply {
             orientation = RadioGroup.HORIZONTAL
-            setPadding(0, 0, 0, 12)
+            setPadding(0, 0, 0, 10)
         }
         val scales = listOf(110 to "1.10x", 115 to "1.15x", 120 to "1.20x", 125 to "1.25x")
         scales.forEach { (factor, label) ->
@@ -147,7 +152,6 @@ class MainActivity : Activity() {
         }
         root.addView(radioGroup, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
-        // Nút Reset Khẩn Cấp
         val resetBtn = Button(this).apply {
             text = "🔄 RESET MÀN HÌNH VỀ MẶC ĐỊNH NGAY"
             setTextColor(Color.WHITE)
@@ -159,18 +163,111 @@ class MainActivity : Activity() {
                 if (checkShizuku()) {
                     runShizukuScript("wm size reset; wm density reset")
                     cancelActiveNotification()
+                    stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
+                    isPreviewing = false
                     Toast.makeText(context, "Đã Reset màn hình về gốc!", Toast.LENGTH_SHORT).show()
                 }
             }
         }
-        root.addView(resetBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 16 })
+        root.addView(resetBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 12 })
 
-        // Hàng Lọc "Chỉ hiện game đã ghim"
-        val filterRow = LinearLayout(this).apply {
+        // Công tắc bật/tắt Khung đo FPS + Nhiệt độ nổi
+        val fpsCheck = CheckBox(this).apply {
+            text = "📊 Hiện khung đo FPS & Nhiệt độ nổi trên game"
+            textSize = 13f
+            setTextColor(Color.parseColor("#64FFDA"))
+            isChecked = enableFpsOverlay
+            setOnCheckedChangeListener { _, isChecked ->
+                enableFpsOverlay = isChecked
+                prefs.edit().putBoolean("enable_fps_overlay", isChecked).apply()
+                if (isChecked && !Settings.canDrawOverlays(this@MainActivity)) {
+                    Toast.makeText(this@MainActivity, "Hãy cấp quyền 'Hiển thị trên ứng dụng khác' cho app!", Toast.LENGTH_LONG).show()
+                    val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+                    startActivity(intent)
+                } else if (!isChecked) {
+                    stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
+                    isPreviewing = false
+                }
+            }
+        }
+        root.addView(fpsCheck)
+
+        // Hàng tùy chỉnh kích thước khung đo FPS (Siêu gọn / Nhỏ / Vừa / To + Nút Bật thử)
+        val sizeRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(4, 0, 4, 12)
+            setPadding(8, 4, 8, 8)
         }
+        val sizeChips = mutableListOf<TextView>()
+        val sizeLabels = listOf(0 to "Siêu gọn", 1 to "Nhỏ", 2 to "Vừa", 3 to "To")
+
+        fun refreshSizeChips() {
+            sizeChips.forEachIndexed { idx, chip ->
+                val active = (idx == overlaySizeLevel)
+                chip.setTextColor(if (active) Color.parseColor("#101216") else Color.parseColor("#B0BEC5"))
+                chip.background = GradientDrawable().apply {
+                    setColor(if (active) Color.parseColor("#64FFDA") else Color.parseColor("#1E2229"))
+                    cornerRadius = 12f
+                }
+            }
+        }
+
+        sizeLabels.forEach { (lvl, lbl) ->
+            val chip = TextView(this).apply {
+                text = lbl
+                textSize = 11.5f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setPadding(18, 10, 18, 10)
+                setOnClickListener {
+                    overlaySizeLevel = lvl
+                    prefs.edit().putInt("overlay_size_level", lvl).apply()
+                    refreshSizeChips()
+                    val upd = Intent(this@MainActivity, FpsOverlayService::class.java).apply {
+                        action = "UPDATE_STYLE"
+                    }
+                    startService(upd)
+                }
+            }
+            sizeChips.add(chip)
+            sizeRow.addView(chip, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 })
+        }
+        refreshSizeChips()
+
+        val testOverlayBtn = TextView(this).apply {
+            text = "👁️ Thử"
+            textSize = 11.5f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setPadding(20, 10, 20, 10)
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#2E7D32"))
+                cornerRadius = 12f
+            }
+            setOnClickListener {
+                if (!Settings.canDrawOverlays(this@MainActivity)) {
+                    Toast.makeText(this@MainActivity, "Hãy cấp quyền Hiển thị trên ứng dụng khác trước!", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+                    return@setOnClickListener
+                }
+                if (!isPreviewing) {
+                    val svc = Intent(this@MainActivity, FpsOverlayService::class.java).apply {
+                        putExtra("target_pkg", "")
+                    }
+                    startService(svc)
+                    isPreviewing = true
+                    Toast.makeText(this@MainActivity, "Kéo khung FPS đến góc bạn muốn (chạm vào khung để đổi cỡ)", Toast.LENGTH_SHORT).show()
+                } else {
+                    stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
+                    isPreviewing = false
+                }
+            }
+        }
+        sizeRow.addView(testOverlayBtn)
+        root.addView(sizeRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+        // Công tắc Chỉ hiện game đã ghim
         val favCheck = CheckBox(this).apply {
             text = "⭐ Chỉ hiện Game đã ghim (Ẩn ứng dụng khác)"
             textSize = 13f
@@ -182,10 +279,8 @@ class MainActivity : Activity() {
                 sortAndFilterApps()
             }
         }
-        filterRow.addView(favCheck)
-        root.addView(filterRow)
+        root.addView(favCheck, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 10 })
 
-        // Ô tìm kiếm
         val searchBox = EditText(this).apply {
             hint = "🔍 Gõ tên game hoặc package để lọc nhanh..."
             setHintTextColor(Color.parseColor("#757575"))
@@ -206,7 +301,6 @@ class MainActivity : Activity() {
         }
         root.addView(searchBox, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 16 })
 
-        // Danh sách Game
         val listView = ListView(this).apply {
             divider = null
             dividerHeight = 14
@@ -251,7 +345,6 @@ class MainActivity : Activity() {
                 textCol.addView(nameTv)
                 textCol.addView(pkgTv)
 
-                // Nút chọn mức Scale riêng cho từng game (Per-game profile badge)
                 val scaleBadge = TextView(this@MainActivity).apply {
                     val labelStr = "${effectiveScale / 100}.${effectiveScale % 100}x"
                     text = if (item.customScale > 0) "🎯 $labelStr" else labelStr
@@ -263,12 +356,9 @@ class MainActivity : Activity() {
                         setColor(Color.parseColor("#263238"))
                         cornerRadius = 14f
                     }
-                    setOnClickListener {
-                        cyclePerGameScale(item)
-                    }
+                    setOnClickListener { cyclePerGameScale(item) }
                 }
 
-                // Nút Ngôi sao Ghim
                 val pinBtn = TextView(this@MainActivity).apply {
                     text = if (item.isPinned) "⭐" else "☆"
                     textSize = 20f
@@ -282,9 +372,7 @@ class MainActivity : Activity() {
                 row.addView(scaleBadge)
                 row.addView(pinBtn)
 
-                row.setOnClickListener {
-                    launchGameByPkg(item.pkg, item.name, effectiveScale)
-                }
+                row.setOnClickListener { launchGameByPkg(item.pkg, item.name, effectiveScale) }
                 row.setOnLongClickListener {
                     createPinnedShortcut(item, effectiveScale)
                     true
@@ -314,6 +402,7 @@ class MainActivity : Activity() {
             if (checkShizuku()) {
                 runShizukuScript("wm size reset; wm density reset")
                 cancelActiveNotification()
+                stopService(Intent(this, FpsOverlayService::class.java))
                 Toast.makeText(this, "✅ Đã khôi phục màn hình gốc!", Toast.LENGTH_SHORT).show()
             }
             return true
@@ -518,6 +607,18 @@ class MainActivity : Activity() {
         val scaleStr = "${factor / 100}.${factor % 100}x"
         Toast.makeText(this, "🚀 Đang kích $scaleStr cho $gameName...", Toast.LENGTH_SHORT).show()
         showActiveNotification(gameName, factor)
+
+        if (enableFpsOverlay) {
+            if (Settings.canDrawOverlays(this)) {
+                val svcIntent = Intent(this, FpsOverlayService::class.java).apply {
+                    putExtra("target_pkg", pkg)
+                }
+                startService(svcIntent)
+                isPreviewing = false
+            } else {
+                Toast.makeText(this, "⚠️ Chưa bật quyền Hiển thị trên ứng dụng khác để đo FPS!", Toast.LENGTH_LONG).show()
+            }
+        }
 
         val dl = "$"
         val script = "PHYS_RES=" + dl + "(wm size | grep 'Physical size' | cut -d: -f2 | tr -d ' \\r'); " +
