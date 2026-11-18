@@ -1,67 +1,76 @@
-# ⚡ GameUpscaler (Shizuku SSAA Resolution Scaler)
+# ⚡ GameUpscaler Pro (Shizuku SSAA & Hardware HUD)
 
-Ứng dụng Android siêu nhẹ giúp kích hoạt **SSAA (Supersampling Anti-Aliasing)** ở tầng hệ thống cho các tựa game (Call of Duty: Mobile, PUBG Mobile, Genshin Impact,...) thông qua quyền **Shizuku** mà **không cần Root máy**.
+Ứng dụng Android siêu nhẹ giúp kích hoạt khử răng cưa **SSAA (Supersampling Anti-Aliasing)** ở tầng hệ thống và hiển thị bảng theo dõi phần cứng thời gian thực (**HUD Telemetry**) cho các tựa game (Call of Duty: Mobile, PUBG Mobile, Genshin Impact,...) thông qua quyền **Shizuku** mà **không cần Root máy**.
 
-Được tối ưu hóa đặc biệt cho các dòng máy **iQOO / Vivo (OriginOS)** và tương thích hoàn toàn với mọi thiết bị Android khác.
-
----
-
-## 🎯 Vấn đề giải quyết
-
-Trên các thiết bị có màn hình độ phân giải cao (1.5K / 2K Ultra HD như iQOO Neo 11), hệ điều hành hoặc bản thân các tựa game thường tự động hạ độ phân giải dựng hình nội bộ (Internal Render Resolution) xuống mức 720p/1080p để giảm tải GPU. Khi khung hình thấp này bị kéo giãn lên tấm nền 2K vật lý sẽ gây ra hiện tượng **mờ nhòe và răng cưa (aliasing)** rất nặng ở các chi tiết xa.
-
-**GameUpscaler** giải quyết triệt để bằng cách:
-1. Tự động đọc độ phân giải vật lý (`Physical size`) và mật độ điểm ảnh (`Physical density`) gốc của thiết bị.
-2. Nâng khung hình dựng (`wm size`) và DPI (`wm density`) lên theo tỷ lệ an toàn (**1.15x - 1.20x - 1.25x**), ép GPU render ở độ phân giải cao hơn thực tế rồi thu nhỏ lại (cơ chế khử răng cưa **SSAA** chất lượng cao nhất), đồng thời giữ nguyên kích thước giao diện hệ thống (UI không bị thu nhỏ).
-3. Giữ nguyên cơ chế đồng bộ tần số quét tự nhiên của Game Space theo từng tựa game.
-4. Tự động chạy ngầm theo dõi tiến trình game (`pidof`), ngay khi người dùng đóng game sẽ **tự động Reset màn hình về mặc định** để tiết kiệm pin.
+Được tối ưu hóa chuyên sâu cho **Android 14 – 17** và các dòng máy **iQOO / Vivo (OriginOS)**.
 
 ---
 
-## ✨ Tính năng nổi bật
+## 🎯 Nguyên lý hoạt động
 
-- **Không cần Root / Không cần gõ lệnh Termux:** Giao diện trực quan Dark Mode, tự động quét danh sách ứng dụng và game có trên máy.
-- **Tương thích mọi màn hình:** Tự động tính toán thông số pixel và DPI theo tỷ lệ màn hình thực tế của từng máy, không fix cứng thông số.
-- **Giới hạn an toàn cho IC Cảm ứng (1.25x):** Đã tinh chỉnh mức trần `1.25x` (dưới ngưỡng 4000px chiều dài trên màn hình 2K) để đảm bảo `InputDispatcher` trên OriginOS nhận diện tọa độ cảm ứng chính xác 100%, không bị lệch tâm hay đơ cảm ứng.
-- **Auto-Reset thông minh:** Chạy tiến trình theo dõi siêu nhẹ ở nền, tự trả màn hình về gốc sau 3 giây khi thoát game.
-- **Nút Reset Khẩn Cấp:** Tích hợp nút cứu hộ ngay trên đầu ứng dụng để khôi phục độ phân giải gốc chỉ với 1 chạm.
+Trên các thiết bị màn hình độ phân giải cao (1.5K / 2K Ultra HD), nhiều tựa game tự động giới hạn độ phân giải dựng hình nội bộ (Internal Render Resolution) xuống mức 720p/1080p rồi kéo giãn lên tấm nền vật lý, gây ra hiện tượng mờ nhòe và răng cưa nặng ở vật thể xa.
 
----
-
-## 🛠️ Yêu cầu hệ thống
-
-1. Android 8.0 trở lên (Đã test ổn định trên **Android 14 - 17 / OriginOS**).
-2. Đã cài đặt và kích hoạt ứng dụng **[Shizuku](https://github.com/RikkaApps/Shizuku)** (thông qua Gỡ lỗi không dây / Wireless Debugging).
+**GameUpscaler Pro** khắc phục triệt để bằng cách:
+1. Đọc trực tiếp thông số vật lý (`Physical size` và `Physical density`) thực tế của màn hình.
+2. Nâng khung hình dựng (`wm size`) và mật độ điểm ảnh (`wm density`) theo các mốc an toàn (**1.10x – 1.15x – 1.20x – 1.25x**), buộc engine game render ở độ phân giải cao hơn thực tế (SSAA) mà vẫn giữ nguyên tỷ lệ giao diện hệ thống.
+3. Giữ ngưỡng trần **1.25x** (dưới giới hạn 4000px chiều dài trên màn hình 2K) để đảm bảo IC cảm ứng (`InputDispatcher`) trên OriginOS nhận diện tọa độ chính xác 100%, không lệch tâm bắn.
+4. Theo dõi tiến trình game ở nền (`pidof`) và **tự động Reset màn hình về mặc định** sau 3 giây khi thoát game.
 
 ---
 
-## 🚀 Hướng dẫn sử dụng
+## ✨ Tính năng chính
 
-1. Tải file `app-debug.apk` mới nhất trong mục **Releases** bên phải trang GitHub này.
-2. Mở **Shizuku** và đảm bảo dịch vụ đang chạy (*Shizuku is running*).
-3. Mở **iQOO Upscaler**, bấm **Cho phép (Allow)** khi bảng cấp quyền của Shizuku hiện lên.
-4. Chọn mức nhân độ phân giải mong muốn:
-   - **1.15x (Mát):** Khử răng cưa nhẹ, giữ nhiệt độ mát khi chơi ngoài trời không có quạt.
-   - **1.20x (Vừa):** Cân bằng giữa độ nét và mức tiêu thụ pin.
-   - **1.25x (Chuẩn):** Độ nét tối đa, triệt tiêu răng cưa mà vẫn giữ chuẩn tọa độ cảm ứng.
-5. Gõ tìm tên game trong ô tìm kiếm và **chạm vào tên game** để bắt đầu. Khi chơi xong, chỉ cần vuốt đóng game khỏi đa nhiệm, màn hình sẽ tự động trở về bình thường sau 3 giây.
+### 1. Tùy chỉnh độ phân giải & Quản lý Game thông minh
+- **4 mức SSAA linh hoạt:**
+  - `1.10x` (Siêu nhẹ): Tăng độ nét nhẹ, tiết kiệm pin tối đa khi chơi ngoài trời.
+  - `1.15x` (Mát): Khử răng cưa tốt, giữ nhiệt độ ổn định.
+  - `1.20x` (Vừa): Cân bằng giữa độ sắc nét và hiệu năng.
+  - `1.25x` (Chuẩn): Độ nét tối đa, triệt tiêu răng cưa tầm xa.
+- **Xem trước thông số thực tế:** Hiển thị trực tiếp độ phân giải và DPI gốc so với thông số sau khi Upscale ngay trên màn hình chính.
+- **Cấu hình riêng từng Game (Per-Game Profile):** Bấm vào thẻ tỷ lệ trên từng dòng game để khóa cố định mức scale riêng cho từng trò (ví dụ: CODM khóa `1.25x`, PUBG khóa `1.15x`).
+- **Ghim & Lọc game yêu thích:** Tự động ghim CODM và PUBG lên đầu; bấm `⭐` để ghim thêm bất kỳ app nào và bật chế độ **Chỉ hiện Game đã ghim** để ẩn toàn bộ ứng dụng hệ thống.
+- **Tạo Shortcut ngoài màn hình chính:** Nhấn giữ vào tên game để đẩy biểu tượng mở nhanh ra màn hình chính — chạm vào là tự kích SSAA ngầm và vào thẳng game.
 
-> **💡 Lưu ý cho người dùng OriginOS (iQOO / Vivo):**
-> Để tránh việc hệ thống tự đóng băng Shizuku khi đang trong trận, hãy vào *Cài đặt -> Pin -> Quản lý tiêu thụ điện dưới nền*, chuyển **Shizuku** sang chế độ *Cho phép tiêu thụ điện năng cao dưới nền* và bật quyền *Khởi chạy liên kết (Associated startup)*.
+### 2. Bảng đo phần cứng nổi (Real-Time Hardware HUD)
+- **7 thông số thời gian thực** (tùy chọn bật/tắt độc lập từng món):
+  - `⚡ FPS`: Đo tốc độ khung hình thực tế qua `SurfaceFlinger --timestats` (tương thích Android 17 BLASTBufferQueue).
+  - `🔋 Nhiệt Pin`: Nhiệt độ thân máy/pin chính xác từng `0.1°C` qua `BatteryManager`.
+  - `🔥 Nhiệt CPU`: Nhiệt độ cảm biến lõi SoC.
+  - `🔌 Công suất W`: Công suất tiêu thụ điện năng tức thời (Watt) qua `BatteryManager` HAL.
+  - `🎮 VRAM GPU`: Dung lượng bộ nhớ đồ họa GPU tiến trình game đang chiếm dụng qua `dumpsys gpu`.
+  - `⚙️ Xung CPU`: Xung nhịp cao nhất hiện tại của nhân CPU (`GHz`/`MHz`).
+  - `💾 RAM`: Dung lượng RAM tiến trình game đang sử dụng.
+- **Tùy biến giao diện HUD:**
+  - **4 kích thước:** `Siêu gọn` • `Nhỏ` • `Vừa` • `To` (có thể chạm nhẹ trực tiếp vào thanh HUD khi đang chơi để đổi cỡ nóng).
+  - **2 kiểu hiển thị:** Xếp **Ngang (`↔️`)** hoặc xếp **Dọc (`↕️`)** sát mép màn hình.
+  - **Tách biệt tọa độ Dọc & Ngang:** Tự động ghi nhớ vị trí riêng cho màn hình dọc và màn hình ngang (mặc định màn ngang luôn nằm sát mép trên cùng để tránh chạm nhầm thanh điều hướng/đa nhiệm).
+  - **Kéo thả vào vùng `✕` để ẩn nhanh:** Kéo thanh HUD chạm vào vòng tròn đỏ `✕` ở cạnh dưới màn hình để tắt bảng đo ngay lập tức mà không làm gián đoạn tiến trình tự Reset độ phân giải.
+
+### 3. An toàn & Cài đặt tiện lợi
+- **Khôi phục đa lớp:** Tự Reset khi đóng game, nút **Reset Khẩn Cấp** màu đỏ trong app, hoặc chạm trực tiếp vào thanh thông báo đang chạy để trả màn hình về gốc từ bất kỳ đâu.
+- **Cập nhật đè trực tiếp:** Sử dụng chữ ký số cố định (`upscaler.jks`) và tự động tăng `versionCode`, cho phép tải bản mới về bấm **Cập nhật (Update)** đè trực tiếp mà không cần gỡ app cũ hay cấp lại quyền Shizuku.
 
 ---
 
-## 🔨 Tự Build từ Source Code
+## 🛠️ Yêu cầu & Cấp quyền lần đầu
 
-Dự án sử dụng **GitHub Actions** để tự động biên dịch file APK mỗi khi có thay đổi:
-1. Fork repository này về tài khoản của bạn.
-2. Chuyển sang tab **Actions** -> Chọn workflow **Build APK** -> Bấm **Run workflow**.
-3. Sau khoảng 1-2 phút, file APK mới sẽ tự động được xuất bản tại mục **Releases**.
+1. **Android 8.0 trở lên** (Đã tối ưu cho **Android 14 – 17 / OriginOS**).
+2. Cài đặt và kích hoạt **[Shizuku](https://github.com/RikkaApps/Shizuku)** qua Gỡ lỗi không dây (Wireless Debugging).
+3. **Lưu ý cho người dùng iQOO / Vivo (OriginOS):**
+   - Trong *Cài đặt -> Pin*, cho phép **Shizuku** chạy nền không giới hạn để tránh bị hệ thống ngắt kết nối giữa trận.
+   - Trong *Cài đặt -> Ứng dụng -> iQOO Upscaler -> Quyền*, bật **Hiển thị trên ứng dụng khác**, **Hiển thị cửa sổ pop-up khi chạy ở nền** (để hiện HUD đo FPS) và **Lối tắt trên màn hình chính** (để tạo Shortcut game).
 
-Hoặc build trực tiếp trên máy tính qua dòng lệnh với lệnh: `./gradlew assembleDebug`
+---
+
+## 🔨 Tự động Build APK qua GitHub Actions
+
+Dự án tích hợp sẵn workflow tự động biên dịch và xuất bản file APK:
+1. Fork repository này về tài khoản GitHub của bạn.
+2. Vào tab **Actions** -> Chọn **Build APK** -> Bấm **Run workflow**.
+3. Sau khoảng 1–2 phút, tải file `app-debug.apk` mới nhất tại mục **Releases**.
 
 ---
 
 ## 📜 Giấy phép (License)
 
-Dự án mã nguồn mở phát hành dưới giấy phép MIT License.
+Phát hành dưới giấy phép MIT License.
