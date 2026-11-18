@@ -254,8 +254,9 @@ class MainActivity : Activity() {
                 if (!isPreviewing) {
                     val svc = Intent(this@MainActivity, FpsOverlayService::class.java).apply {
                         putExtra("target_pkg", "")
+                        putExtra("game_name", "Xem thử khung FPS")
                     }
-                    startService(svc)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svc) else startService(svc)
                     isPreviewing = true
                     Toast.makeText(this@MainActivity, "Kéo khung FPS đến góc bạn muốn (chạm vào khung để đổi cỡ)", Toast.LENGTH_SHORT).show()
                 } else {
@@ -612,8 +613,10 @@ class MainActivity : Activity() {
             if (Settings.canDrawOverlays(this)) {
                 val svcIntent = Intent(this, FpsOverlayService::class.java).apply {
                     putExtra("target_pkg", pkg)
+                    putExtra("game_name", gameName)
+                    putExtra("scale_label", scaleStr)
                 }
-                startService(svcIntent)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svcIntent) else startService(svcIntent)
                 isPreviewing = false
             } else {
                 Toast.makeText(this, "⚠️ Chưa bật quyền Hiển thị trên ứng dụng khác để đo FPS!", Toast.LENGTH_LONG).show()
