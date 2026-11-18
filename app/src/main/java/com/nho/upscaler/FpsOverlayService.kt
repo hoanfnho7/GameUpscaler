@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
@@ -38,6 +39,7 @@ import kotlin.math.roundToInt
 class FpsOverlayService : Service() {
     private var windowManager: WindowManager? = null
     private var overlayView: TextView? = null
+    private var overlayParams: WindowManager.LayoutParams? = null
     private var closeTargetView: TextView? = null
     private lateinit var prefs: SharedPreferences
     private var isRunning = false
@@ -64,6 +66,43 @@ class FpsOverlayService : Service() {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun isLandscapeMode(): Boolean {
+        return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    }
+
+    private fun applyPositionForCurrentOrientation() {
+        val params = overlayParams ?: return
+        val isLand = isLandscapeMode()
+        val dm = resources.displayMetrics
+
+        // Mặc định màn ngang luôn nằm sát mép trên (Y = 36), tách biệt hoàn toàn với tọa độ màn dọc
+        val rawX = if (isLand) {
+            prefs.getInt("overlay_land_x", 160)
+        } else {
+            prefs.getInt("overlay_port_x", 60)
+        }
+        val rawY = if (isLand) {
+            prefs.getInt("overlay_land_y", 36)
+        } else {
+            prefs.getInt("overlay_port_y", 120)
+        }
+
+        val maxX = (dm.widthPixels - 120).coerceAtLeast(20)
+        val maxY = (dm.heightPixels - 140).coerceAtLeast(20)
+        params.x = rawX.coerceIn(10, maxX)
+        params.y = rawY.coerceIn(10, maxY)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (overlayView != null && overlayParams != null) {
+            applyPositionForCurrentOrientation()
+            try {
+                windowManager?.updateViewLayout(overlayView, overlayParams)
+            } catch (_: Exception) {}
+        }
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         prefs = getSharedPreferences("upscaler_prefs", Context.MODE_PRIVATE)
@@ -102,6 +141,10 @@ class FpsOverlayService : Service() {
             createOverlayViews()
         } else {
             applyOverlayStyle()
+            applyPositionForCurrentOrientation()
+            try {
+                windowManager?.updateViewLayout(overlayView, overlayParams)
+            } catch (_: Exception) {}
             renderTelemetryText()
         }
 
@@ -212,9 +255,9 @@ class FpsOverlayService : Service() {
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
-                x = prefs.getInt("overlay_x", 60)
-                y = prefs.getInt("overlay_y", 120)
             }
+            overlayParams = params
+            applyPositionForCurrentOrientation()
 
             tv.setOnTouchListener(object : View.OnTouchListener {
                 private var initialX = 0
@@ -267,10 +310,17 @@ class FpsOverlayService : Service() {
                                     stopSelf()
                                     return true
                                 }
-                                prefs.edit()
-                                    .putInt("overlay_x", params.x)
-                                    .putInt("overlay_y", params.y)
-                                    .apply()
+                                if (isLandscapeMode()) {
+                                    prefs.edit()
+                                        .putInt("overlay_land_x", params.x)
+                                        .putInt("overlay_land_y", params.y)
+                                        .apply()
+                                } else {
+                                    prefs.edit()
+                                        .putInt("overlay_port_x", params.x)
+                                        .putInt("overlay_port_y", params.y)
+                                        .apply()
+                                }
                             } else {
                                 sizeLevel = (sizeLevel + 1) % 4
                                 prefs.edit().putInt("overlay_size_level", sizeLevel).apply()
