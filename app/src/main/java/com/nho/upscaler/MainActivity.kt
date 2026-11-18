@@ -52,6 +52,7 @@ class MainActivity : Activity() {
     private var showPinnedOnly = false
     private var enableFpsOverlay = true
     private var overlaySizeLevel = 1
+    private var overlayVertical = false
     private var isPreviewing = false
     private var currentQuery = ""
     private var physW = 1440
@@ -66,6 +67,7 @@ class MainActivity : Activity() {
         showPinnedOnly = prefs.getBoolean("show_pinned_only", false)
         enableFpsOverlay = prefs.getBoolean("enable_fps_overlay", true)
         overlaySizeLevel = prefs.getInt("overlay_size_level", 1)
+        overlayVertical = prefs.getBoolean("overlay_vertical", false)
 
         if (handleIncomingIntent(intent)) {
             finish()
@@ -95,48 +97,48 @@ class MainActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.parseColor("#101216"))
-            setPadding(36, 42, 36, 20)
+            setPadding(32, 38, 32, 16)
         }
 
         val title = TextView(this).apply {
             text = "⚡ GAME UPSCALER PRO"
-            textSize = 20f
+            textSize = 19f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#00E676"))
         }
         root.addView(title)
 
         val subTitle = TextView(this).apply {
-            text = "Chạm tên game để chạy • Nhấn giữ để tạo Shortcut màn hình chính"
-            textSize = 11.5f
+            text = "Chạm tên game để chạy • Nhấn giữ tạo Shortcut • Kéo HUD vào ✕ để ẩn"
+            textSize = 11f
             setTextColor(Color.parseColor("#9E9E9E"))
-            setPadding(0, 4, 0, 14)
+            setPadding(0, 4, 0, 12)
         }
         root.addView(subTitle)
 
         previewTv = TextView(this).apply {
             text = "Đang đọc độ phân giải vật lý..."
-            textSize = 12.5f
+            textSize = 12f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#64FFDA"))
-            setPadding(24, 18, 24, 18)
+            setPadding(20, 14, 20, 14)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#182026"))
-                cornerRadius = 16f
+                cornerRadius = 14f
                 setStroke(1, Color.parseColor("#263238"))
             }
         }
-        root.addView(previewTv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 14 })
+        root.addView(previewTv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 10 })
 
         val radioGroup = RadioGroup(this).apply {
             orientation = RadioGroup.HORIZONTAL
-            setPadding(0, 0, 0, 10)
+            setPadding(0, 0, 0, 8)
         }
         val scales = listOf(110 to "1.10x", 115 to "1.15x", 120 to "1.20x", 125 to "1.25x")
         scales.forEach { (factor, label) ->
             val rb = RadioButton(this).apply {
                 text = label
-                textSize = 13f
+                textSize = 12.5f
                 setTextColor(Color.WHITE)
                 id = factor
                 isChecked = (factor == selectedFactor)
@@ -154,10 +156,11 @@ class MainActivity : Activity() {
 
         val resetBtn = Button(this).apply {
             text = "🔄 RESET MÀN HÌNH VỀ MẶC ĐỊNH NGAY"
+            textSize = 12.5f
             setTextColor(Color.WHITE)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#D32F2F"))
-                cornerRadius = 20f
+                cornerRadius = 18f
             }
             setOnClickListener {
                 if (checkShizuku()) {
@@ -169,78 +172,70 @@ class MainActivity : Activity() {
                 }
             }
         }
-        root.addView(resetBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 12 })
+        root.addView(resetBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 10 })
 
-        // Công tắc bật/tắt Khung đo FPS + Nhiệt độ nổi
+        // Khối điều khiển HUD Overlay (Bật/Tắt + Ngang/Dọc + Cỡ chữ + 9 công tắc thông số)
+        val hudCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16, 12, 16, 14)
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#161920"))
+                cornerRadius = 18f
+                setStroke(1, Color.parseColor("#263238"))
+            }
+        }
+
+        val hudHeaderRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
         val fpsCheck = CheckBox(this).apply {
-            text = "📊 Hiện khung đo FPS & Nhiệt độ nổi trên game"
-            textSize = 13f
+            text = "📊 HUD Đo thông số"
+            textSize = 12.5f
+            setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#64FFDA"))
             isChecked = enableFpsOverlay
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             setOnCheckedChangeListener { _, isChecked ->
                 enableFpsOverlay = isChecked
                 prefs.edit().putBoolean("enable_fps_overlay", isChecked).apply()
                 if (isChecked && !Settings.canDrawOverlays(this@MainActivity)) {
                     Toast.makeText(this@MainActivity, "Hãy cấp quyền 'Hiển thị trên ứng dụng khác' cho app!", Toast.LENGTH_LONG).show()
-                    val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
-                    startActivity(intent)
+                    startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
                 } else if (!isChecked) {
                     stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
                     isPreviewing = false
                 }
             }
         }
-        root.addView(fpsCheck)
+        hudHeaderRow.addView(fpsCheck)
 
-        // Hàng tùy chỉnh kích thước khung đo FPS (Siêu gọn / Nhỏ / Vừa / To + Nút Bật thử)
-        val sizeRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(8, 4, 8, 8)
-        }
-        val sizeChips = mutableListOf<TextView>()
-        val sizeLabels = listOf(0 to "Siêu gọn", 1 to "Nhỏ", 2 to "Vừa", 3 to "To")
-
-        fun refreshSizeChips() {
-            sizeChips.forEachIndexed { idx, chip ->
-                val active = (idx == overlaySizeLevel)
-                chip.setTextColor(if (active) Color.parseColor("#101216") else Color.parseColor("#B0BEC5"))
-                chip.background = GradientDrawable().apply {
-                    setColor(if (active) Color.parseColor("#64FFDA") else Color.parseColor("#1E2229"))
-                    cornerRadius = 12f
-                }
+        // Nút chuyển hướng Ngang / Dọc
+        val orientBtn = TextView(this).apply {
+            text = if (overlayVertical) "↕️ Dọc" else "↔️ Ngang"
+            textSize = 11.5f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.parseColor("#101216"))
+            setPadding(18, 8, 18, 8)
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#FFD740"))
+                cornerRadius = 12f
+            }
+            setOnClickListener {
+                overlayVertical = !overlayVertical
+                prefs.edit().putBoolean("overlay_vertical", overlayVertical).apply()
+                text = if (overlayVertical) "↕️ Dọc" else "↔️ Ngang"
+                notifyOverlayStyleUpdated()
             }
         }
-
-        sizeLabels.forEach { (lvl, lbl) ->
-            val chip = TextView(this).apply {
-                text = lbl
-                textSize = 11.5f
-                setTypeface(null, Typeface.BOLD)
-                gravity = Gravity.CENTER
-                setPadding(18, 10, 18, 10)
-                setOnClickListener {
-                    overlaySizeLevel = lvl
-                    prefs.edit().putInt("overlay_size_level", lvl).apply()
-                    refreshSizeChips()
-                    val upd = Intent(this@MainActivity, FpsOverlayService::class.java).apply {
-                        action = "UPDATE_STYLE"
-                    }
-                    startService(upd)
-                }
-            }
-            sizeChips.add(chip)
-            sizeRow.addView(chip, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 })
-        }
-        refreshSizeChips()
+        hudHeaderRow.addView(orientBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = 8 })
 
         val testOverlayBtn = TextView(this).apply {
             text = "👁️ Thử"
             textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            setPadding(20, 10, 20, 10)
+            setPadding(18, 8, 18, 8)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#2E7D32"))
                 cornerRadius = 12f
@@ -254,24 +249,109 @@ class MainActivity : Activity() {
                 if (!isPreviewing) {
                     val svc = Intent(this@MainActivity, FpsOverlayService::class.java).apply {
                         putExtra("target_pkg", "")
-                        putExtra("game_name", "Xem thử khung FPS")
+                        putExtra("game_name", "Xem thử HUD")
                     }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svc) else startService(svc)
                     isPreviewing = true
-                    Toast.makeText(this@MainActivity, "Kéo khung FPS đến góc bạn muốn (chạm vào khung để đổi cỡ)", Toast.LENGTH_SHORT).show()
                 } else {
                     stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
                     isPreviewing = false
                 }
             }
         }
-        sizeRow.addView(testOverlayBtn)
-        root.addView(sizeRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        hudHeaderRow.addView(testOverlayBtn)
+        hudCard.addView(hudHeaderRow)
+
+        // Hàng 4 mức kích thước HUD
+        val sizeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 6, 0, 8)
+        }
+        val sizeChips = mutableListOf<TextView>()
+        val sizeLabels = listOf(0 to "Siêu gọn", 1 to "Nhỏ", 2 to "Vừa", 3 to "To")
+        fun refreshSizeChips() {
+            sizeChips.forEachIndexed { idx, chip ->
+                val active = (idx == overlaySizeLevel)
+                chip.setTextColor(if (active) Color.parseColor("#101216") else Color.parseColor("#B0BEC5"))
+                chip.background = GradientDrawable().apply {
+                    setColor(if (active) Color.parseColor("#64FFDA") else Color.parseColor("#222630"))
+                    cornerRadius = 10f
+                }
+            }
+        }
+        sizeLabels.forEach { (lvl, lbl) ->
+            val chip = TextView(this).apply {
+                text = lbl
+                textSize = 11f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setPadding(8, 8, 8, 8)
+                setOnClickListener {
+                    overlaySizeLevel = lvl
+                    prefs.edit().putInt("overlay_size_level", lvl).apply()
+                    refreshSizeChips()
+                    notifyOverlayStyleUpdated()
+                }
+            }
+            sizeChips.add(chip)
+            sizeRow.addView(chip, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (lvl < 3) rightMargin = 6 })
+        }
+        refreshSizeChips()
+        hudCard.addView(sizeRow)
+
+        // Lưới 3x3 bật/tắt từng thông số đo
+        val metrics = listOf(
+            Triple("m_fps", "⚡ FPS", true),
+            Triple("m_bat_temp", "🔋 Nhiệt Pin", true),
+            Triple("m_cpu_temp", "🔥 Nhiệt CPU", false),
+            Triple("m_watt", "🔌 Công suất W", true),
+            Triple("m_gpu", "🎮 GPU %", true),
+            Triple("m_cpu_freq", "⚙️ Xung CPU", false),
+            Triple("m_hz", "🖥️ Màn Hz", false),
+            Triple("m_ram", "💾 RAM", false),
+            Triple("m_ping", "🌐 Ping", false)
+        )
+
+        for (rowIdx in 0 until 3) {
+            val mRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                if (rowIdx > 0) setPadding(0, 6, 0, 0)
+            }
+            for (colIdx in 0 until 3) {
+                val (key, label, defVal) = metrics[rowIdx * 3 + colIdx]
+                var enabled = prefs.getBoolean(key, defVal)
+                val pill = TextView(this).apply {
+                    text = label
+                    textSize = 10.5f
+                    setTypeface(null, Typeface.BOLD)
+                    gravity = Gravity.CENTER
+                    setPadding(6, 8, 6, 8)
+                    fun updatePillStyle() {
+                        setTextColor(if (enabled) Color.parseColor("#00E676") else Color.parseColor("#757575"))
+                        background = GradientDrawable().apply {
+                            setColor(if (enabled) Color.parseColor("#1B2E24") else Color.parseColor("#1D2028"))
+                            cornerRadius = 10f
+                            setStroke(1, if (enabled) Color.parseColor("#00E676") else Color.parseColor("#2C303A"))
+                        }
+                    }
+                    updatePillStyle()
+                    setOnClickListener {
+                        enabled = !enabled
+                        prefs.edit().putBoolean(key, enabled).apply()
+                        updatePillStyle()
+                        notifyOverlayStyleUpdated()
+                    }
+                }
+                mRow.addView(pill, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (colIdx < 2) rightMargin = 6 })
+            }
+            hudCard.addView(mRow)
+        }
+        root.addView(hudCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8 })
 
         // Công tắc Chỉ hiện game đã ghim
         val favCheck = CheckBox(this).apply {
             text = "⭐ Chỉ hiện Game đã ghim (Ẩn ứng dụng khác)"
-            textSize = 13f
+            textSize = 12.5f
             setTextColor(Color.parseColor("#FFD600"))
             isChecked = showPinnedOnly
             setOnCheckedChangeListener { _, isChecked ->
@@ -280,16 +360,17 @@ class MainActivity : Activity() {
                 sortAndFilterApps()
             }
         }
-        root.addView(favCheck, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 10 })
+        root.addView(favCheck, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 6 })
 
         val searchBox = EditText(this).apply {
             hint = "🔍 Gõ tên game hoặc package để lọc nhanh..."
+            textSize = 13f
             setHintTextColor(Color.parseColor("#757575"))
             setTextColor(Color.WHITE)
-            setPadding(28, 20, 28, 20)
+            setPadding(24, 16, 24, 16)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#1E2229"))
-                cornerRadius = 20f
+                cornerRadius = 16f
             }
             addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
@@ -300,11 +381,11 @@ class MainActivity : Activity() {
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             })
         }
-        root.addView(searchBox, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 16 })
+        root.addView(searchBox, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 10 })
 
         val listView = ListView(this).apply {
             divider = null
-            dividerHeight = 14
+            dividerHeight = 12
         }
         adapter = object : BaseAdapter() {
             override fun getCount() = filteredApps.size
@@ -317,16 +398,16 @@ class MainActivity : Activity() {
                 val row = LinearLayout(this@MainActivity).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
-                    setPadding(22, 20, 22, 20)
+                    setPadding(20, 16, 20, 16)
                     background = GradientDrawable().apply {
                         setColor(if (item.isPinned) Color.parseColor("#1E2822") else Color.parseColor("#1A1D24"))
-                        cornerRadius = 24f
+                        cornerRadius = 20f
                         if (item.isPinned) setStroke(2, Color.parseColor("#00E676"))
                     }
                 }
                 val img = ImageView(this@MainActivity).apply {
                     setImageDrawable(item.icon)
-                    layoutParams = LinearLayout.LayoutParams(105, 105).apply { rightMargin = 24 }
+                    layoutParams = LinearLayout.LayoutParams(96, 96).apply { rightMargin = 20 }
                 }
                 val textCol = LinearLayout(this@MainActivity).apply {
                     orientation = LinearLayout.VERTICAL
@@ -334,13 +415,13 @@ class MainActivity : Activity() {
                 }
                 val nameTv = TextView(this@MainActivity).apply {
                     text = item.name
-                    textSize = 15.5f
+                    textSize = 15f
                     setTypeface(null, Typeface.BOLD)
                     setTextColor(if (item.isPinned) Color.parseColor("#00E676") else Color.WHITE)
                 }
                 val pkgTv = TextView(this@MainActivity).apply {
                     text = item.pkg
-                    textSize = 11f
+                    textSize = 10.5f
                     setTextColor(Color.parseColor("#888888"))
                 }
                 textCol.addView(nameTv)
@@ -349,22 +430,22 @@ class MainActivity : Activity() {
                 val scaleBadge = TextView(this@MainActivity).apply {
                     val labelStr = "${effectiveScale / 100}.${effectiveScale % 100}x"
                     text = if (item.customScale > 0) "🎯 $labelStr" else labelStr
-                    textSize = 12f
+                    textSize = 11.5f
                     setTypeface(null, Typeface.BOLD)
                     setTextColor(if (item.customScale > 0) Color.parseColor("#00E676") else Color.parseColor("#B0BEC5"))
-                    setPadding(20, 12, 20, 12)
+                    setPadding(18, 10, 18, 10)
                     background = GradientDrawable().apply {
                         setColor(Color.parseColor("#263238"))
-                        cornerRadius = 14f
+                        cornerRadius = 12f
                     }
                     setOnClickListener { cyclePerGameScale(item) }
                 }
 
                 val pinBtn = TextView(this@MainActivity).apply {
                     text = if (item.isPinned) "⭐" else "☆"
-                    textSize = 20f
+                    textSize = 19f
                     setTextColor(if (item.isPinned) Color.parseColor("#FFD600") else Color.parseColor("#616161"))
-                    setPadding(20, 10, 8, 10)
+                    setPadding(18, 8, 6, 8)
                     setOnClickListener { togglePin(item) }
                 }
 
@@ -388,6 +469,15 @@ class MainActivity : Activity() {
         updatePreviewText()
         if (checkShizuku()) fetchPhysicalDisplayInfo()
         loadInstalledApps()
+    }
+
+    private fun notifyOverlayStyleUpdated() {
+        if (isPreviewing) {
+            val upd = Intent(this, FpsOverlayService::class.java).apply {
+                action = "UPDATE_STYLE"
+            }
+            startService(upd)
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -518,6 +608,7 @@ class MainActivity : Activity() {
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, channelId)
         } else {
+            @Suppress("DEPRECATION")
             Notification.Builder(this)
         }
         builder.setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -619,7 +710,7 @@ class MainActivity : Activity() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svcIntent) else startService(svcIntent)
                 isPreviewing = false
             } else {
-                Toast.makeText(this, "⚠️ Chưa bật quyền Hiển thị trên ứng dụng khác để đo FPS!", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "⚠️ Chưa bật quyền Hiển thị trên ứng dụng khác để đo HUD!", Toast.LENGTH_LONG).show()
             }
         }
 
