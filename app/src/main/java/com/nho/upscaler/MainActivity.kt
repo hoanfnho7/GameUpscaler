@@ -299,26 +299,27 @@ class MainActivity : Activity() {
         refreshSizeChips()
         hudCard.addView(sizeRow)
 
-        // Lưới 3x3 bật/tắt từng thông số đo
-        val metrics = listOf(
-            Triple("m_fps", "⚡ FPS", true),
-            Triple("m_bat_temp", "🔋 Nhiệt Pin", true),
-            Triple("m_cpu_temp", "🔥 Nhiệt CPU", false),
-            Triple("m_watt", "🔌 Công suất W", true),
-            Triple("m_gpu", "🎮 GPU %", true),
-            Triple("m_cpu_freq", "⚙️ Xung CPU", false),
-            Triple("m_hz", "🖥️ Màn Hz", false),
-            Triple("m_ram", "💾 RAM", false),
-            Triple("m_ping", "🌐 Ping", false)
+        // 2 hàng bật/tắt 7 thông số phần cứng (Đã gỡ Ping & Màn Hz)
+        val metricRows = listOf(
+            listOf(
+                Triple("m_fps", "⚡ FPS", true),
+                Triple("m_bat_temp", "🔋 Nhiệt Pin", true),
+                Triple("m_cpu_temp", "🔥 Nhiệt CPU", false),
+                Triple("m_watt", "🔌 Công suất W", true)
+            ),
+            listOf(
+                Triple("m_gpu", "🎮 GPU", true),
+                Triple("m_cpu_freq", "⚙️ Xung CPU", false),
+                Triple("m_ram", "💾 RAM", false)
+            )
         )
 
-        for (rowIdx in 0 until 3) {
+        metricRows.forEachIndexed { rowIdx, rowItems ->
             val mRow = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 if (rowIdx > 0) setPadding(0, 6, 0, 0)
             }
-            for (colIdx in 0 until 3) {
-                val (key, label, defVal) = metrics[rowIdx * 3 + colIdx]
+            rowItems.forEachIndexed { colIdx, (key, label, defVal) ->
                 var enabled = prefs.getBoolean(key, defVal)
                 val pill = TextView(this).apply {
                     text = label
@@ -342,7 +343,7 @@ class MainActivity : Activity() {
                         notifyOverlayStyleUpdated()
                     }
                 }
-                mRow.addView(pill, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (colIdx < 2) rightMargin = 6 })
+                mRow.addView(pill, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (colIdx < rowItems.size - 1) rightMargin = 6 })
             }
             hudCard.addView(mRow)
         }

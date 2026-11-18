@@ -7,12 +7,14 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -46,7 +48,7 @@ class FpsOverlayService : Service() {
     private var isVertical = false
     private var isOverCloseZone = false
 
-    // Giá trị đo thực tế
+    // 7 thông số phần cứng thực tế
     private var lastFps = 0
     private var lastBatTemp = 0f
     private var lastCpuTemp = 0f
@@ -54,16 +56,13 @@ class FpsOverlayService : Service() {
     private var lastGpuLoad = -1
     private var lastGpuMhz = 0
     private var lastCpuKhz = 0L
-    private var lastHz = 0
     private var lastRamText = ""
-    private var lastPingMs = -1
 
-    // Biến đếm TimeStats & chu kỳ Ping
+    // Biến đếm TimeStats
     private var lastFramesCount = -1L
     private var lastSampleTimeMs = 0L
     private var lastTrackedSource = ""
     private var clearedForPkg = ""
-    private var tickCounter = 0
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -377,9 +376,7 @@ class FpsOverlayService : Service() {
         val showWatt = prefs.getBoolean("m_watt", true)
         val showGpu = prefs.getBoolean("m_gpu", true)
         val showCpuFreq = prefs.getBoolean("m_cpu_freq", false)
-        val showHz = prefs.getBoolean("m_hz", false)
         val showRam = prefs.getBoolean("m_ram", false)
-        val showPing = prefs.getBoolean("m_ping", false)
 
         val parts = mutableListOf<String>()
         val isCompact = (sizeLevel == 0)
@@ -401,9 +398,13 @@ class FpsOverlayService : Service() {
             parts.add(if (isCompact) wVal else if (isVertical) "🔌 Điện: $wVal" else "🔌$wVal")
         }
         if (showGpu) {
-            val gPct = if (lastGpuLoad >= 0) "$lastGpuLoad%" else "--%"
-            val gClk = if (lastGpuMhz > 0) " (${lastGpuMhz}MHz)" else ""
-            parts.add(if (isCompact) "G:$gPct" else if (isVertical) "🎮 GPU: $gPct$gClk" else "🎮$gPct")
+            val gpuStr = when {
+                lastGpuLoad >= 0 && lastGpuMhz > 0 -> if (isVertical) "$lastGpuLoad% (${lastGpuMhz}MHz)" else "$lastGpuLoad%"
+                lastGpuLoad >= 0 -> "$lastGpuLoad%"
+                lastGpuMhz > 0 -> "${lastGpuMhz}MHz"
+                else -> "--%"
+            }
+            parts.add(if (isCompact) "G:$gpuStr" else if (isVertical) "🎮 GPU: $gpuStr" else "🎮$gpuStr")
         }
         if (showCpuFreq) {
             val cStr = when {
@@ -413,17 +414,9 @@ class FpsOverlayService : Service() {
             }
             parts.add(if (isCompact) cStr else if (isVertical) "⚙️ CPU: $cStr" else "⚙️$cStr")
         }
-        if (showHz) {
-            val hStr = if (lastHz > 0) "${lastHz}Hz" else "--Hz"
-            parts.add(if (isCompact) hStr else if (isVertical) "🖥️ Màn: $hStr" else "🖥️$hStr")
-        }
         if (showRam) {
             val rStr = lastRamText.ifEmpty { "--GB" }
             parts.add(if (isCompact) rStr else if (isVertical) "💾 RAM: $rStr" else "💾$rStr")
-        }
-        if (showPing) {
-            val pStr = if (lastPingMs >= 0) "${lastPingMs}ms" else "--ms"
-            parts.add(if (isCompact) pStr else if (isVertical) "🌐 Ping: $pStr" else "🌐$pStr")
         }
 
         if (parts.isEmpty()) {
@@ -444,6 +437,31 @@ class FpsOverlayService : Service() {
         tv.setTextColor(color)
     }
 
+    private fun readNativeBatteryPower() {
+        try {
+            val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+            val rawCurr = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+            val batIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val rawVoltMv = batIntent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) ?: 0
+            val rawTempTenths = batIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
+
+            if (rawTempTenths > 0) {
+                lastBatTemp = rawTempTenths / 10f
+            }
+
+            if (rawCurr != Int.MIN_VALUE && rawCurr != 0 && rawVoltMv > 0) {
+                val absCurr = abs(rawCurr.toDouble())
+                // Qualcomm/Vivo thường trả về µA (ví dụ 1500000), một số máy trả mA (1500)
+                val amps = if (absCurr > 15_000.0) absCurr / 1_000_000.0 else absCurr / 1_000.0
+                val volts = rawVoltMv / 1_000.0
+                val w = (amps * volts).toFloat()
+                if (w in 0.1f..180f) {
+                    lastWatts = w
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
     private fun startTelemetryLoop() {
         thread {
             execShizuku("dumpsys SurfaceFlinger --timestats -clear -enable")
@@ -451,32 +469,32 @@ class FpsOverlayService : Service() {
             var graceTicks = 0
             while (isRunning) {
                 try {
-                    tickCounter++
                     val showFps = prefs.getBoolean("m_fps", true)
                     val showBatTemp = prefs.getBoolean("m_bat_temp", true)
                     val showCpuTemp = prefs.getBoolean("m_cpu_temp", false)
                     val showWatt = prefs.getBoolean("m_watt", true)
                     val showGpu = prefs.getBoolean("m_gpu", true)
                     val showCpuFreq = prefs.getBoolean("m_cpu_freq", false)
-                    val showHz = prefs.getBoolean("m_hz", false)
                     val showRam = prefs.getBoolean("m_ram", false)
-                    val showPing = prefs.getBoolean("m_ping", false)
+
+                    // Đọc công suất & nhiệt độ pin trực tiếp từ BatteryManager HAL (không bị SELinux chặn)
+                    if (showBatTemp || showWatt) {
+                        readNativeBatteryPower()
+                    }
 
                     val sb = StringBuilder()
                     if (targetPkg.isNotEmpty()) {
                         sb.append("echo \"PID=\$(pidof $targetPkg)\"; ")
                     }
-                    if (showBatTemp || showWatt) {
-                        sb.append("dumpsys battery | grep -E 'temperature:|current now:|voltage:' | sed 's/^ *//'; ")
-                    }
-                    if (showWatt) {
-                        sb.append("echo \"SYS_I=\$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)\"; ")
-                        sb.append("echo \"SYS_V=\$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)\"; ")
+                    if (showWatt && lastWatts <= 0f) {
+                        sb.append("echo \"SYS_I=\$(cat /sys/class/power_supply/battery/current_now /sys/class/power_supply/bms/current_now 2>/dev/null | head -n 1)\"; ")
+                        sb.append("echo \"SYS_V=\$(cat /sys/class/power_supply/battery/voltage_now /sys/class/power_supply/bms/voltage_now 2>/dev/null | head -n 1)\"; ")
                     }
                     if (showGpu) {
                         sb.append("echo \"GPU_PCT=\$(cat /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage 2>/dev/null)\"; ")
                         sb.append("echo \"GPU_BUSY=\$(cat /sys/class/kgsl/kgsl-3d0/gpubusy 2>/dev/null)\"; ")
-                        sb.append("echo \"GPU_CLK=\$(cat /sys/class/kgsl/kgsl-3d0/gpuclk 2>/dev/null)\"; ")
+                        sb.append("echo \"GPU_DEVFREQ=\$(cat /sys/class/devfreq/*kgsl*/load 2>/dev/null | head -n 1)\"; ")
+                        sb.append("echo \"GPU_CLK=\$(cat /sys/class/kgsl/kgsl-3d0/gpuclk /sys/class/devfreq/*kgsl*/cur_freq 2>/dev/null | head -n 1)\"; ")
                     }
                     if (showCpuFreq) {
                         sb.append("echo \"CPU_KHZ=\$(cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq 2>/dev/null | sort -nr | head -n 1)\"; ")
@@ -484,32 +502,29 @@ class FpsOverlayService : Service() {
                     if (showCpuTemp) {
                         sb.append("echo \"CPU_T=\$(for z in /sys/class/thermal/thermal_zone*; do t=\$(cat \"\$z/type\" 2>/dev/null); case \"\$t\" in *cpu*|*CPU*|*soc*|*SOC*|*tsens*|*ap*|*nspss*) cat \"\$z/temp\" 2>/dev/null;; esac; done | sort -nr | head -n 1)\"; ")
                     }
-                    if (showHz) {
-                        sb.append("echo \"DISP_HZ=\$(dumpsys display | grep -oE '(renderFrameRate|fps|refreshRate)[=:]\\s*[0-9.]+' | head -n 1 | grep -oE '[0-9.]+')\"; ")
-                    }
                     if (showRam) {
                         if (targetPkg.isNotEmpty()) {
                             sb.append("echo \"APP_PSS=\$(dumpsys meminfo $targetPkg 2>/dev/null | grep 'TOTAL PSS:' | awk '{print \$3}')\"; ")
                         }
                         sb.append("grep -E 'MemTotal:|MemAvailable:' /proc/meminfo; ")
                     }
-                    if (showPing && (tickCounter % 3 == 1)) {
-                        sb.append("echo \"PING_MS=\$(ping -c 1 -W 1 8.8.8.8 2>/dev/null | grep -oE 'time=[0-9.]+' | cut -d= -f2)\"; ")
-                    }
 
-                    val batchOut = execShizuku(sb.toString())
-                    parseBatchOutput(batchOut)
+                    val cmdStr = sb.toString()
+                    if (cmdStr.isNotEmpty()) {
+                        val batchOut = execShizuku(cmdStr)
+                        parseBatchOutput(batchOut)
 
-                    if (targetPkg.isNotEmpty() && batchOut.contains("PID=")) {
-                        val pidVal = batchOut.lines().firstOrNull { it.startsWith("PID=") }?.substringAfter("PID=")?.trim() ?: ""
-                        if (pidVal.isEmpty()) {
-                            graceTicks++
-                            if (graceTicks > 8) {
-                                mainHandler.post { stopSelf() }
-                                break
+                        if (targetPkg.isNotEmpty() && batchOut.contains("PID=")) {
+                            val pidVal = batchOut.lines().firstOrNull { it.startsWith("PID=") }?.substringAfter("PID=")?.trim() ?: ""
+                            if (pidVal.isEmpty()) {
+                                graceTicks++
+                                if (graceTicks > 8) {
+                                    mainHandler.post { stopSelf() }
+                                    break
+                                }
+                            } else {
+                                graceTicks = 0
                             }
-                        } else {
-                            graceTicks = 0
                         }
                     }
 
@@ -526,9 +541,6 @@ class FpsOverlayService : Service() {
     }
 
     private fun parseBatchOutput(raw: String) {
-        var dumpTemp = 0f
-        var dumpCurr = 0.0
-        var dumpVolt = 0.0
         var sysCurr = 0.0
         var sysVolt = 0.0
         var memTotalKb = 0L
@@ -538,15 +550,6 @@ class FpsOverlayService : Service() {
         for (line in raw.lines()) {
             val l = line.trim()
             when {
-                l.startsWith("temperature:") -> {
-                    dumpTemp = (l.substringAfter(":").trim().toFloatOrNull() ?: 0f) / 10f
-                }
-                l.startsWith("current now:") -> {
-                    dumpCurr = l.substringAfter(":").trim().toDoubleOrNull() ?: 0.0
-                }
-                l.startsWith("voltage:") -> {
-                    dumpVolt = l.substringAfter(":").trim().toDoubleOrNull() ?: 0.0
-                }
                 l.startsWith("SYS_I=") -> {
                     sysCurr = l.substringAfter("=").trim().toDoubleOrNull() ?: 0.0
                 }
@@ -567,6 +570,15 @@ class FpsOverlayService : Service() {
                         }
                     }
                 }
+                l.startsWith("GPU_DEVFREQ=") -> {
+                    val valPart = l.substringAfter("=").trim()
+                    if (valPart.contains("@")) {
+                        val pct = valPart.substringBefore("@").toIntOrNull()
+                        val freqHz = valPart.substringAfter("@").toLongOrNull() ?: 0L
+                        if (pct != null) lastGpuLoad = pct.coerceIn(0, 100)
+                        if (freqHz > 0L) lastGpuMhz = (freqHz / 1_000_000L).toInt()
+                    }
+                }
                 l.startsWith("GPU_CLK=") -> {
                     val hz = l.substringAfter("=").trim().toLongOrNull() ?: 0L
                     if (hz > 0L) lastGpuMhz = (hz / 1_000_000L).toInt()
@@ -584,10 +596,6 @@ class FpsOverlayService : Service() {
                     }
                     if (tC in 20f..125f) lastCpuTemp = tC
                 }
-                l.startsWith("DISP_HZ=") -> {
-                    val h = l.substringAfter("=").trim().toFloatOrNull() ?: 0f
-                    if (h > 0f) lastHz = h.roundToInt()
-                }
                 l.startsWith("APP_PSS=") -> {
                     appPssKb = l.substringAfter("=").trim().toLongOrNull() ?: 0L
                 }
@@ -597,22 +605,16 @@ class FpsOverlayService : Service() {
                 l.startsWith("MemAvailable:") -> {
                     memAvailKb = Regex("([0-9]+)").find(l)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
                 }
-                l.startsWith("PING_MS=") -> {
-                    val p = l.substringAfter("=").trim().toFloatOrNull()
-                    if (p != null && p >= 0f) lastPingMs = p.roundToInt()
-                }
             }
         }
 
-        if (dumpTemp > 0f) lastBatTemp = dumpTemp
-
-        val rawI = if (abs(sysCurr) > 0.0) abs(sysCurr) else abs(dumpCurr)
-        val rawV = if (abs(sysVolt) > 0.0) abs(sysVolt) else abs(dumpVolt)
-        if (rawI > 0.0 && rawV > 0.0) {
-            val amps = if (rawI > 10_000.0) rawI / 1_000_000.0 else rawI / 1_000.0
-            val volts = if (rawV > 100_000.0) rawV / 1_000_000.0 else rawV / 1_000.0
+        if (lastWatts <= 0f && abs(sysCurr) > 0.0 && abs(sysVolt) > 0.0) {
+            val absI = abs(sysCurr)
+            val absV = abs(sysVolt)
+            val amps = if (absI > 15_000.0) absI / 1_000_000.0 else absI / 1_000.0
+            val volts = if (absV > 100_000.0) absV / 1_000_000.0 else absV / 1_000.0
             val w = (amps * volts).toFloat()
-            if (w in 0.1f..160f) lastWatts = w
+            if (w in 0.1f..180f) lastWatts = w
         }
 
         if (appPssKb > 0L) {
