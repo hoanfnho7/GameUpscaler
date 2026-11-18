@@ -30,10 +30,13 @@ import java.io.InputStreamReader
 import java.util.Locale
 import kotlin.concurrent.thread
 import kotlin.math.abs
+import kotlin.math.hypot
+import kotlin.math.roundToInt
 
 class FpsOverlayService : Service() {
     private var windowManager: WindowManager? = null
     private var overlayView: TextView? = null
+    private var closeTargetView: TextView? = null
     private lateinit var prefs: SharedPreferences
     private var isRunning = false
     private var targetPkg = ""
@@ -42,6 +45,7 @@ class FpsOverlayService : Service() {
     private var sizeLevel = 1
     private var lastFps = 0
     private var lastTemp = 0f
+    private var isOverCloseZone = false
     private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -79,7 +83,7 @@ class FpsOverlayService : Service() {
         }
 
         if (overlayView == null) {
-            createOverlayView()
+            createOverlayViews()
         } else {
             applyOverlayStyle()
             renderTelemetryText()
@@ -136,17 +140,9 @@ class FpsOverlayService : Service() {
         }
     }
 
-    private fun createOverlayView() {
+    private fun createOverlayViews() {
         try {
             windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-
-            val tv = TextView(this).apply {
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(Color.parseColor("#00E676"))
-            }
-            overlayView = tv
-            applyOverlayStyle()
-            renderTelemetryText()
 
             val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -154,6 +150,45 @@ class FpsOverlayService : Service() {
                 @Suppress("DEPRECATION")
                 WindowManager.LayoutParams.TYPE_PHONE
             }
+
+            // 1. Tạo vòng tròn vùng X ở cạnh dưới màn hình (ẩn mặc định, chỉ hiện khi kéo thanh đo)
+            val closeTv = TextView(this).apply {
+                text = "✕"
+                textSize = 22f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+                visibility = View.GONE
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(Color.parseColor("#CC261212"))
+                    setStroke(3, Color.parseColor("#FF5252"))
+                }
+            }
+            closeTargetView = closeTv
+
+            val closeParams = WindowManager.LayoutParams(
+                136,
+                136,
+                layoutType,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                y = 90
+            }
+            windowManager?.addView(closeTv, closeParams)
+
+            // 2. Tạo thanh đo FPS & Nhiệt độ
+            val tv = TextView(this).apply {
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.parseColor("#00E676"))
+            }
+            overlayView = tv
+            applyOverlayStyle()
+            renderTelemetryText()
 
             val params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -182,21 +217,43 @@ class FpsOverlayService : Service() {
                             initialTouchX = event.rawX
                             initialTouchY = event.rawY
                             isDragging = false
+                            isOverCloseZone = false
                             return true
                         }
                         MotionEvent.ACTION_MOVE -> {
                             val dx = (event.rawX - initialTouchX).toInt()
                             val dy = (event.rawY - initialTouchY).toInt()
-                            if (abs(dx) > 8 || abs(dy) > 8) {
-                                isDragging = true
+                            if (abs(dx) > 10 || abs(dy) > 10) {
+                                if (!isDragging) {
+                                    isDragging = true
+                                    closeTargetView?.visibility = View.VISIBLE
+                                }
                                 params.x = initialX + dx
                                 params.y = initialY + dy
                                 windowManager?.updateViewLayout(overlayView, params)
+
+                                // Kiểm tra khoảng cách tới vòng tròn X ở đáy màn hình
+                                val dm = resources.displayMetrics
+                                val targetCenterX = dm.widthPixels / 2f
+                                val targetCenterY = dm.heightPixels - 90f - 68f
+                                val dist = hypot(event.rawX - targetCenterX, event.rawY - targetCenterY)
+                                val insideZone = dist < 145f
+
+                                if (insideZone != isOverCloseZone) {
+                                    isOverCloseZone = insideZone
+                                    updateCloseTargetVisual(insideZone)
+                                }
                             }
                             return true
                         }
-                        MotionEvent.ACTION_UP -> {
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            closeTargetView?.visibility = View.GONE
                             if (isDragging) {
+                                if (isOverCloseZone) {
+                                    Toast.makeText(this@FpsOverlayService, "Đã ẩn thanh đo FPS", Toast.LENGTH_SHORT).show()
+                                    stopSelf()
+                                    return true
+                                }
                                 prefs.edit()
                                     .putInt("overlay_x", params.x)
                                     .putInt("overlay_y", params.y)
@@ -207,6 +264,8 @@ class FpsOverlayService : Service() {
                                 applyOverlayStyle()
                                 renderTelemetryText()
                             }
+                            isOverCloseZone = false
+                            updateCloseTargetVisual(false)
                             return true
                         }
                     }
@@ -217,8 +276,29 @@ class FpsOverlayService : Service() {
             windowManager?.addView(tv, params)
         } catch (e: Exception) {
             overlayView = null
-            Toast.makeText(this, "Lỗi bật cửa sổ nổi (Hãy bật quyền Pop-up nền của OriginOS): ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Lỗi bật cửa sổ nổi: ${e.message}", Toast.LENGTH_LONG).show()
             stopSelf()
+        }
+    }
+
+    private fun updateCloseTargetVisual(active: Boolean) {
+        val cView = closeTargetView ?: return
+        if (active) {
+            cView.scaleX = 1.18f
+            cView.scaleY = 1.18f
+            cView.background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#FF1744"))
+                setStroke(4, Color.WHITE)
+            }
+        } else {
+            cView.scaleX = 1.0f
+            cView.scaleY = 1.0f
+            cView.background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#CC261212"))
+                setStroke(3, Color.parseColor("#FF5252"))
+            }
         }
     }
 
@@ -313,34 +393,65 @@ class FpsOverlayService : Service() {
         }
     }
 
+    private fun getTopForegroundPackage(): String {
+        val out = execShizuku("dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | head -n 1")
+        val regex = Regex("([a-zA-Z0-9_]+\\.[a-zA-Z0-9_.]+)/")
+        return regex.find(out)?.groupValues?.getOrNull(1) ?: ""
+    }
+
     private fun measureRealFps(pkg: String): Int {
-        if (pkg.isEmpty()) return 0
-        var winName = execShizuku("dumpsys SurfaceFlinger --list | grep 'SurfaceView' | grep '$pkg' | head -n 1").trim()
-        if (winName.isEmpty()) {
-            winName = execShizuku("dumpsys SurfaceFlinger --list | grep '$pkg' | grep -v 'Splash' | head -n 1").trim()
-        }
-        if (winName.isEmpty()) return 0
+        val activePkg = if (pkg.isNotEmpty()) pkg else getTopForegroundPackage()
 
-        val latencyRaw = execShizuku("dumpsys SurfaceFlinger --latency \"$winName\"")
-        val lines = latencyRaw.lines().filter { it.trim().isNotEmpty() }
-        if (lines.size < 5) return 0
+        if (activePkg.isNotEmpty()) {
+            val rawLayers = execShizuku("dumpsys SurfaceFlinger --list | grep '$activePkg'")
+            val candidates = rawLayers.lines()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && !it.startsWith("Background for") && !it.contains("Splash") }
+                .sortedByDescending { line ->
+                    when {
+                        line.contains("(BLAST)") -> 3
+                        line.contains("SurfaceView") -> 2
+                        else -> 1
+                    }
+                }
+                .take(6)
 
-        val timestamps = mutableListOf<Long>()
-        for (i in 1 until lines.size) {
-            val cols = lines[i].trim().split(Regex("\\s+"))
-            if (cols.size >= 2) {
-                val presentTime = cols[1].toLongOrNull() ?: 0L
-                if (presentTime > 0L && presentTime != Long.MAX_VALUE) {
-                    timestamps.add(presentTime)
+            for (layer in candidates) {
+                val latencyRaw = execShizuku("dumpsys SurfaceFlinger --latency \"$layer\"")
+                val lines = latencyRaw.lines().filter { it.trim().isNotEmpty() }
+                if (lines.size < 5) continue
+
+                val timestamps = mutableListOf<Long>()
+                for (i in 1 until lines.size) {
+                    val cols = lines[i].trim().split(Regex("\\s+"))
+                    if (cols.size >= 3) {
+                        val presentTime = cols[1].toLongOrNull() ?: 0L
+                        if (presentTime > 0L && presentTime != Long.MAX_VALUE) {
+                            timestamps.add(presentTime)
+                        }
+                    }
+                }
+
+                if (timestamps.size >= 4) {
+                    val durationNs = timestamps.last() - timestamps.first()
+                    if (durationNs > 0L) {
+                        val fps = ((timestamps.size - 1) * 1_000_000_000.0 / durationNs).roundToInt()
+                        if (fps in 1..165) return fps
+                    }
                 }
             }
         }
 
-        if (timestamps.size < 3) return 0
-        val latest = timestamps.last()
-        val oneSecAgo = latest - 1_000_000_000L
-        val framesInLastSec = timestamps.count { it >= oneSecAgo }
-        return if (framesInLastSec in 1..144) framesInLastSec else 0
+        // Dự phòng: Đọc trực tiếp bộ đếm FPS phần cứng của driver hiển thị Qualcomm Snapdragon
+        val drmOut = execShizuku("cat /sys/class/drm/sde-crtc-0/measured_fps 2>/dev/null").trim()
+        if (drmOut.contains("fps:")) {
+            val fpsVal = Regex("fps:\\s*([0-9.]+)").find(drmOut)?.groupValues?.getOrNull(1)?.toFloatOrNull()
+            if (fpsVal != null && fpsVal > 0f) {
+                return fpsVal.roundToInt()
+            }
+        }
+
+        return 0
     }
 
     private fun execShizuku(cmd: String): String {
@@ -365,6 +476,12 @@ class FpsOverlayService : Service() {
             if (overlayView != null) {
                 windowManager?.removeView(overlayView)
                 overlayView = null
+            }
+        } catch (_: Exception) {}
+        try {
+            if (closeTargetView != null) {
+                windowManager?.removeView(closeTargetView)
+                closeTargetView = null
             }
         } catch (_: Exception) {}
         super.onDestroy()
