@@ -308,7 +308,7 @@ class MainActivity : Activity() {
                 Triple("m_watt", "🔌 Công suất W", true)
             ),
             listOf(
-                Triple("m_gpu", "🎮 GPU", true),
+                Triple("m_gpu", "🎮 VRAM GPU", true),
                 Triple("m_cpu_freq", "⚙️ Xung CPU", false),
                 Triple("m_ram", "💾 RAM", false)
             )

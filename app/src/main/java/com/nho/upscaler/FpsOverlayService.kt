@@ -52,8 +52,7 @@ class FpsOverlayService : Service() {
     private var lastBatTemp = 0f
     private var lastCpuTemp = 0f
     private var lastWatts = 0f
-    private var lastGpuLoad = -1
-    private var lastGpuMhz = 0
+    private var lastGpuVramMb = -1
     private var lastCpuKhz = 0L
     private var lastRamText = ""
 
@@ -396,13 +395,8 @@ class FpsOverlayService : Service() {
             parts.add(if (isCompact) wVal else if (isVertical) "🔌 Điện: $wVal" else "🔌$wVal")
         }
         if (showGpu) {
-            val gpuStr = when {
-                lastGpuLoad >= 0 && lastGpuMhz > 0 -> if (isVertical) "$lastGpuLoad% (${lastGpuMhz}MHz)" else "$lastGpuLoad%"
-                lastGpuLoad >= 0 -> "$lastGpuLoad%"
-                lastGpuMhz > 0 -> "${lastGpuMhz}MHz"
-                else -> "--%"
-            }
-            parts.add(if (isCompact) "G:$gpuStr" else if (isVertical) "🎮 GPU: $gpuStr" else "🎮$gpuStr")
+            val vramStr = if (lastGpuVramMb >= 0) "${lastGpuVramMb}MB" else "--MB"
+            parts.add(if (isCompact) "G:${if (lastGpuVramMb >= 0) "${lastGpuVramMb}M" else "--"}" else if (isVertical) "🎮 VRAM: $vramStr" else "🎮$vramStr")
         }
         if (showCpuFreq) {
             val cStr = when {
@@ -483,14 +477,7 @@ class FpsOverlayService : Service() {
                         sb.append("echo \"PID=\$(pidof $targetPkg)\"; ")
                     }
                     if (showGpu) {
-                        // 1. Đường dẫn chuẩn Qualcomm Android 15-17 không bị chặn SELinux
-                        sb.append("echo \"GPU_K_BUSY=\$(cat /sys/kernel/gpu/gpu_busy 2>/dev/null)\"; ")
-                        sb.append("echo \"GPU_K_CLK=\$(cat /sys/kernel/gpu/gpu_clock 2>/dev/null)\"; ")
-                        // 2. Đường dẫn KGSL & Devfreq dự phòng
-                        sb.append("echo \"GPU_PCT=\$(cat /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage 2>/dev/null)\"; ")
-                        sb.append("echo \"GPU_BUSY=\$(cat /sys/class/kgsl/kgsl-3d0/gpubusy 2>/dev/null)\"; ")
-                        sb.append("echo \"GPU_DEVFREQ=\$(cat /sys/class/devfreq/*kgsl*/load 2>/dev/null | head -n 1)\"; ")
-                        sb.append("echo \"GPU_CLK=\$(cat /sys/class/kgsl/kgsl-3d0/gpuclk /sys/class/devfreq/*kgsl*/cur_freq 2>/dev/null | head -n 1)\"; ")
+                        sb.append("dumpsys gpu | grep -E 'Global total:|Proc [0-9]+ total:'; ")
                     }
                     if (showCpuFreq) {
                         sb.append("echo \"CPU_KHZ=\$(cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq 2>/dev/null | sort -nr | head -n 1)\"; ")
@@ -508,11 +495,10 @@ class FpsOverlayService : Service() {
                     val cmdStr = sb.toString()
                     if (cmdStr.isNotEmpty()) {
                         val batchOut = execShizuku(cmdStr)
-                        parseBatchOutput(batchOut)
+                        val activePids = parseBatchOutput(batchOut)
 
                         if (targetPkg.isNotEmpty() && batchOut.contains("PID=")) {
-                            val pidVal = batchOut.lines().firstOrNull { it.startsWith("PID=") }?.substringAfter("PID=")?.trim() ?: ""
-                            if (pidVal.isEmpty()) {
+                            if (activePids.isEmpty()) {
                                 graceTicks++
                                 if (graceTicks > 8) {
                                     mainHandler.post { stopSelf() }
@@ -524,9 +510,8 @@ class FpsOverlayService : Service() {
                         }
                     }
 
-                    if (showFps || (showGpu && lastGpuLoad < 0 && lastGpuMhz == 0)) {
-                        val measured = measureFpsAndGpuFallback(targetPkg)
-                        if (showFps) lastFps = measured
+                    if (showFps) {
+                        lastFps = measureRealFps(targetPkg)
                     }
 
                     mainHandler.post { renderTelemetryText() }
@@ -537,49 +522,30 @@ class FpsOverlayService : Service() {
         }
     }
 
-    private fun parseBatchOutput(raw: String) {
+    private fun parseBatchOutput(raw: String): Set<String> {
         var memTotalKb = 0L
         var memAvailKb = 0L
         var appPssKb = 0L
+        var globalGpuBytes = -1L
+        val procGpuMap = mutableMapOf<String, Long>()
+        var pidSet = emptySet<String>()
 
         for (line in raw.lines()) {
             val l = line.trim()
             when {
-                l.startsWith("GPU_K_BUSY=") -> {
-                    val pctNum = Regex("([0-9]+)").find(l.substringAfter("="))?.groupValues?.getOrNull(1)?.toIntOrNull()
-                    if (pctNum != null) lastGpuLoad = pctNum.coerceIn(0, 100)
-                }
-                l.startsWith("GPU_K_CLK=") -> {
-                    val rawClk = l.substringAfter("=").trim().toLongOrNull() ?: 0L
-                    if (rawClk > 10_000_000L) lastGpuMhz = (rawClk / 1_000_000L).toInt()
-                    else if (rawClk in 50L..3000L) lastGpuMhz = rawClk.toInt()
-                }
-                l.startsWith("GPU_PCT=") -> {
-                    val pctNum = Regex("([0-9]+)").find(l.substringAfter("="))?.groupValues?.getOrNull(1)?.toIntOrNull()
-                    if (pctNum != null) lastGpuLoad = pctNum.coerceIn(0, 100)
-                }
-                l.startsWith("GPU_BUSY=") -> {
-                    val cols = l.substringAfter("=").trim().split(Regex("\\s+"))
-                    if (cols.size >= 2) {
-                        val busy = cols[0].toLongOrNull() ?: 0L
-                        val total = cols[1].toLongOrNull() ?: 0L
-                        if (total > 0L) {
-                            lastGpuLoad = ((busy * 100L) / total).toInt().coerceIn(0, 100)
-                        }
+                l.startsWith("PID=") -> {
+                    val rawPids = l.substringAfter("PID=").trim()
+                    if (rawPids.isNotEmpty()) {
+                        pidSet = rawPids.split(Regex("\\s+")).toSet()
                     }
                 }
-                l.startsWith("GPU_DEVFREQ=") -> {
-                    val valPart = l.substringAfter("=").trim()
-                    if (valPart.contains("@")) {
-                        val pct = valPart.substringBefore("@").toIntOrNull()
-                        val freqHz = valPart.substringAfter("@").toLongOrNull() ?: 0L
-                        if (pct != null) lastGpuLoad = pct.coerceIn(0, 100)
-                        if (freqHz > 0L) lastGpuMhz = (freqHz / 1_000_000L).toInt()
-                    }
+                l.startsWith("Global total:") -> {
+                    globalGpuBytes = l.substringAfter(":").trim().toLongOrNull() ?: -1L
                 }
-                l.startsWith("GPU_CLK=") -> {
-                    val hz = l.substringAfter("=").trim().toLongOrNull() ?: 0L
-                    if (hz > 10_000_000L) lastGpuMhz = (hz / 1_000_000L).toInt()
+                l.startsWith("Proc ") && l.contains(" total:") -> {
+                    val pidKey = l.substringAfter("Proc ").substringBefore(" total:").trim()
+                    val bytesVal = l.substringAfter("total:").trim().toLongOrNull() ?: 0L
+                    procGpuMap[pidKey] = bytesVal
                 }
                 l.startsWith("CPU_KHZ=") -> {
                     val khz = l.substringAfter("=").trim().toLongOrNull() ?: 0L
@@ -606,6 +572,20 @@ class FpsOverlayService : Service() {
             }
         }
 
+        if (pidSet.isNotEmpty()) {
+            var gameGpuBytes = 0L
+            for (p in pidSet) {
+                gameGpuBytes += procGpuMap[p] ?: 0L
+            }
+            if (gameGpuBytes > 0L) {
+                lastGpuVramMb = (gameGpuBytes / 1_048_576L).toInt()
+            } else if (globalGpuBytes > 0L) {
+                lastGpuVramMb = (globalGpuBytes / 1_048_576L).toInt()
+            }
+        } else if (globalGpuBytes > 0L) {
+            lastGpuVramMb = (globalGpuBytes / 1_048_576L).toInt()
+        }
+
         if (appPssKb > 0L) {
             lastRamText = String.format(Locale.US, "%.1fGB", appPssKb / 1048576.0)
         } else if (memTotalKb > 0L && memAvailKb > 0L) {
@@ -613,17 +593,17 @@ class FpsOverlayService : Service() {
             val totalGb = memTotalKb / 1048576.0
             lastRamText = String.format(Locale.US, "%.1f/%.0fG", usedGb, totalGb)
         }
+
+        return pidSet
     }
 
-    private fun measureFpsAndGpuFallback(pkg: String): Int {
+    private fun measureRealFps(pkg: String): Int {
         val dump = execShizuku("dumpsys SurfaceFlinger --timestats -dump")
         if (dump.isNotEmpty()) {
             var statsEnabled = true
             var globalFrames = -1L
             var currentLayer = ""
-            var currentGpuTimeMs = -1f
-            var bestLayerGpuMs = -1f
-            val matchingLayers = mutableListOf<Triple<String, Long, Float>>()
+            val matchingLayers = mutableListOf<Pair<String, Long>>()
 
             for (rawLine in dump.lines()) {
                 val line = rawLine.trim()
@@ -631,16 +611,12 @@ class FpsOverlayService : Service() {
                     statsEnabled = false
                 } else if (line.startsWith("layerName =")) {
                     currentLayer = line.substringAfter("=").trim()
-                    currentGpuTimeMs = -1f
-                } else if (line.startsWith("gpuTime") || line.startsWith("gpuToCpu")) {
-                    val num = Regex("([0-9.]+)").find(line.substringAfter("="))?.groupValues?.getOrNull(1)?.toFloatOrNull()
-                    if (num != null) currentGpuTimeMs = num
                 } else if (line.startsWith("totalFrames =")) {
                     val frames = line.substringAfter("=").trim().toLongOrNull() ?: -1L
                     if (currentLayer.isEmpty()) {
                         globalFrames = frames
                     } else if (pkg.isNotEmpty() && currentLayer.contains(pkg) && !currentLayer.contains("Splash")) {
-                        matchingLayers.add(Triple(currentLayer, frames, currentGpuTimeMs))
+                        matchingLayers.add(currentLayer to frames)
                     }
                 }
             }
@@ -650,16 +626,6 @@ class FpsOverlayService : Service() {
             }
 
             val bestLayer = matchingLayers.maxByOrNull { it.second }
-            if (bestLayer != null) {
-                bestLayerGpuMs = bestLayer.third
-            }
-
-            // Dự phòng cuối nếu SELinux khóa toàn bộ /sys/kernel/gpu và /sys/class/kgsl
-            if (lastGpuLoad < 0 && bestLayerGpuMs > 0f && lastFps > 0) {
-                val frameBudgetMs = 1000f / lastFps.coerceAtLeast(30)
-                lastGpuLoad = ((bestLayerGpuMs / frameBudgetMs) * 100f).roundToInt().coerceIn(1, 100)
-            }
-
             if (pkg.isNotEmpty() && bestLayer == null && clearedForPkg != pkg) {
                 execShizuku("dumpsys SurfaceFlinger --timestats -clear -enable")
                 clearedForPkg = pkg
