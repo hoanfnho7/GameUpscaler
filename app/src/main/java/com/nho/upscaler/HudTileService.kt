@@ -15,14 +15,12 @@ class HudTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
-        val isVi = Lang.isVi(this)
         if (FpsOverlayService.isServiceRunning) {
             stopService(Intent(this, FpsOverlayService::class.java))
             updateTileState(false)
         } else {
             if (!Settings.canDrawOverlays(this)) {
-                val msg = if (isVi) "⚠️ Hãy cấp quyền Hiển thị trên ứng dụng khác trước!" else "⚠️ Please grant 'Display over other apps' permission first!"
-                Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                Toast.makeText(this, Lang.str(this, R.string.toast_grant_overlay_long), Toast.LENGTH_LONG).show()
                 return
             }
             val svc = Intent(this, FpsOverlayService::class.java).apply {

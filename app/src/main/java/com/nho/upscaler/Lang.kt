@@ -1,6 +1,7 @@
 package com.nho.upscaler
 
 import android.content.Context
+import android.content.res.Configuration
 import java.util.Locale
 
 object Lang {
@@ -8,21 +9,31 @@ object Lang {
         return ctx.getSharedPreferences("upscaler_prefs", Context.MODE_PRIVATE).getInt("app_lang", 0)
     }
 
-    fun isVi(ctx: Context): Boolean {
-        return when (getMode(ctx)) {
-            1 -> true
-            2 -> false
-            else -> Locale.getDefault().language.equals("vi", ignoreCase = true)
+    fun context(base: Context): Context {
+        val mode = getMode(base)
+        if (mode == 0) return base
+        return try {
+            val locale = if (mode == 1) Locale("vi") else Locale.ENGLISH
+            val config = Configuration(base.resources.configuration)
+            config.setLocale(locale)
+            base.createConfigurationContext(config)
+        } catch (_: Exception) {
+            base
         }
     }
 
-    fun modeBadge(ctx: Context): String {
-        return when (getMode(ctx)) {
-            1 -> "🇻🇳 VI"
-            2 -> "🇺🇸 EN"
-            else -> "🌐 Auto"
+    fun str(base: Context, resId: Int, vararg args: Any): String {
+        val resCtx = context(base)
+        return if (args.isEmpty()) resCtx.getString(resId) else resCtx.getString(resId, *args)
+    }
+
+    fun modeBadge(base: Context): String {
+        return when (getMode(base)) {
+            1 -> str(base, R.string.lang_badge_vi)
+            2 -> str(base, R.string.lang_badge_en)
+            else -> str(base, R.string.lang_badge_auto)
         }
     }
 
-    fun tileLabel(ctx: Context): String = if (isVi(ctx)) "HUD Đo FPS" else "FPS HUD"
+    fun tileLabel(base: Context): String = str(base, R.string.tile_label)
 }

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GameUpscaler Pro</string>
+    <string name="tile_label">HUD Đo FPS</string>
+
+    <string name="lang_badge_auto">🌐 Auto</string>
+    <string name="lang_badge_vi">🇻🇳 VI</string>
+    <string name="lang_badge_en">🇺🇸 EN</string>
+
+    <string name="subtitle_hint">Chạm game để chạy • Nhấn giữ tạo Shortcut • Kéo HUD vào ✕ để ẩn</string>
+    <string name="reading_display">Đang đọc độ phân giải vật lý...</string>
+    <string name="preview_display_fmt">🖥️ Gốc: %1$dx%2$d (%3$d DPI)  ➔  Upscale: %4$dx%5$d (%6$d DPI)</string>
+    <string name="btn_reset_display">🔄 RESET MÀN HÌNH VỀ MẶC ĐỊNH NGAY</string>
+
+    <string name="chk_telemetry_hud">📊 HUD Đo thông số</string>
+    <string name="btn_orient_vert">↕️ Dọc</string>
+    <string name="btn_orient_horiz">↔️ Ngang</string>
+    <string name="btn_test_hud">👁️ Thử</string>
+
+    <string name="size_tiny">Siêu gọn</string>
+    <string name="size_small">Nhỏ</string>
+    <string name="size_medium">Vừa</string>
+    <string name="size_large">To</string>
+
+    <string name="poll_auto">⚡ Auto</string>
+    <string name="poll_300ms">🚀 300ms</string>
+    <string name="poll_1s">Quét 1s</string>
+    <string name="poll_2s">Quét 2s</string>
+
+    <string name="metric_fps">⚡ FPS (xx.x)</string>
+    <string name="metric_watt">🔌 Công suất</string>
+    <string name="metric_vram">🎮 VRAM</string>
+    <string name="metric_cpu_freq">⚙️ Xung CPU</string>
+    <string name="metric_bat_temp">🔋 Pin °C</string>
+    <string name="metric_soc_temp">🌡️ SoC °C</string>
+    <string name="metric_cpu_temp">🔥 CPU °C</string>
+    <string name="metric_gpu_temp">📟 GPU °C</string>
+    <string name="metric_ddr_temp">🧬 DDR °C</string>
+    <string name="metric_cam_temp">📷 CAM °C</string>
+    <string name="metric_skin_temp">📱 Vỏ máy °C</string>
+    <string name="metric_ram">💾 RAM</string>
+
+    <string name="btn_quick_tile">🎛️ Control Center</string>
+    <string name="hint_quick_tile">Vuốt Control Center xuống -&gt; Bấm Sửa (✏️) -&gt; Kéo nút \'HUD Đo FPS\' lên!</string>
+    <string name="toast_quick_tile_added">✅ Đã thêm nút HUD lên Control Center!</string>
+    <string name="btn_reset_pos">🎯 Reset vị trí</string>
+    <string name="toast_pos_reset">✅ Đã đặt lại tọa độ HUD về mặc định!</string>
+    <string name="btn_sensors">🔍 Soi cảm biến</string>
+
+    <string name="chk_pinned_only">⭐ Chỉ hiện Game đã ghim (Ẩn ứng dụng khác)</string>
+    <string name="hint_search">🔍 Gõ tên game hoặc package để lọc nhanh...</string>
+
+    <string name="toast_scanning_sensors">Đang quét thermal_zone trên máy...</string>
+    <string name="no_sensors_found">Không đọc được cảm biến nào.</string>
+    <string name="dlg_sensors_title">🌡️ Cảm biến nhiệt trên máy (%1$d zone)</string>
+    <string name="btn_close">Đóng</string>
+
+    <string name="toast_display_reset">Đã Reset màn hình về gốc!</string>
+    <string name="toast_display_reset_short">✅ Đã khôi phục màn hình gốc!</string>
+    <string name="toast_grant_overlay_long">Hãy cấp quyền \'Hiển thị trên ứng dụng khác\' cho app!</string>
+    <string name="toast_grant_overlay_short">Hãy cấp quyền Hiển thị trên ứng dụng khác trước!</string>
+    <string name="toast_missing_overlay">⚠️ Thiếu quyền Hiển thị trên ứng dụng khác!</string>
+    <string name="toast_scale_global">Đã đặt %1$s dùng mức chung (%2$d%%)</string>
+    <string name="toast_scale_custom">🎯 Đã khóa riêng mức %1$s cho %2$s</string>
+    <string name="toast_shortcut_req">📌 Đã gửi yêu cầu tạo Shortcut ngoài màn hình chính!</string>
+    <string name="toast_start_shizuku">⚠️ Hãy bật Shizuku trước!</string>
+    <string name="toast_shizuku_error">⚠️ Chưa kết nối được Shizuku!</string>
+    <string name="toast_boosting">🚀 Đang kích %2$s cho %1$s...</string>
+    <string name="toast_hud_closed">Đã ẩn thanh đo thông số</string>
+    <string name="toast_overlay_error">Lỗi bật cửa sổ nổi: %1$s</string>
+
+    <string name="notif_channel_upscale">Trạng thái Upscale</string>
+    <string name="notif_channel_hud">Dịch vụ HUD &amp; Upscale</string>
+    <string name="notif_upscale_title">⚡ Đang kích SSAA %1$s cho %2$s</string>
+    <string name="notif_upscale_desc">Chạm vào đây để Khôi phục màn hình gốc ngay lập tức</string>
+    <string name="notif_upscale_hud_desc">Chạm để Khôi phục màn hình gốc &amp; tắt HUD</string>
+    <string name="notif_hud_title">📊 Đang chạy HUD đo thông số</string>
+    <string name="notif_hud_desc">Chạm để tắt nhanh thanh đo (Không reset màn hình)</string>
+
+    <string name="hud_vert_power">🔌 Điện: %1$s</string>
+    <string name="hud_vert_bat">🔋 Pin: %1$sC</string>
+    <string name="hud_vert_skin">📱 Vỏ: %1$sC</string>
+    <string name="hud_no_metrics">⚡ Chưa chọn thông số</string>
+</resources>

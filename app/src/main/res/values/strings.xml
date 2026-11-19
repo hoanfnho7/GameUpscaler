@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GameUpscaler Pro</string>
+    <string name="tile_label">FPS HUD</string>
+
+    <string name="lang_badge_auto">🌐 Auto</string>
+    <string name="lang_badge_vi">🇻🇳 VI</string>
+    <string name="lang_badge_en">🇺🇸 EN</string>
+
+    <string name="subtitle_hint">Tap game to boost • Long-press for Shortcut • Drag HUD to ✕ to hide</string>
+    <string name="reading_display">Reading physical display specs...</string>
+    <string name="preview_display_fmt">🖥️ Native: %1$dx%2$d (%3$d DPI)  ➔  Boosted: %4$dx%5$d (%6$d DPI)</string>
+    <string name="btn_reset_display">🔄 RESET DISPLAY RESOLUTION NOW</string>
+
+    <string name="chk_telemetry_hud">📊 Telemetry HUD</string>
+    <string name="btn_orient_vert">↕️ Vertical</string>
+    <string name="btn_orient_horiz">↔️ Horiz</string>
+    <string name="btn_test_hud">👁️ Test</string>
+
+    <string name="size_tiny">Tiny</string>
+    <string name="size_small">Small</string>
+    <string name="size_medium">Medium</string>
+    <string name="size_large">Large</string>
+
+    <string name="poll_auto">⚡ Auto</string>
+    <string name="poll_300ms">🚀 300ms</string>
+    <string name="poll_1s">1s Poll</string>
+    <string name="poll_2s">2s Poll</string>
+
+    <string name="metric_fps">⚡ FPS (xx.x)</string>
+    <string name="metric_watt">🔌 Power (W)</string>
+    <string name="metric_vram">🎮 VRAM</string>
+    <string name="metric_cpu_freq">⚙️ CPU Freq</string>
+    <string name="metric_bat_temp">🔋 Bat °C</string>
+    <string name="metric_soc_temp">🌡️ SoC °C</string>
+    <string name="metric_cpu_temp">🔥 CPU °C</string>
+    <string name="metric_gpu_temp">📟 GPU °C</string>
+    <string name="metric_ddr_temp">🧬 DDR °C</string>
+    <string name="metric_cam_temp">📷 CAM °C</string>
+    <string name="metric_skin_temp">📱 Board °C</string>
+    <string name="metric_ram">💾 RAM</string>
+
+    <string name="btn_quick_tile">🎛️ Quick Tile</string>
+    <string name="hint_quick_tile">Pull down Quick Settings -&gt; Tap Edit (✏️) -&gt; Drag \'FPS HUD\' tile up!</string>
+    <string name="toast_quick_tile_added">✅ Added FPS HUD tile to Quick Settings!</string>
+    <string name="btn_reset_pos">🎯 Reset Pos</string>
+    <string name="toast_pos_reset">✅ HUD position reset to default!</string>
+    <string name="btn_sensors">🔍 Sensors</string>
+
+    <string name="chk_pinned_only">⭐ Show Pinned Games Only</string>
+    <string name="hint_search">🔍 Search game name or package...</string>
+
+    <string name="toast_scanning_sensors">Scanning device thermal zones...</string>
+    <string name="no_sensors_found">No readable thermal sensors found.</string>
+    <string name="dlg_sensors_title">🌡️ Device Thermal Sensors (%1$d zones)</string>
+    <string name="btn_close">Close</string>
+
+    <string name="toast_display_reset">Display restored to native resolution!</string>
+    <string name="toast_display_reset_short">✅ Display reset to native!</string>
+    <string name="toast_grant_overlay_long">Please grant \'Display over other apps\' permission!</string>
+    <string name="toast_grant_overlay_short">Please grant overlay permission first!</string>
+    <string name="toast_missing_overlay">⚠️ Missing \'Display over other apps\' permission!</string>
+    <string name="toast_scale_global">%1$s set to global scale (%2$d%%)</string>
+    <string name="toast_scale_custom">🎯 Locked %1$s scale for %2$s</string>
+    <string name="toast_shortcut_req">📌 Home screen shortcut requested!</string>
+    <string name="toast_start_shizuku">⚠️ Please start Shizuku first!</string>
+    <string name="toast_shizuku_error">⚠️ Cannot connect to Shizuku!</string>
+    <string name="toast_boosting">🚀 Boosting %1$s (%2$s)...</string>
+    <string name="toast_hud_closed">HUD overlay closed</string>
+    <string name="toast_overlay_error">Overlay error: %1$s</string>
+
+    <string name="notif_channel_upscale">Upscale Status</string>
+    <string name="notif_channel_hud">HUD &amp; Upscale Service</string>
+    <string name="notif_upscale_title">⚡ SSAA %1$s active for %2$s</string>
+    <string name="notif_upscale_desc">Tap here to restore native resolution immediately</string>
+    <string name="notif_upscale_hud_desc">Tap to reset display resolution &amp; close HUD</string>
+    <string name="notif_hud_title">📊 Hardware Telemetry HUD Running</string>
+    <string name="notif_hud_desc">Tap to close HUD overlay (keeps display unchanged)</string>
+
+    <string name="hud_vert_power">🔌 Power: %1$s</string>
+    <string name="hud_vert_bat">🔋 Bat: %1$sC</string>
+    <string name="hud_vert_skin">📱 Board: %1$sC</string>
+    <string name="hud_no_metrics">⚡ No metrics selected</string>
+</resources>

@@ -202,8 +202,7 @@ class FpsOverlayService : Service() {
         startAsForeground()
 
         if (!Settings.canDrawOverlays(this)) {
-            val msg = if (Lang.isVi(this)) "⚠️ Thiếu quyền Hiển thị trên ứng dụng khác!" else "⚠️ Missing 'Display over other apps' permission!"
-            Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+            Toast.makeText(this, Lang.str(this, R.string.toast_missing_overlay), Toast.LENGTH_LONG).show()
             stopSelf()
             return START_NOT_STICKY
         }
@@ -233,13 +232,12 @@ class FpsOverlayService : Service() {
     }
 
     private fun startAsForeground() {
-        val isVi = Lang.isVi(this)
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "upscaler_hud_silent_v2"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                if (isVi) "Dịch vụ HUD & Upscale" else "HUD & Upscale Service",
+                Lang.str(this, R.string.notif_channel_hud),
                 NotificationManager.IMPORTANCE_MIN
             ).apply {
                 setShowBadge(false)
@@ -266,15 +264,15 @@ class FpsOverlayService : Service() {
         }
 
         val titleText = if (isUpscaleActive) {
-            if (isVi) "⚡ Đang kích SSAA $scaleLabel cho $gameName" else "⚡ SSAA $scaleLabel active for $gameName"
+            Lang.str(this, R.string.notif_upscale_title, scaleLabel, gameName)
         } else {
-            if (isVi) "📊 Đang chạy HUD đo thông số" else "📊 Hardware Telemetry HUD Running"
+            Lang.str(this, R.string.notif_hud_title)
         }
 
         val contentText = if (isUpscaleActive) {
-            if (isVi) "Chạm để Khôi phục màn hình gốc & tắt HUD" else "Tap to reset display resolution & close HUD"
+            Lang.str(this, R.string.notif_upscale_hud_desc)
         } else {
-            if (isVi) "Chạm để tắt nhanh thanh đo (Không reset màn hình)" else "Tap to close HUD overlay (keeps display unchanged)"
+            Lang.str(this, R.string.notif_hud_desc)
         }
 
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -406,8 +404,7 @@ class FpsOverlayService : Service() {
                             closeTargetView?.visibility = View.GONE
                             if (isDragging) {
                                 if (isOverCloseZone) {
-                                    val msg = if (Lang.isVi(this@FpsOverlayService)) "Đã ẩn thanh đo thông số" else "HUD overlay closed"
-                                    Toast.makeText(this@FpsOverlayService, msg, Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(this@FpsOverlayService, Lang.str(this@FpsOverlayService, R.string.toast_hud_closed), Toast.LENGTH_SHORT).show()
                                     stopSelf()
                                     return true
                                 }
@@ -435,8 +432,7 @@ class FpsOverlayService : Service() {
             windowManager?.addView(tv, params)
         } catch (e: Exception) {
             overlayView = null
-            val msg = if (Lang.isVi(this)) "Lỗi bật cửa sổ nổi: ${e.message}" else "Overlay error: ${e.message}"
-            Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+            Toast.makeText(this, Lang.str(this, R.string.toast_overlay_error, e.message ?: ""), Toast.LENGTH_LONG).show()
             stopSelf()
         }
     }
@@ -509,7 +505,6 @@ class FpsOverlayService : Service() {
 
     private fun renderTelemetryText() {
         val tv = overlayView ?: return
-        val isVi = Lang.isVi(this)
 
         val showFps = prefs.getBoolean("m_fps", true)
         val showWatt = prefs.getBoolean("m_watt", true)
@@ -536,11 +531,11 @@ class FpsOverlayService : Service() {
         if (showWatt) {
             val prefix = if (isChargingNow) "⚡+" else ""
             val wVal = if (lastWatts > 0f) String.format(Locale.US, "%s%.1fW", prefix, lastWatts) else "--W"
-            parts.add(if (isCompact) wVal else if (isVertical) (if (isVi) "🔌 Điện: $wVal" else "🔌 Power: $wVal") else "🔌$wVal")
+            parts.add(if (isCompact) wVal else if (isVertical) Lang.str(this, R.string.hud_vert_power, wVal) else "🔌$wVal")
         }
         if (showBatTemp) {
             val tVal = if (lastBatTemp > 0f) String.format(Locale.US, "%.1f°", lastBatTemp) else "--°"
-            parts.add(if (isCompact) "🔋$tVal" else if (isVertical) (if (isVi) "🔋 Pin: ${tVal}C" else "🔋 Bat: ${tVal}C") else "🔋${tVal}C")
+            parts.add(if (isCompact) "🔋$tVal" else if (isVertical) Lang.str(this, R.string.hud_vert_bat, tVal) else "🔋${tVal}C")
         }
         if (showSocTemp) {
             val stVal = if (lastSocTemp > 0f) String.format(Locale.US, "%.1f°", lastSocTemp) else "--°"
@@ -564,7 +559,7 @@ class FpsOverlayService : Service() {
         }
         if (showSkinTemp) {
             val skVal = if (lastSkinTemp > 0f) String.format(Locale.US, "%.1f°", lastSkinTemp) else "--°"
-            parts.add(if (isCompact) "📱$skVal" else if (isVertical) (if (isVi) "📱 Vỏ: ${skVal}C" else "📱 Board: ${skVal}C") else "📱${skVal}C")
+            parts.add(if (isCompact) "📱$skVal" else if (isVertical) Lang.str(this, R.string.hud_vert_skin, skVal) else "📱${skVal}C")
         }
         if (showGpu) {
             val vramStr = if (lastGpuVramMb >= 0) "${lastGpuVramMb}MB" else "--MB"
@@ -584,7 +579,7 @@ class FpsOverlayService : Service() {
         }
 
         if (parts.isEmpty()) {
-            parts.add(if (isVi) "⚡ Chưa chọn thông số" else "⚡ No metrics selected")
+            parts.add(Lang.str(this, R.string.hud_no_metrics))
         }
 
         val newText = if (isVertical) {
