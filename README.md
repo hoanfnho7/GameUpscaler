@@ -6,6 +6,16 @@
 
 ---
 
+## 📸 Hình ảnh thực tế
+
+> Đặt ảnh chụp màn hình vào thư mục `screenshots/` với đúng tên file bên dưới để tự động hiển thị trên trang chủ GitHub:
+
+| Giao diện chính & Cấu hình | HUD đo thông số trong Game | Phím tắt Control Center |
+| :---: | :---: | :---: |
+| <img src="screenshots/main_ui.png" width="240" alt="Giao diện chính" /> | <img src="screenshots/hud_ingame.png" width="320" alt="HUD trong game" /> | <img src="screenshots/control_center.png" width="240" alt="Control Center Tile" /> |
+
+---
+
 ## 🎯 Nguyên lý hoạt động
 
 Trên các thiết bị màn hình độ phân giải cao (1.5K / 2K Ultra HD), nhiều tựa game tự động giới hạn độ phân giải dựng hình nội bộ (Internal Render Resolution) xuống mức 720p/1080p rồi kéo giãn lên tấm nền vật lý, gây ra hiện tượng mờ nhòe và răng cưa nặng ở vật thể xa.
@@ -46,9 +56,10 @@ Trên các thiết bị màn hình độ phân giải cao (1.5K / 2K Ultra HD), 
   - **Tách biệt tọa độ Dọc & Ngang:** Tự động ghi nhớ vị trí riêng cho màn hình dọc và màn hình ngang (mặc định màn ngang luôn nằm sát mép trên cùng để tránh chạm nhầm thanh điều hướng/đa nhiệm).
   - **Kéo thả vào vùng `✕` để ẩn nhanh:** Kéo thanh HUD chạm vào vòng tròn đỏ `✕` ở cạnh dưới màn hình để tắt bảng đo ngay lập tức mà không làm gián đoạn tiến trình tự Reset độ phân giải.
 
-### 3. An toàn & Cài đặt tiện lợi
-- **Khôi phục đa lớp:** Tự Reset khi đóng game, nút **Reset Khẩn Cấp** màu đỏ trong app, hoặc chạm trực tiếp vào thanh thông báo đang chạy để trả màn hình về gốc từ bất kỳ đâu.
-- **Cập nhật đè trực tiếp:** Sử dụng chữ ký số cố định (`upscaler.jks`) và tự động tăng `versionCode`, cho phép tải bản mới về bấm **Cập nhật (Update)** đè trực tiếp mà không cần gỡ app cũ hay cấp lại quyền Shizuku.
+### 3. Phím tắt Control Center & Tối ưu hiệu năng
+- **Bật/tắt 1 chạm từ Control Center (Quick Settings Tile):** Tích hợp nút **HUD Đo FPS** trên thanh trạng thái/Control Center của OriginOS, cho phép bật hoặc tắt nhanh bảng đo phần cứng ở bất kỳ đâu mà không cần mở lại app.
+- **Persistent Shizuku Shell Stream:** Duy trì một phiên shell duy nhất và gộp toàn bộ truy vấn cảm biến vào 1 lượt đọc mỗi giây, giảm tối đa chi phí tạo tiến trình nền và độ trễ hệ thống.
+- **Khôi phục đa lớp & Cài đè tiện lợi:** Tự Reset khi đóng game, nút **Reset Khẩn Cấp** màu đỏ trong app, hoặc chạm trực tiếp vào thanh thông báo đang chạy; sử dụng chữ ký số cố định (`upscaler.jks`) cho phép cài đè trực tiếp không cần gỡ bản cũ.
 
 ---
 
