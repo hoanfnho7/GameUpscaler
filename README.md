@@ -1,6 +1,6 @@
 # ⚡ GameUpscaler Pro
 
-Ứng dụng tăng độ nét game (**1.10x – 1.25x**) và hiển thị thanh đo **FPS, nhiệt độ, công suất điện** theo thời gian thực thông qua **Shizuku** (không cần Root). Tối ưu cho **Android 14 – 17** và **iQOO / Vivo (OriginOS)**.
+Ứng dụng **miễn phí 100% (không tốn tiền, không quảng cáo, không khóa tính năng)** giúp tăng độ nét game (**1.10x – 1.25x**) và hiển thị thanh đo **FPS, nhiệt độ, công suất điện** theo thời gian thực qua **Shizuku** (không cần Root). Tối ưu cho **Android 14 – 17** và **iQOO / Vivo (OriginOS)**.
 
 ---
 
@@ -14,6 +14,7 @@
 
 ## ✨ Tính năng chính
 
+- **Dùng miễn phí trọn đời:** Không thu phí, không quảng cáo, mã nguồn mở hoàn toàn — thay thế gọn nhẹ cho các app đo thông số trả phí.
 - **Tăng độ nét game (1.10x – 1.25x):** Làm nét hình ảnh và giảm răng cưa mà vẫn giữ nguyên tỷ lệ cảm ứng. Tự động trả màn hình về gốc ngay khi thoát game.
 - **Quản lý game tiện lợi:** Ghim game hay chơi (`⭐`), đặt riêng mức độ nét cho từng game, nhấn giữ để tạo lối tắt mở nhanh ngoài màn hình chính.
 - **Thanh đo thông số nổi (HUD):** Theo dõi trực tiếp **FPS (`xx.x`)**, **công suất điện (W)**, **VRAM**, **xung CPU** và **nhiệt độ** (Pin, SoC, CPU, GPU, DDR, Camera, vỏ máy).
@@ -33,7 +34,7 @@
 
 ## 🔨 Tải / Build file APK
 
-- Vào mục **Releases** ở cột bên phải để tải file `app-debug.apk` mới nhất.
+- Vào mục **Releases** ở cột bên phải để tải file `app-debug.apk` mới nhất hoàn toàn miễn phí.
 - Hoặc Fork repo này ➔ vào tab **Actions** ➔ chạy **Build APK** để tự xuất file cài đặt.
 
 ---
