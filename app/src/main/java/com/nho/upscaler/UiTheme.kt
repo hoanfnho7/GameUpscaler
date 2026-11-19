@@ -17,15 +17,15 @@ object UiTheme {
     val CLOSE_ZONE_IDLE = Color.parseColor("#CC261212")
 
     val HUD_BG_OPACITY = intArrayOf(
-        Color.parseColor("#DD0B0D0C"),
-        Color.parseColor("#990B0D0C"),
-        Color.parseColor("#380B0D0C"),
+        Color.parseColor("#E61C211E"),
+        Color.parseColor("#9E1C211E"),
+        Color.parseColor("#421C211E"),
         Color.TRANSPARENT
     )
     val HUD_STROKE_OPACITY = intArrayOf(
-        Color.parseColor("#6644D62C"),
+        Color.parseColor("#CC44D62C"),
+        Color.parseColor("#8844D62C"),
         Color.parseColor("#4444D62C"),
-        Color.parseColor("#2444D62C"),
         Color.TRANSPARENT
     )
 

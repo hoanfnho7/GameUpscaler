@@ -725,7 +725,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(16, 20, 16, 20)
-            background = UiTheme.roundBox(Color.parseColor("#0B0D0C"), 12f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            background = UiTheme.roundBox(Color.parseColor("#232926"), 12f, 1, UiTheme.strokeSubtle(this@MainActivity))
         }
         val mockTv = TextView(this).apply {
             setTypeface(null, Typeface.BOLD)
