@@ -45,6 +45,10 @@ class FpsOverlayService : Service() {
     companion object {
         @Volatile
         var isServiceRunning = false
+
+        private val WS_REGEX = Regex("\\s+")
+        private val NUM_REGEX = Regex("([0-9]+)")
+        private val FPS_REGEX = Regex("fps:\\s*([0-9.]+)")
     }
 
     private var windowManager: WindowManager? = null
@@ -52,6 +56,7 @@ class FpsOverlayService : Service() {
     private var overlayParams: WindowManager.LayoutParams? = null
     private var closeTargetView: TextView? = null
     private lateinit var prefs: SharedPreferences
+    private var batteryManager: BatteryManager? = null
 
     @Volatile private var isRunning = false
     @Volatile private var isScreenOn = true
@@ -71,7 +76,10 @@ class FpsOverlayService : Service() {
     @Volatile private var shellReader: BufferedReader? = null
 
     private var lastFps = -1f
-    private var lastBatTemp = 0f
+    @Volatile private var cachedBatTemp = 0f
+    @Volatile private var cachedVoltMv = 0
+    @Volatile private var isChargingNow = false
+
     private var lastSocTemp = 0f
     private var lastCpuTemp = 0f
     private var lastGpuTemp = 0f
@@ -79,7 +87,6 @@ class FpsOverlayService : Service() {
     private var lastCamTemp = 0f
     private var lastSkinTemp = 0f
     private var lastWatts = 0f
-    private var isChargingNow = false
     private var lastGpuVramMb = -1
     private var lastCpuKhz = 0L
     private var lastRamText = ""
@@ -87,17 +94,18 @@ class FpsOverlayService : Service() {
     private var lastRenderedText = ""
     private var lastRenderedColor = 0
 
-    private var prevLayerFrames = mutableMapOf<String, Long>()
+    private var prevLayerFrames = HashMap<String, Long>(16)
     private var prevGlobalFrames = -1L
     private var lastFpsSampleNs = 0L
     private var emptyFpsTicks = 0
     private var hasValidFpsSample = false
     private var initializedStatsForPkg: String? = null
+    private var drmFpsAvailable = false
     private var tickCounter = 0
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private val screenReceiver = object : BroadcastReceiver() {
+    private val systemReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 Intent.ACTION_SCREEN_OFF -> isScreenOn = false
@@ -105,21 +113,43 @@ class FpsOverlayService : Service() {
                     isScreenOn = true
                     telemetryThread?.interrupt()
                 }
+                Intent.ACTION_BATTERY_CHANGED -> updateBatteryFromIntent(intent)
             }
         }
+    }
+
+    private fun updateBatteryFromIntent(intent: Intent?) {
+        if (intent == null) return
+        val v = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0)
+        if (v > 0) cachedVoltMv = v
+        val t = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0)
+        if (t > 0) cachedBatTemp = t / 10f
+        val st = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+        isChargingNow = (st == BatteryManager.BATTERY_STATUS_CHARGING || st == BatteryManager.BATTERY_STATUS_FULL)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
+        batteryManager = getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         isScreenOn = pm.isInteractive
+
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_BATTERY_CHANGED)
         }
-        registerReceiver(screenReceiver, filter)
+        val stickyBat = registerReceiver(systemReceiver, filter)
+        updateBatteryFromIntent(stickyBat)
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_BACKGROUND) {
+            prevLayerFrames.clear()
+        }
     }
 
     private fun syncQuickSettingsTile() {
@@ -521,7 +551,7 @@ class FpsOverlayService : Service() {
         val showSkinTemp = prefs.getBoolean("m_skin_temp", false)
         val showRam = prefs.getBoolean("m_ram", false)
 
-        val parts = mutableListOf<String>()
+        val parts = ArrayList<String>(8)
         val isCompact = (sizeLevel == 0)
 
         if (showFps) {
@@ -534,7 +564,7 @@ class FpsOverlayService : Service() {
             parts.add(if (isCompact) wVal else if (isVertical) Lang.str(this, R.string.hud_vert_power, wVal) else "🔌$wVal")
         }
         if (showBatTemp) {
-            val tVal = if (lastBatTemp > 0f) String.format(Locale.US, "%.1f°", lastBatTemp) else "--°"
+            val tVal = if (cachedBatTemp > 0f) String.format(Locale.US, "%.1f°", cachedBatTemp) else "--°"
             parts.add(if (isCompact) "🔋$tVal" else if (isVertical) Lang.str(this, R.string.hud_vert_bat, tVal) else "🔋${tVal}C")
         }
         if (showSocTemp) {
@@ -595,8 +625,8 @@ class FpsOverlayService : Service() {
 
         val maxChipTemp = maxOf(lastCpuTemp, lastGpuTemp, lastSocTemp)
         val color = when {
-            lastBatTemp >= 43.0f || maxChipTemp >= 85.0f -> Color.parseColor("#FF5252")
-            lastBatTemp >= 40.0f || maxChipTemp >= 75.0f -> Color.parseColor("#FFD740")
+            cachedBatTemp >= 43.0f || maxChipTemp >= 85.0f -> Color.parseColor("#FF5252")
+            cachedBatTemp >= 40.0f || maxChipTemp >= 75.0f -> Color.parseColor("#FFD740")
             else -> Color.parseColor("#00E676")
         }
         if (color != lastRenderedColor) {
@@ -605,25 +635,15 @@ class FpsOverlayService : Service() {
         }
     }
 
-    private fun readNativeBatteryPower() {
+    private fun readInstantWattage() {
         try {
-            val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+            val bm = batteryManager ?: return
             val rawCurr = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
-            val batIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-            val rawVoltMv = batIntent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) ?: 0
-            val rawTempTenths = batIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
-            val status = batIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-
-            isChargingNow = (status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL)
-
-            if (rawTempTenths > 0) {
-                lastBatTemp = rawTempTenths / 10f
-            }
-
-            if (rawCurr != Int.MIN_VALUE && rawCurr != 0 && rawVoltMv > 0) {
+            val voltMv = cachedVoltMv
+            if (rawCurr != Int.MIN_VALUE && rawCurr != 0 && voltMv > 0) {
                 val absCurr = abs(rawCurr.toDouble())
                 val amps = if (absCurr > 15_000.0) absCurr / 1_000_000.0 else absCurr / 1_000.0
-                val volts = rawVoltMv / 1_000.0
+                val volts = voltMv / 1_000.0
                 val instWatts = (amps * volts).toFloat()
                 if (instWatts in 0.1f..180f) {
                     lastWatts = instWatts
@@ -655,8 +675,8 @@ class FpsOverlayService : Service() {
             )
             m.isAccessible = true
             val proc = m.invoke(null, arrayOf("sh"), null, null) as Process
-            val writer = BufferedWriter(OutputStreamWriter(proc.outputStream, Charsets.UTF_8))
-            val reader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8))
+            val writer = BufferedWriter(OutputStreamWriter(proc.outputStream, Charsets.UTF_8), 2048)
+            val reader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8), 4096)
 
             val initCmd = "_rdz() { for f in \$1; do read -r v < \"\$f\" 2>/dev/null && printf \"%s \" \"\$v\"; done; printf \"\\n\"; }; " +
                     "CPU_ZONES=\"\"; GPU_ZONES=\"\"; DDR_ZONES=\"\"; CAM_ZONES=\"\"; SKIN_ZONES=\"\"; " +
@@ -710,7 +730,7 @@ class FpsOverlayService : Service() {
                 writer.write("$cmd\nprintf \"$marker\\n\"\n")
                 writer.flush()
 
-                val out = StringBuilder()
+                val out = StringBuilder(512)
                 while (true) {
                     val line = reader.readLine() ?: break
                     if (line == marker) break
@@ -729,13 +749,15 @@ class FpsOverlayService : Service() {
             1 -> 300L
             2 -> 1000L
             3 -> 2000L
-            else -> if (targetPkg.isNotEmpty() || isLandscapeMode()) 400L else 800L
+            else -> if (targetPkg.isNotEmpty() || isLandscapeMode()) 450L else 1000L
         }
     }
 
     private fun startTelemetryLoop() {
         telemetryThread = thread(name = "HudTelemetryLoop") {
             var graceTicks = 0
+            val sb = StringBuilder(384)
+
             while (isRunning) {
                 if (!isScreenOn) {
                     try { Thread.sleep(1500) } catch (_: InterruptedException) {}
@@ -746,7 +768,6 @@ class FpsOverlayService : Service() {
                     tickCounter++
                     val currentPkg = targetPkg
                     val showFps = prefs.getBoolean("m_fps", true)
-                    val showBatTemp = prefs.getBoolean("m_bat_temp", true)
                     val showSocTemp = prefs.getBoolean("m_soc_temp", true)
                     val showCpuTemp = prefs.getBoolean("m_cpu_temp", false)
                     val showGpuTemp = prefs.getBoolean("m_gpu_temp", false)
@@ -758,21 +779,17 @@ class FpsOverlayService : Service() {
                     val showCpuFreq = prefs.getBoolean("m_cpu_freq", false)
                     val showRam = prefs.getBoolean("m_ram", false)
 
-                    if (showBatTemp || showWatt) {
-                        readNativeBatteryPower()
+                    if (showWatt) {
+                        readInstantWattage()
                     }
 
-                    val sb = StringBuilder()
-                    if (showFps && initializedStatsForPkg != currentPkg) {
-                        sb.append("dumpsys SurfaceFlinger --timestats -clear -enable >/dev/null 2>&1; ")
-                        initializedStatsForPkg = currentPkg
+                    sb.setLength(0)
+                    if (currentPkg.isNotEmpty() && tickCounter % 3 == 1) {
+                        sb.append("printf \"PID=\"; pidof ").append(currentPkg).append("; ")
                     }
-
-                    if (currentPkg.isNotEmpty()) {
-                        sb.append("printf \"PID=\"; pidof $currentPkg; ")
-                    }
-                    if (showGpu && (tickCounter % 4 == 1 || lastGpuVramMb < 0)) {
-                        sb.append("dumpsys gpu | head -n 45 | grep -E 'Global total:|Proc [0-9]+ total:'; ")
+                    // Giãn nhịp dumpsys gpu lên ~3.5s/lần để triệt tiêu hoàn toàn các đỉnh 10% CPU
+                    if (showGpu && (tickCounter % 9 == 1 || lastGpuVramMb < 0)) {
+                        sb.append("dumpsys gpu | head -n 45; ")
                     }
                     if (showCpuFreq) {
                         sb.append("printf \"CPU_KHZ=\"; _rdz \"\$FREQ_FILES\"; ")
@@ -792,31 +809,37 @@ class FpsOverlayService : Service() {
                     if (showSkinTemp) {
                         sb.append("printf \"SKIN_T=\"; _rdz \"\$SKIN_ZONES\"; ")
                     }
-                    if (showRam && (tickCounter % 4 == 1 || lastRamText.isEmpty())) {
+                    if (showRam && (tickCounter % 6 == 1 || lastRamText.isEmpty())) {
                         if (currentPkg.isNotEmpty()) {
-                            sb.append("printf \"APP_PSS=\"; dumpsys meminfo $currentPkg 2>/dev/null | grep 'TOTAL PSS:' | awk '{print \$3}'; ")
+                            sb.append("printf \"APP_PSS=\"; dumpsys meminfo ").append(currentPkg).append(" 2>/dev/null | grep 'TOTAL PSS:' | awk '{print \$3}'; ")
                         }
                         sb.append("{ read -r m1; read -r m2; read -r m3; printf \"%s\\n%s\\n%s\\n\" \"\$m1\" \"\$m2\" \"\$m3\"; } < /proc/meminfo; ")
                     }
                     if (showFps) {
                         sb.append("if [ -n \"\$DRM_NODE\" ]; then read -r dv < \"\$DRM_NODE\" 2>/dev/null && printf \"DRM_FPS=%s\\n\" \"\$dv\"; fi; ")
-                        sb.append("printf \"===TIMESTATS===\\n\"; ")
-                        sb.append("dumpsys SurfaceFlinger --timestats -dump | grep -E 'statsEnabled|layerName|totalFrames'; ")
+                        // Chỉ gọi SurfaceFlinger nếu DRM_NODE chưa trả về FPS hợp lệ
+                        if (!drmFpsAvailable || tickCounter % 15 == 1) {
+                            if (initializedStatsForPkg != currentPkg) {
+                                sb.append("dumpsys SurfaceFlinger --timestats -clear -enable >/dev/null 2>&1; ")
+                                initializedStatsForPkg = currentPkg
+                            }
+                            sb.append("printf \"===TIMESTATS===\\n\"; ")
+                            sb.append("dumpsys SurfaceFlinger --timestats -dump; ")
+                        }
                     }
 
-                    val cmdStr = sb.toString()
-                    if (cmdStr.isNotEmpty()) {
-                        val rawOut = execPersistentShizuku(cmdStr)
+                    if (sb.isNotEmpty()) {
+                        val rawOut = execPersistentShizuku(sb.toString())
                         val splitIdx = rawOut.indexOf("===TIMESTATS===")
                         val batchSection = if (splitIdx >= 0) rawOut.substring(0, splitIdx) else rawOut
-                        val timeStatsSection = if (splitIdx >= 0) rawOut.substring(splitIdx + "===TIMESTATS===".length) else ""
+                        val timeStatsSection = if (splitIdx >= 0) rawOut.substring(splitIdx + 15) else ""
 
                         val (activePids, drmFpsFallback) = parseBatchOutput(batchSection)
 
                         if (currentPkg.isNotEmpty() && batchSection.contains("PID=")) {
                             if (activePids.isEmpty()) {
                                 graceTicks++
-                                if (graceTicks > 15) {
+                                if (graceTicks > 6) {
                                     mainHandler.post { stopSelf() }
                                     break
                                 }
@@ -826,6 +849,7 @@ class FpsOverlayService : Service() {
                         }
 
                         if (showFps) {
+                            drmFpsAvailable = (drmFpsFallback > 1f)
                             lastFps = parseRealFps(currentPkg, timeStatsSection, drmFpsFallback)
                         }
                     }
@@ -842,7 +866,7 @@ class FpsOverlayService : Service() {
 
     private fun parseMaxThermalTokens(rawTokens: String): Float {
         var maxTemp = 0f
-        for (tok in rawTokens.trim().split(Regex("\\s+"))) {
+        for (tok in rawTokens.trim().split(WS_REGEX)) {
             val tRaw = tok.toFloatOrNull() ?: continue
             val tC = when {
                 tRaw > 1000f -> tRaw / 1000f
@@ -861,52 +885,66 @@ class FpsOverlayService : Service() {
         var memAvailKb = 0L
         var appPssKb = 0L
         var globalGpuBytes = -1L
-        val procGpuMap = mutableMapOf<String, Long>()
+        val procGpuMap = HashMap<String, Long>(8)
         var pidSet = emptySet<String>()
         var drmFps = 0f
 
-        for (line in raw.lines()) {
-            val l = line.trim()
+        var start = 0
+        val len = raw.length
+        while (start < len) {
+            val end = raw.indexOf('\n', start).let { if (it < 0) len else it }
+            val l = raw.substring(start, end).trim()
+            start = end + 1
+            if (l.isEmpty()) continue
+
             when {
                 l.startsWith("PID=") -> {
-                    val rawPids = l.substringAfter("PID=").trim()
-                    if (rawPids.isNotEmpty()) pidSet = rawPids.split(Regex("\\s+")).toSet()
+                    val rawPids = l.substring(4).trim()
+                    if (rawPids.isNotEmpty()) pidSet = rawPids.split(WS_REGEX).toSet()
                 }
-                l.startsWith("Global total:") -> globalGpuBytes = l.substringAfter(":").trim().toLongOrNull() ?: -1L
+                l.startsWith("Global total:") -> {
+                    globalGpuBytes = l.substring(13).trim().toLongOrNull() ?: -1L
+                }
                 l.startsWith("Proc ") && l.contains(" total:") -> {
                     val pidKey = l.substringAfter("Proc ").substringBefore(" total:").trim()
                     val bytesVal = l.substringAfter("total:").trim().toLongOrNull() ?: 0L
                     procGpuMap[pidKey] = bytesVal
                 }
                 l.startsWith("CPU_KHZ=") -> {
-                    val maxKhz = l.substringAfter("=").trim().split(Regex("\\s+")).mapNotNull { it.toLongOrNull() }.maxOrNull() ?: 0L
+                    val maxKhz = l.substring(8).trim().split(WS_REGEX).mapNotNull { it.toLongOrNull() }.maxOrNull() ?: 0L
                     if (maxKhz > 0L) lastCpuKhz = maxKhz
                 }
                 l.startsWith("CPU_T=") -> {
-                    val v = parseMaxThermalTokens(l.substringAfter("="))
+                    val v = parseMaxThermalTokens(l.substring(6))
                     if (v > 0f) lastCpuTemp = v
                 }
                 l.startsWith("GPU_T=") -> {
-                    val v = parseMaxThermalTokens(l.substringAfter("="))
+                    val v = parseMaxThermalTokens(l.substring(6))
                     if (v > 0f) lastGpuTemp = v
                 }
                 l.startsWith("DDR_T=") -> {
-                    val v = parseMaxThermalTokens(l.substringAfter("="))
+                    val v = parseMaxThermalTokens(l.substring(6))
                     if (v > 0f) lastDdrTemp = v
                 }
                 l.startsWith("CAM_T=") -> {
-                    val v = parseMaxThermalTokens(l.substringAfter("="))
+                    val v = parseMaxThermalTokens(l.substring(6))
                     if (v > 0f) lastCamTemp = v
                 }
                 l.startsWith("SKIN_T=") -> {
-                    val v = parseMaxThermalTokens(l.substringAfter("="))
+                    val v = parseMaxThermalTokens(l.substring(7))
                     if (v > 0f) lastSkinTemp = v
                 }
-                l.startsWith("APP_PSS=") -> appPssKb = l.substringAfter("=").trim().toLongOrNull() ?: 0L
-                l.startsWith("MemTotal:") -> memTotalKb = Regex("([0-9]+)").find(l)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
-                l.startsWith("MemAvailable:") -> memAvailKb = Regex("([0-9]+)").find(l)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
+                l.startsWith("APP_PSS=") -> {
+                    appPssKb = l.substring(8).trim().toLongOrNull() ?: 0L
+                }
+                l.startsWith("MemTotal:") -> {
+                    memTotalKb = NUM_REGEX.find(l)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
+                }
+                l.startsWith("MemAvailable:") -> {
+                    memAvailKb = NUM_REGEX.find(l)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
+                }
                 l.startsWith("DRM_FPS=") && l.contains("fps:") -> {
-                    val fpsVal = Regex("fps:\\s*([0-9.]+)").find(l)?.groupValues?.getOrNull(1)?.toFloatOrNull()
+                    val fpsVal = FPS_REGEX.find(l)?.groupValues?.getOrNull(1)?.toFloatOrNull()
                     if (fpsVal != null && fpsVal > 0f) drmFps = fpsVal
                 }
             }
@@ -960,16 +998,21 @@ class FpsOverlayService : Service() {
             var statsEnabled = true
             var globalFrames = -1L
             var currentLayer = ""
-            val currentLayerMap = mutableMapOf<String, Long>()
+            val currentLayerMap = HashMap<String, Long>(12)
 
-            for (rawLine in dump.lines()) {
-                val line = rawLine.trim()
+            var start = 0
+            val len = dump.length
+            while (start < len) {
+                val end = dump.indexOf('\n', start).let { if (it < 0) len else it }
+                val line = dump.substring(start, end).trim()
+                start = end + 1
+
                 if (line.startsWith("statsEnabled = 0")) {
                     statsEnabled = false
                 } else if (line.startsWith("layerName =")) {
-                    currentLayer = line.substringAfter("=").trim()
+                    currentLayer = line.substring(11).trim()
                 } else if (line.startsWith("totalFrames =")) {
-                    val frames = line.substringAfter("=").trim().toLongOrNull() ?: -1L
+                    val frames = line.substring(13).trim().toLongOrNull() ?: -1L
                     if (frames >= 0L) {
                         if (currentLayer.isEmpty()) {
                             if (globalFrames < 0L) globalFrames = frames
@@ -1038,7 +1081,8 @@ class FpsOverlayService : Service() {
         syncQuickSettingsTile()
         telemetryThread?.interrupt()
         closeShellSession()
-        try { unregisterReceiver(screenReceiver) } catch (_: Exception) {}
+        prevLayerFrames.clear()
+        try { unregisterReceiver(systemReceiver) } catch (_: Exception) {}
         try {
             if (overlayView != null) {
                 windowManager?.removeView(overlayView)

@@ -18,6 +18,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.Icon
@@ -552,6 +553,16 @@ class MainActivity : Activity() {
             divider = null
             dividerHeight = 12
         }
+
+        class RowHolder(
+            val row: LinearLayout,
+            val img: ImageView,
+            val nameTv: TextView,
+            val pkgTv: TextView,
+            val scaleBadge: TextView,
+            val pinBtn: TextView
+        )
+
         adapter = object : BaseAdapter() {
             override fun getCount() = filteredApps.size
             override fun getItem(pos: Int) = filteredApps[pos]
@@ -559,72 +570,83 @@ class MainActivity : Activity() {
             override fun getView(pos: Int, convertView: View?, parent: ViewGroup?): View {
                 val item = filteredApps[pos]
                 val effectiveScale = if (item.customScale > 0) item.customScale else selectedFactor
+                val holder: RowHolder
 
-                val row = LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                    setPadding(20, 16, 20, 16)
-                    background = GradientDrawable().apply {
-                        setColor(if (item.isPinned) Color.parseColor("#1E2822") else Color.parseColor("#1A1D24"))
-                        cornerRadius = 20f
-                        if (item.isPinned) setStroke(2, Color.parseColor("#00E676"))
+                if (convertView == null) {
+                    val row = LinearLayout(this@MainActivity).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        setPadding(20, 16, 20, 16)
                     }
-                }
-                val img = ImageView(this@MainActivity).apply {
-                    setImageDrawable(item.icon)
-                    layoutParams = LinearLayout.LayoutParams(96, 96).apply { rightMargin = 20 }
-                }
-                val textCol = LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.VERTICAL
-                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-                }
-                val nameTv = TextView(this@MainActivity).apply {
-                    text = item.name
-                    textSize = 15f
-                    setTypeface(null, Typeface.BOLD)
-                    setTextColor(if (item.isPinned) Color.parseColor("#00E676") else Color.WHITE)
-                }
-                val pkgTv = TextView(this@MainActivity).apply {
-                    text = item.pkg
-                    textSize = 10.5f
-                    setTextColor(Color.parseColor("#888888"))
-                }
-                textCol.addView(nameTv)
-                textCol.addView(pkgTv)
-
-                val scaleBadge = TextView(this@MainActivity).apply {
-                    val labelStr = "${effectiveScale / 100}.${effectiveScale % 100}x"
-                    text = if (item.customScale > 0) "🎯 $labelStr" else labelStr
-                    textSize = 11.5f
-                    setTypeface(null, Typeface.BOLD)
-                    setTextColor(if (item.customScale > 0) Color.parseColor("#00E676") else Color.parseColor("#B0BEC5"))
-                    setPadding(18, 10, 18, 10)
-                    background = GradientDrawable().apply {
-                        setColor(Color.parseColor("#263238"))
-                        cornerRadius = 12f
+                    val img = ImageView(this@MainActivity).apply {
+                        layoutParams = LinearLayout.LayoutParams(88, 88).apply { rightMargin = 20 }
                     }
-                    setOnClickListener { cyclePerGameScale(item) }
+                    val textCol = LinearLayout(this@MainActivity).apply {
+                        orientation = LinearLayout.VERTICAL
+                        layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    }
+                    val nameTv = TextView(this@MainActivity).apply {
+                        textSize = 15f
+                        setTypeface(null, Typeface.BOLD)
+                    }
+                    val pkgTv = TextView(this@MainActivity).apply {
+                        textSize = 10.5f
+                        setTextColor(Color.parseColor("#888888"))
+                    }
+                    textCol.addView(nameTv)
+                    textCol.addView(pkgTv)
+
+                    val scaleBadge = TextView(this@MainActivity).apply {
+                        textSize = 11.5f
+                        setTypeface(null, Typeface.BOLD)
+                        setPadding(18, 10, 18, 10)
+                        background = GradientDrawable().apply {
+                            setColor(Color.parseColor("#263238"))
+                            cornerRadius = 12f
+                        }
+                    }
+
+                    val pinBtn = TextView(this@MainActivity).apply {
+                        textSize = 19f
+                        setPadding(18, 8, 6, 8)
+                    }
+
+                    row.addView(img)
+                    row.addView(textCol)
+                    row.addView(scaleBadge)
+                    row.addView(pinBtn)
+
+                    holder = RowHolder(row, img, nameTv, pkgTv, scaleBadge, pinBtn)
+                    row.tag = holder
+                } else {
+                    holder = convertView.tag as RowHolder
                 }
 
-                val pinBtn = TextView(this@MainActivity).apply {
-                    text = if (item.isPinned) "⭐" else "☆"
-                    textSize = 19f
-                    setTextColor(if (item.isPinned) Color.parseColor("#FFD600") else Color.parseColor("#616161"))
-                    setPadding(18, 8, 6, 8)
-                    setOnClickListener { togglePin(item) }
+                holder.row.background = GradientDrawable().apply {
+                    setColor(if (item.isPinned) Color.parseColor("#1E2822") else Color.parseColor("#1A1D24"))
+                    cornerRadius = 20f
+                    if (item.isPinned) setStroke(2, Color.parseColor("#00E676"))
                 }
+                holder.img.setImageDrawable(item.icon)
+                holder.nameTv.text = item.name
+                holder.nameTv.setTextColor(if (item.isPinned) Color.parseColor("#00E676") else Color.WHITE)
+                holder.pkgTv.text = item.pkg
 
-                row.addView(img)
-                row.addView(textCol)
-                row.addView(scaleBadge)
-                row.addView(pinBtn)
+                val labelStr = "${effectiveScale / 100}.${effectiveScale % 100}x"
+                holder.scaleBadge.text = if (item.customScale > 0) "🎯 $labelStr" else labelStr
+                holder.scaleBadge.setTextColor(if (item.customScale > 0) Color.parseColor("#00E676") else Color.parseColor("#B0BEC5"))
+                holder.scaleBadge.setOnClickListener { cyclePerGameScale(item) }
 
-                row.setOnClickListener { launchGameByPkg(item.pkg, item.name, effectiveScale) }
-                row.setOnLongClickListener {
+                holder.pinBtn.text = if (item.isPinned) "⭐" else "☆"
+                holder.pinBtn.setTextColor(if (item.isPinned) Color.parseColor("#FFD600") else Color.parseColor("#616161"))
+                holder.pinBtn.setOnClickListener { togglePin(item) }
+
+                holder.row.setOnClickListener { launchGameByPkg(item.pkg, item.name, effectiveScale) }
+                holder.row.setOnLongClickListener {
                     createPinnedShortcut(item, effectiveScale)
                     true
                 }
-                return row
+                return holder.row
             }
         }
         listView.adapter = adapter
@@ -634,6 +656,12 @@ class MainActivity : Activity() {
         updatePreviewText()
         if (checkShizuku()) fetchPhysicalDisplayInfo()
         loadInstalledApps()
+    }
+
+    override fun onDestroy() {
+        allApps.clear()
+        filteredApps.clear()
+        super.onDestroy()
     }
 
     private fun showThermalInspectorDialog() {
@@ -740,7 +768,7 @@ class MainActivity : Activity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val sm = getSystemService(ShortcutManager::class.java)
             if (sm != null && sm.isRequestPinShortcutSupported) {
-                val bmp = drawableToBitmap(item.icon)
+                val bmp = drawableToBitmap(item.icon, 96)
                 val launchIntent = Intent(this, MainActivity::class.java).apply {
                     action = Intent.ACTION_VIEW
                     putExtra("action_type", "QUICK_LAUNCH")
@@ -761,12 +789,10 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun drawableToBitmap(drawable: Drawable): Bitmap {
-        val w = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 128
-        val h = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 128
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    private fun drawableToBitmap(drawable: Drawable, targetSize: Int = 64): Bitmap {
+        val bmp = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.setBounds(0, 0, targetSize, targetSize)
         drawable.draw(canvas)
         return bmp
     }
@@ -890,19 +916,23 @@ class MainActivity : Activity() {
             val temp = resolves.mapNotNull { r ->
                 val pkg = r.activityInfo.packageName
                 if (pkg == packageName) return@mapNotNull null
+                // Thu nhỏ icon về 64x64px để giảm ~16 lần RAM chiếm dụng
+                val scaledIcon = BitmapDrawable(resources, drawableToBitmap(r.loadIcon(pm), 64))
                 AppItem(
                     r.loadLabel(pm).toString(),
                     pkg,
-                    r.loadIcon(pm),
+                    scaledIcon,
                     pinnedPkgs.contains(pkg),
                     prefs.getInt("scale_$pkg", 0)
                 )
             }.distinctBy { it.pkg }
 
             runOnUiThread {
-                allApps.clear()
-                allApps.addAll(temp)
-                sortAndFilterApps()
+                if (!isFinishing && !isDestroyed) {
+                    allApps.clear()
+                    allApps.addAll(temp)
+                    sortAndFilterApps()
+                }
             }
         }
     }
@@ -942,6 +972,8 @@ class MainActivity : Activity() {
                 "nohup sh -c 'sleep 8; while pidof " + pkg + " > /dev/null; do sleep 3; done; wm size reset; wm density reset' >/dev/null 2>&1 &"
 
         runShizukuScript(script)
+        // Đóng MainActivity để giải phóng toàn bộ giao diện và danh sách icon khỏi RAM
+        finish()
     }
 
     private fun runShizukuScript(cmd: String) {
