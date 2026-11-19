@@ -235,24 +235,46 @@ class FpsOverlayService : Service() {
 
     private fun startAsForeground() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "upscaler_active_channel"
+        val channelId = "upscaler_hud_silent_v2"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Trạng thái Upscale & FPS", NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(
+                channelId,
+                "Dịch vụ HUD & Upscale",
+                NotificationManager.IMPORTANCE_MIN
+            ).apply {
+                setShowBadge(false)
+            }
             nm.createNotificationChannel(channel)
         }
 
-        val resetIntent = Intent(this, MainActivity::class.java).apply {
-            putExtra("action_type", "RESET_NOW")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        val isUpscaleActive = scaleLabel.isNotEmpty()
+        val pi = if (isUpscaleActive) {
+            val resetIntent = Intent(this, MainActivity::class.java).apply {
+                putExtra("action_type", "RESET_NOW")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            PendingIntent.getActivity(
+                this, 99, resetIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } else {
+            val stopHudIntent = Intent(this, FpsOverlayService::class.java).apply {
+                action = "STOP_OVERLAY"
+            }
+            PendingIntent.getService(
+                this, 100, stopHudIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
         }
-        val pi = PendingIntent.getActivity(
-            this, 99, resetIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
 
-        val titleText = if (scaleLabel.isNotEmpty()) {
+        val titleText = if (isUpscaleActive) {
             "⚡ Đang kích SSAA $scaleLabel cho $gameName"
         } else {
-            "📊 Đang chạy HUD đo thông số phần cứng"
+            "📊 Đang chạy HUD đo thông số"
+        }
+
+        val contentText = if (isUpscaleActive) {
+            "Chạm để Khôi phục màn hình gốc & tắt HUD"
+        } else {
+            "Chạm để tắt nhanh thanh đo (Không reset màn hình)"
         }
 
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -265,7 +287,7 @@ class FpsOverlayService : Service() {
         val notification = builder
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(titleText)
-            .setContentText("Chạm vào đây để Khôi phục màn hình & tắt HUD")
+            .setContentText(contentText)
             .setContentIntent(pi)
             .setOngoing(true)
             .build()
@@ -588,7 +610,6 @@ class FpsOverlayService : Service() {
                 val volts = rawVoltMv / 1_000.0
                 val instWatts = (amps * volts).toFloat()
                 if (instWatts in 0.1f..180f) {
-                    // Làm mượt nhẹ (EMA) để triệt tiêu nhiễu xung dòng tức thời
                     lastWatts = if (lastWatts <= 0f || abs(instWatts - lastWatts) > 4.0f) {
                         instWatts
                     } else {
@@ -625,7 +646,6 @@ class FpsOverlayService : Service() {
             val writer = BufferedWriter(OutputStreamWriter(proc.outputStream, Charsets.UTF_8))
             val reader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8))
 
-            // Cache sẵn đường dẫn các cảm biến nhiệt nhân CPU 1 lần duy nhất khi mở shell
             val initCmd = "CPU_ZONES=\"\"; for z in /sys/class/thermal/thermal_zone*; do " +
                     "t=\$(cat \"\$z/type\" 2>/dev/null | tr 'A-Z' 'a-z'); " +
                     "case \"\$t\" in *gpu*|*npu*|*modem*|*pa*|*skin*|*bat*|*wlan*|*usb*|*cam*|*flash*|*chg*) ;; " +
@@ -687,7 +707,6 @@ class FpsOverlayService : Service() {
             2 -> 2000L
             3 -> 3000L
             else -> {
-                // Chế độ Auto: 1s khi đang chơi game / màn ngang, giãn xuống 2.5s khi lướt app nhẹ màn dọc
                 if (targetPkg.isNotEmpty() || isLandscapeMode() || lastFps >= 45) 1000L else 2500L
             }
         }
@@ -825,7 +844,6 @@ class FpsOverlayService : Service() {
                     }.sorted()
 
                     if (validTemps.isNotEmpty()) {
-                        // Cắt bỏ 1 điểm gai đỉnh cao nhất nếu có >= 3 cảm biến để lấy nhiệt độ lõi thực tế
                         val trimmed = if (validTemps.size >= 3) validTemps.dropLast(1) else validTemps
                         lastCpuTemp = trimmed.average().toFloat()
                     }
