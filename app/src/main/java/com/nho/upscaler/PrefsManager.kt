@@ -32,6 +32,10 @@ class PrefsManager(context: Context) {
         get() = prefs.getInt("overlay_size_level", 1)
         set(value) = prefs.edit().putInt("overlay_size_level", value).apply()
 
+    var overlayBgMode: Int
+        get() = prefs.getInt("overlay_bg_mode", 1)
+        set(value) = prefs.edit().putInt("overlay_bg_mode", value).apply()
+
     var hudPollMode: Int
         get() = prefs.getInt("hud_poll_mode", 0)
         set(value) = prefs.edit().putInt("hud_poll_mode", value).apply()
@@ -73,9 +77,9 @@ class PrefsManager(context: Context) {
 
     fun getHudPosition(isLandscape: Boolean): Pair<Int, Int> {
         return if (isLandscape) {
-            prefs.getInt("overlay_land_x", 160) to prefs.getInt("overlay_land_y", 36)
+            prefs.getInt("overlay_land_x", 24) to prefs.getInt("overlay_land_y", 6)
         } else {
-            prefs.getInt("overlay_port_x", 60) to prefs.getInt("overlay_port_y", 120)
+            prefs.getInt("overlay_port_x", 48) to prefs.getInt("overlay_port_y", 110)
         }
     }
 

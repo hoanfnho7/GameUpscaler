@@ -40,21 +40,23 @@ object UiTheme {
     val TEXT_MUTED = Color.parseColor("#757575")
     val TEXT_PKG = Color.parseColor("#888888")
     val TEXT_STAR_OFF = Color.parseColor("#616161")
+    val TEXT_SHADOW = Color.parseColor("#F0000000")
 
     val STROKE_SUBTLE = Color.parseColor("#263238")
     val STROKE_PILL_OFF = Color.parseColor("#2C303A")
 
-    val HUD_BG_LEVELS = intArrayOf(
-        Color.parseColor("#88101216"),
-        Color.parseColor("#B3101216"),
-        Color.parseColor("#CC101216"),
-        Color.parseColor("#DD101216")
+    // 4 mức độ trong suốt HUD: 0 = Đậm, 1 = Mờ vừa, 2 = Siêu trong, 3 = Trong suốt hoàn toàn (Chỉ chữ)
+    val HUD_BG_OPACITY = intArrayOf(
+        Color.parseColor("#DD101216"),
+        Color.parseColor("#99101216"),
+        Color.parseColor("#38101216"),
+        Color.TRANSPARENT
     )
-    val HUD_STROKE_LEVELS = intArrayOf(
-        Color.parseColor("#4400E676"),
-        Color.parseColor("#5500E676"),
+    val HUD_STROKE_OPACITY = intArrayOf(
         Color.parseColor("#6600E676"),
-        Color.parseColor("#7700E676")
+        Color.parseColor("#4400E676"),
+        Color.parseColor("#2400E676"),
+        Color.TRANSPARENT
     )
     val CLOSE_ZONE_IDLE = Color.parseColor("#CC261212")
 
@@ -62,7 +64,9 @@ object UiTheme {
         return GradientDrawable().apply {
             setColor(fillColor)
             cornerRadius = radiusPx
-            if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
+            if (strokeWidth > 0 && strokeColor != Color.TRANSPARENT) {
+                setStroke(strokeWidth, strokeColor)
+            }
         }
     }
 

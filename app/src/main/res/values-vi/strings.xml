@@ -22,6 +22,11 @@
     <string name="size_medium">Vừa</string>
     <string name="size_large">To</string>
 
+    <string name="bg_solid">Nền đậm</string>
+    <string name="bg_glass">Mờ vừa</string>
+    <string name="bg_sheer">Siêu trong</string>
+    <string name="bg_clear">Chỉ chữ</string>
+
     <string name="poll_auto">⚡ Auto</string>
     <string name="poll_300ms">🚀 150ms</string>
     <string name="poll_1s">⚡ 300ms</string>

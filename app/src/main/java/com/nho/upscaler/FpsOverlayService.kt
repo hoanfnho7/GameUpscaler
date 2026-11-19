@@ -63,6 +63,7 @@ class FpsOverlayService : Service() {
     private var gameName = "Game"
     private var scaleLabel = ""
     private var sizeLevel = 1
+    private var bgMode = 1
     private var pollMode = 0
     private var isVertical = false
     private var isOverCloseZone = false
@@ -167,16 +168,19 @@ class FpsOverlayService : Service() {
         val params = overlayParams ?: return
         val dm = resources.displayMetrics
         val (rawX, rawY) = prefsMgr.getHudPosition(isLandscapeMode())
-        val maxX = (dm.widthPixels - 120).coerceAtLeast(20)
-        val maxY = (dm.heightPixels - 140).coerceAtLeast(20)
-        params.x = rawX.coerceIn(10, maxX)
-        params.y = rawY.coerceIn(10, maxY)
+        val maxX = (dm.widthPixels - 80).coerceAtLeast(8)
+        val maxY = (dm.heightPixels - 60).coerceAtLeast(4)
+        params.x = rawX.coerceIn(4, maxX)
+        params.y = rawY.coerceIn(2, maxY)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         if (overlayView != null && overlayParams != null) {
+            lastRenderedText = ""
+            applyOverlayStyle()
             applyPositionForCurrentOrientation()
+            renderTelemetryText()
             try {
                 windowManager?.updateViewLayout(overlayView, overlayParams)
             } catch (_: Exception) {}
@@ -186,6 +190,7 @@ class FpsOverlayService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         sizeLevel = prefsMgr.overlaySizeLevel
+        bgMode = prefsMgr.overlayBgMode
         pollMode = prefsMgr.hudPollMode
         isVertical = prefsMgr.overlayVertical
 
@@ -470,28 +475,65 @@ class FpsOverlayService : Service() {
 
     private fun applyOverlayStyle() {
         val tv = overlayView ?: return
-        tv.gravity = if (isVertical) Gravity.START else Gravity.CENTER_VERTICAL
-        if (isVertical) tv.setLineSpacing(4f, 1.08f) else tv.setLineSpacing(0f, 1.0f)
-
+        val isLand = isLandscapeMode()
         val idx = sizeLevel.coerceIn(0, 3)
-        val textSizes = floatArrayOf(9.5f, 11f, 12.5f, 14f)
-        val padH = intArrayOf(14, 18, 22, 26)
-        val padV = intArrayOf(8, 10, 12, 14)
-        val radii = floatArrayOf(14f, 18f, 22f, 26f)
-        val strokes = intArrayOf(1, 1, 2, 2)
+        val bIdx = bgMode.coerceIn(0, 3)
+
+        // Ở chế độ ngang (khi không chọn Dọc): ép cứng 1 dòng duy nhất, không bao giờ tự rớt dòng
+        if (!isVertical && isLand) {
+            tv.isSingleLine = true
+            tv.maxLines = 1
+            tv.ellipsize = null
+            tv.gravity = Gravity.CENTER_VERTICAL
+            tv.setLineSpacing(0f, 1.0f)
+        } else if (isVertical) {
+            tv.isSingleLine = false
+            tv.maxLines = 16
+            tv.gravity = Gravity.START
+            tv.setLineSpacing(3f, 1.05f)
+        } else {
+            tv.isSingleLine = false
+            tv.maxLines = 6
+            tv.gravity = Gravity.CENTER_VERTICAL
+            tv.setLineSpacing(2f, 1.0f)
+        }
+
+        // Chế độ ngang dùng kích thước siêu nhỏ (7.5sp ở mức Siêu gọn) để không che la bàn BR
+        val textSizes = if (isLand) {
+            floatArrayOf(7.5f, 9.0f, 10.5f, 12.0f)
+        } else {
+            floatArrayOf(8.5f, 10.5f, 12.0f, 13.5f)
+        }
+        val padH = if (isLand) intArrayOf(8, 12, 16, 20) else intArrayOf(10, 16, 20, 24)
+        val padV = if (isLand) intArrayOf(2, 4, 6, 8) else intArrayOf(4, 8, 10, 12)
+        val radii = floatArrayOf(8f, 12f, 16f, 20f)
+        val strokes = intArrayOf(1, 1, 1, 2)
 
         tv.textSize = textSizes[idx]
         tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
-        tv.background = UiTheme.roundBox(
-            UiTheme.HUD_BG_LEVELS[idx],
-            radii[idx],
-            strokes[idx],
-            UiTheme.HUD_STROKE_LEVELS[idx]
-        )
+
+        // Đổ bóng chữ đậm khi nền siêu trong hoặc trong suốt hoàn toàn để chữ luôn nét trên nền game sáng
+        if (bIdx >= 2) {
+            tv.setShadowLayer(3.0f, 1.2f, 1.2f, UiTheme.TEXT_SHADOW)
+        } else {
+            tv.setShadowLayer(1.5f, 0.5f, 0.5f, UiTheme.TEXT_SHADOW)
+        }
+
+        if (bIdx == 3) {
+            tv.background = null
+        } else {
+            tv.background = UiTheme.roundBox(
+                UiTheme.HUD_BG_OPACITY[bIdx],
+                radii[idx],
+                strokes[idx],
+                UiTheme.HUD_STROKE_OPACITY[bIdx]
+            )
+        }
     }
 
     private fun renderTelemetryText() {
         val tv = overlayView ?: return
+        val isLand = isLandscapeMode()
 
         val showFps = prefsMgr.getMetric("m_fps", true)
         val showWatt = prefsMgr.getMetric("m_watt", true)
@@ -508,15 +550,15 @@ class FpsOverlayService : Service() {
         val showSkinTemp = prefsMgr.getMetric("m_skin_temp", false)
         val showRam = prefsMgr.getMetric("m_ram", false)
 
-        val parts = ArrayList<String>(8)
-        val isCompact = (sizeLevel == 0)
+        val parts = ArrayList<String>(12)
+        val isCompact = (sizeLevel == 0) || (isLand && !isVertical)
 
         if (showFps) {
             val fpsVal = if (lastFps >= 0f) String.format(Locale.US, "%.1f", lastFps) else "--.-"
             parts.add(if (isCompact) "${fpsVal}F" else if (isVertical) "⚡ FPS: $fpsVal" else "⚡$fpsVal FPS")
         }
         if (showWatt) {
-            val prefix = if (isChargingNow) "⚡+" else ""
+            val prefix = if (isChargingNow) "+" else ""
             val wVal = if (lastWatts > 0f) String.format(Locale.US, "%s%.1fW", prefix, lastWatts) else "--W"
             parts.add(if (isCompact) wVal else if (isVertical) Lang.str(this, R.string.hud_vert_power, wVal) else "🔌$wVal")
         }
@@ -526,7 +568,7 @@ class FpsOverlayService : Service() {
         }
         if (showSocTemp) {
             val stVal = if (lastSocTemp > 0f) String.format(Locale.US, "%.1f°", lastSocTemp) else "--°"
-            parts.add(if (isCompact) "🌡️$stVal" else if (isVertical) "🌡️ SoC: ${stVal}C" else "🌡️${stVal}C")
+            parts.add(if (isCompact) "🌡$stVal" else if (isVertical) "🌡️ SoC: ${stVal}C" else "🌡️${stVal}C")
         }
         if (showCpuTemp) {
             val ctVal = if (lastCpuTemp > 0f) String.format(Locale.US, "%.1f°", lastCpuTemp) else "--°"
@@ -549,19 +591,19 @@ class FpsOverlayService : Service() {
             parts.add(if (isCompact) "📱$skVal" else if (isVertical) Lang.str(this, R.string.hud_vert_skin, skVal) else "📱${skVal}C")
         }
         if (showGpu) {
-            val vramStr = if (lastGpuVramMb >= 0) "${lastGpuVramMb}MB" else "--MB"
-            parts.add(if (isCompact) "V:${if (lastGpuVramMb >= 0) "${lastGpuVramMb}M" else "--"}" else if (isVertical) "🎮 VRAM: $vramStr" else "🎮$vramStr")
+            val vramStr = if (lastGpuVramMb >= 0) "${lastGpuVramMb}M" else "--M"
+            parts.add(if (isCompact) "V:$vramStr" else if (isVertical) "🎮 VRAM: ${vramStr}B" else "🎮${vramStr}B")
         }
         if (showCpuFreq) {
             val cStr = when {
-                lastCpuKhz >= 1_000_000L -> String.format(Locale.US, "%.2fGHz", lastCpuKhz / 1_000_000.0)
-                lastCpuKhz > 0L -> "${lastCpuKhz / 1000L}MHz"
-                else -> "--GHz"
+                lastCpuKhz >= 1_000_000L -> String.format(Locale.US, "%.2fG", lastCpuKhz / 1_000_000.0)
+                lastCpuKhz > 0L -> "${lastCpuKhz / 1000L}M"
+                else -> "--G"
             }
-            parts.add(if (isCompact) cStr else if (isVertical) "⚙️ CPU: $cStr" else "⚙️$cStr")
+            parts.add(if (isCompact) cStr else if (isVertical) "⚙️ CPU: ${cStr}Hz" else "⚙️${cStr}Hz")
         }
         if (showRam) {
-            val rStr = lastRamText.ifEmpty { "--GB" }
+            val rStr = lastRamText.ifEmpty { "--G" }
             parts.add(if (isCompact) rStr else if (isVertical) "💾 RAM: $rStr" else "💾$rStr")
         }
 
@@ -571,6 +613,8 @@ class FpsOverlayService : Service() {
 
         val newText = if (isVertical) {
             parts.joinToString("\n")
+        } else if (sizeLevel == 0 && isLand) {
+            parts.joinToString(" · ")
         } else {
             parts.joinToString(if (isCompact) " · " else " | ")
         }
@@ -920,7 +964,7 @@ class FpsOverlayService : Service() {
         }
 
         if (appPssKb > 0L) {
-            lastRamText = String.format(Locale.US, "%.1fGB", appPssKb / 1048576.0)
+            lastRamText = String.format(Locale.US, "%.1fG", appPssKb / 1048576.0)
         } else if (memTotalKb > 0L && memAvailKb > 0L) {
             val usedGb = (memTotalKb - memAvailKb) / 1048576.0
             val totalGb = memTotalKb / 1048576.0

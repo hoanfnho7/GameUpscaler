@@ -52,6 +52,7 @@ class MainActivity : Activity() {
     private var showPinnedOnly = false
     private var enableFpsOverlay = true
     private var overlaySizeLevel = 1
+    private var overlayBgMode = 1
     private var hudPollMode = 0
     private var overlayVertical = false
     private var currentQuery = ""
@@ -67,6 +68,7 @@ class MainActivity : Activity() {
         showPinnedOnly = prefsMgr.showPinnedOnly
         enableFpsOverlay = prefsMgr.enableFpsOverlay
         overlaySizeLevel = prefsMgr.overlaySizeLevel
+        overlayBgMode = prefsMgr.overlayBgMode
         hudPollMode = prefsMgr.hudPollMode
         overlayVertical = prefsMgr.overlayVertical
 
@@ -294,7 +296,7 @@ class MainActivity : Activity() {
         })
         hudCard.addView(headerRow)
 
-        // Size chips row
+        // Hàng 1: 4 mức kích thước HUD
         hudCard.addView(buildChipRow(
             items = listOf(
                 0 to Lang.str(this, R.string.size_tiny),
@@ -305,14 +307,32 @@ class MainActivity : Activity() {
             selectedIndex = overlaySizeLevel,
             activeColor = UiTheme.ACCENT_CYAN,
             padTop = 6,
-            padBottom = 6
+            padBottom = 5
         ) { lvl ->
             overlaySizeLevel = lvl
             prefsMgr.overlaySizeLevel = lvl
             notifyOverlayStyleUpdated()
         })
 
-        // Polling rate chips row
+        // Hàng 2: 4 mức độ trong suốt nền & viền (Nền đậm / Mờ vừa / Siêu trong / Chỉ chữ)
+        hudCard.addView(buildChipRow(
+            items = listOf(
+                0 to Lang.str(this, R.string.bg_solid),
+                1 to Lang.str(this, R.string.bg_glass),
+                2 to Lang.str(this, R.string.bg_sheer),
+                3 to Lang.str(this, R.string.bg_clear)
+            ),
+            selectedIndex = overlayBgMode,
+            activeColor = UiTheme.ACCENT_PURPLE,
+            padTop = 0,
+            padBottom = 5
+        ) { mode ->
+            overlayBgMode = mode
+            prefsMgr.overlayBgMode = mode
+            notifyOverlayStyleUpdated()
+        })
+
+        // Hàng 3: 4 tốc độ quét cảm biến
         hudCard.addView(buildChipRow(
             items = listOf(
                 0 to Lang.str(this, R.string.poll_auto),
@@ -443,7 +463,7 @@ class MainActivity : Activity() {
                 textSize = 10.5f
                 setTypeface(null, Typeface.BOLD)
                 gravity = Gravity.CENTER
-                setPadding(6, 8, 6, 8)
+                setPadding(6, 7, 6, 7)
                 setOnClickListener {
                     current = id
                     refresh()
