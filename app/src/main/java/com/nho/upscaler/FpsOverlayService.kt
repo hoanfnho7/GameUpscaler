@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -21,6 +22,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.provider.Settings
 import android.service.quicksettings.TileService
 import android.view.Gravity
@@ -51,11 +53,16 @@ class FpsOverlayService : Service() {
     private var overlayParams: WindowManager.LayoutParams? = null
     private var closeTargetView: TextView? = null
     private lateinit var prefs: SharedPreferences
-    private var isRunning = false
+
+    @Volatile private var isRunning = false
+    @Volatile private var isScreenOn = true
+    @Volatile private var telemetryThread: Thread? = null
+
     private var targetPkg = ""
     private var gameName = "Game"
     private var scaleLabel = ""
     private var sizeLevel = 1
+    private var pollMode = 0 // 0: Auto, 1: 1s, 2: 2s, 3: 3s
     private var isVertical = false
     private var isOverCloseZone = false
 
@@ -69,9 +76,13 @@ class FpsOverlayService : Service() {
     private var lastBatTemp = 0f
     private var lastCpuTemp = 0f
     private var lastWatts = 0f
+    private var isChargingNow = false
     private var lastGpuVramMb = -1
     private var lastCpuKhz = 0L
     private var lastRamText = ""
+
+    private var lastRenderedText = ""
+    private var lastRenderedColor = 0
 
     private var lastFramesCount = -1L
     private var lastSampleTimeMs = 0L
@@ -80,7 +91,32 @@ class FpsOverlayService : Service() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    isScreenOn = false
+                }
+                Intent.ACTION_SCREEN_ON -> {
+                    isScreenOn = true
+                    telemetryThread?.interrupt()
+                }
+            }
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        isScreenOn = pm.isInteractive
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        registerReceiver(screenReceiver, filter)
+    }
 
     private fun syncQuickSettingsTile() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -124,11 +160,13 @@ class FpsOverlayService : Service() {
                 windowManager?.updateViewLayout(overlayView, overlayParams)
             } catch (_: Exception) {}
         }
+        telemetryThread?.interrupt()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         prefs = getSharedPreferences("upscaler_prefs", Context.MODE_PRIVATE)
         sizeLevel = prefs.getInt("overlay_size_level", 1)
+        pollMode = prefs.getInt("hud_poll_mode", 0)
         isVertical = prefs.getBoolean("overlay_vertical", false)
 
         when (intent?.action) {
@@ -136,10 +174,22 @@ class FpsOverlayService : Service() {
                 stopSelf()
                 return START_NOT_STICKY
             }
+            "RESET_POS" -> {
+                if (overlayView != null && overlayParams != null) {
+                    applyPositionForCurrentOrientation()
+                    try {
+                        windowManager?.updateViewLayout(overlayView, overlayParams)
+                    } catch (_: Exception) {}
+                }
+                return START_NOT_STICKY
+            }
             "UPDATE_STYLE" -> {
                 if (overlayView != null) {
+                    lastRenderedText = ""
+                    lastRenderedColor = 0
                     applyOverlayStyle()
                     renderTelemetryText()
+                    telemetryThread?.interrupt()
                 } else {
                     stopSelf()
                 }
@@ -162,6 +212,7 @@ class FpsOverlayService : Service() {
         if (overlayView == null) {
             createOverlayViews()
         } else {
+            lastRenderedText = ""
             applyOverlayStyle()
             applyPositionForCurrentOrientation()
             try {
@@ -176,6 +227,8 @@ class FpsOverlayService : Service() {
         if (!isRunning) {
             isRunning = true
             startTelemetryLoop()
+        } else {
+            telemetryThread?.interrupt()
         }
         return START_STICKY
     }
@@ -349,6 +402,7 @@ class FpsOverlayService : Service() {
                             } else {
                                 sizeLevel = (sizeLevel + 1) % 4
                                 prefs.edit().putInt("overlay_size_level", sizeLevel).apply()
+                                lastRenderedText = ""
                                 applyOverlayStyle()
                                 renderTelemetryText()
                             }
@@ -466,7 +520,8 @@ class FpsOverlayService : Service() {
             parts.add(if (isCompact) "🔥$ctVal" else if (isVertical) "🔥 CPU: ${ctVal}C" else "🔥${ctVal}C")
         }
         if (showWatt) {
-            val wVal = if (lastWatts > 0f) String.format(Locale.US, "%.1fW", lastWatts) else "--W"
+            val prefix = if (isChargingNow) "⚡+" else ""
+            val wVal = if (lastWatts > 0f) String.format(Locale.US, "%s%.1fW", prefix, lastWatts) else "--W"
             parts.add(if (isCompact) wVal else if (isVertical) "🔌 Điện: $wVal" else "🔌$wVal")
         }
         if (showGpu) {
@@ -490,18 +545,26 @@ class FpsOverlayService : Service() {
             parts.add("⚡ Chưa chọn thông số")
         }
 
-        tv.text = if (isVertical) {
+        val newText = if (isVertical) {
             parts.joinToString("\n")
         } else {
             parts.joinToString(if (isCompact) " · " else " | ")
         }
 
+        if (newText != lastRenderedText) {
+            lastRenderedText = newText
+            tv.text = newText
+        }
+
         val color = when {
-            lastBatTemp >= 43.0f || lastCpuTemp >= 82.0f -> Color.parseColor("#FF5252")
-            lastBatTemp >= 40.0f || lastCpuTemp >= 72.0f -> Color.parseColor("#FFD740")
+            lastBatTemp >= 43.0f || lastCpuTemp >= 85.0f -> Color.parseColor("#FF5252")
+            lastBatTemp >= 40.0f || lastCpuTemp >= 75.0f -> Color.parseColor("#FFD740")
             else -> Color.parseColor("#00E676")
         }
-        tv.setTextColor(color)
+        if (color != lastRenderedColor) {
+            lastRenderedColor = color
+            tv.setTextColor(color)
+        }
     }
 
     private fun readNativeBatteryPower() {
@@ -511,6 +574,9 @@ class FpsOverlayService : Service() {
             val batIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             val rawVoltMv = batIntent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) ?: 0
             val rawTempTenths = batIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
+            val status = batIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+
+            isChargingNow = (status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL)
 
             if (rawTempTenths > 0) {
                 lastBatTemp = rawTempTenths / 10f
@@ -520,9 +586,14 @@ class FpsOverlayService : Service() {
                 val absCurr = abs(rawCurr.toDouble())
                 val amps = if (absCurr > 15_000.0) absCurr / 1_000_000.0 else absCurr / 1_000.0
                 val volts = rawVoltMv / 1_000.0
-                val w = (amps * volts).toFloat()
-                if (w in 0.1f..180f) {
-                    lastWatts = w
+                val instWatts = (amps * volts).toFloat()
+                if (instWatts in 0.1f..180f) {
+                    // Làm mượt nhẹ (EMA) để triệt tiêu nhiễu xung dòng tức thời
+                    lastWatts = if (lastWatts <= 0f || abs(instWatts - lastWatts) > 4.0f) {
+                        instWatts
+                    } else {
+                        lastWatts * 0.55f + instWatts * 0.45f
+                    }
                 }
             }
         } catch (_: Exception) {}
@@ -551,9 +622,21 @@ class FpsOverlayService : Service() {
             )
             m.isAccessible = true
             val proc = m.invoke(null, arrayOf("sh"), null, null) as Process
+            val writer = BufferedWriter(OutputStreamWriter(proc.outputStream, Charsets.UTF_8))
+            val reader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8))
+
+            // Cache sẵn đường dẫn các cảm biến nhiệt nhân CPU 1 lần duy nhất khi mở shell
+            val initCmd = "CPU_ZONES=\"\"; for z in /sys/class/thermal/thermal_zone*; do " +
+                    "t=\$(cat \"\$z/type\" 2>/dev/null | tr 'A-Z' 'a-z'); " +
+                    "case \"\$t\" in *gpu*|*npu*|*modem*|*pa*|*skin*|*bat*|*wlan*|*usb*|*cam*|*flash*|*chg*) ;; " +
+                    "*cpu*|*cpuss*|*apc*|*tsens*|*ap*|*soc*) [ -r \"\$z/temp\" ] && CPU_ZONES=\"\$CPU_ZONES \$z/temp\";; esac; " +
+                    "done\n"
+            writer.write(initCmd)
+            writer.flush()
+
             shellProcess = proc
-            shellWriter = BufferedWriter(OutputStreamWriter(proc.outputStream, Charsets.UTF_8))
-            shellReader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8))
+            shellWriter = writer
+            shellReader = reader
             return true
         } catch (_: Exception) {
             closeShellSession()
@@ -598,10 +681,27 @@ class FpsOverlayService : Service() {
         }
     }
 
+    private fun computeNextIntervalMs(): Long {
+        return when (pollMode) {
+            1 -> 1000L
+            2 -> 2000L
+            3 -> 3000L
+            else -> {
+                // Chế độ Auto: 1s khi đang chơi game / màn ngang, giãn xuống 2.5s khi lướt app nhẹ màn dọc
+                if (targetPkg.isNotEmpty() || isLandscapeMode() || lastFps >= 45) 1000L else 2500L
+            }
+        }
+    }
+
     private fun startTelemetryLoop() {
-        thread(name = "HudTelemetryLoop") {
+        telemetryThread = thread(name = "HudTelemetryLoop") {
             var graceTicks = 0
             while (isRunning) {
+                if (!isScreenOn) {
+                    try { Thread.sleep(1500) } catch (_: InterruptedException) {}
+                    continue
+                }
+
                 try {
                     val currentPkg = targetPkg
                     val showFps = prefs.getBoolean("m_fps", true)
@@ -616,7 +716,6 @@ class FpsOverlayService : Service() {
                         readNativeBatteryPower()
                     }
 
-                    // Gộp toàn bộ truy vấn Shizuku vào 1 lần giao tiếp pipe duy nhất
                     val sb = StringBuilder()
                     if (showFps && initializedStatsForPkg != currentPkg) {
                         sb.append("dumpsys SurfaceFlinger --timestats -clear -enable >/dev/null 2>&1; ")
@@ -627,13 +726,13 @@ class FpsOverlayService : Service() {
                         sb.append("echo \"PID=\$(pidof $currentPkg)\"; ")
                     }
                     if (showGpu) {
-                        sb.append("dumpsys gpu | grep -E 'Global total:|Proc [0-9]+ total:'; ")
+                        sb.append("dumpsys gpu | head -n 45 | grep -E 'Global total:|Proc [0-9]+ total:'; ")
                     }
                     if (showCpuFreq) {
                         sb.append("echo \"CPU_KHZ=\$(cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq 2>/dev/null | sort -nr | head -n 1)\"; ")
                     }
                     if (showCpuTemp) {
-                        sb.append("echo \"CPU_T=\$(for z in /sys/class/thermal/thermal_zone*; do t=\$(cat \"\$z/type\" 2>/dev/null); case \"\$t\" in *cpu*|*CPU*|*soc*|*SOC*|*tsens*|*ap*|*nspss*) cat \"\$z/temp\" 2>/dev/null;; esac; done | sort -nr | head -n 1)\"; ")
+                        sb.append("echo \"CPU_T=\$(cat \$CPU_ZONES 2>/dev/null)\"; ")
                     }
                     if (showRam) {
                         if (currentPkg.isNotEmpty()) {
@@ -676,7 +775,9 @@ class FpsOverlayService : Service() {
                     mainHandler.post { renderTelemetryText() }
                 } catch (_: Exception) {}
 
-                Thread.sleep(1000)
+                try {
+                    Thread.sleep(computeNextIntervalMs())
+                } catch (_: InterruptedException) {}
             }
         }
     }
@@ -712,13 +813,22 @@ class FpsOverlayService : Service() {
                     if (khz > 0L) lastCpuKhz = khz
                 }
                 l.startsWith("CPU_T=") -> {
-                    val tRaw = l.substringAfter("=").trim().toFloatOrNull() ?: 0f
-                    val tC = when {
-                        tRaw > 1000f -> tRaw / 1000f
-                        tRaw > 200f -> tRaw / 10f
-                        else -> tRaw
+                    val tokens = l.substringAfter("=").trim().split(Regex("\\s+"))
+                    val validTemps = tokens.mapNotNull { tok ->
+                        val tRaw = tok.toFloatOrNull() ?: return@mapNotNull null
+                        val tC = when {
+                            tRaw > 1000f -> tRaw / 1000f
+                            tRaw > 200f -> tRaw / 10f
+                            else -> tRaw
+                        }
+                        if (tC in 20f..120f) tC else null
+                    }.sorted()
+
+                    if (validTemps.isNotEmpty()) {
+                        // Cắt bỏ 1 điểm gai đỉnh cao nhất nếu có >= 3 cảm biến để lấy nhiệt độ lõi thực tế
+                        val trimmed = if (validTemps.size >= 3) validTemps.dropLast(1) else validTemps
+                        lastCpuTemp = trimmed.average().toFloat()
                     }
-                    if (tC in 20f..125f) lastCpuTemp = tC
                 }
                 l.startsWith("APP_PSS=") -> {
                     appPssKb = l.substringAfter("=").trim().toLongOrNull() ?: 0L
@@ -827,7 +937,9 @@ class FpsOverlayService : Service() {
         isRunning = false
         isServiceRunning = false
         syncQuickSettingsTile()
+        telemetryThread?.interrupt()
         closeShellSession()
+        try { unregisterReceiver(screenReceiver) } catch (_: Exception) {}
         try {
             if (overlayView != null) {
                 windowManager?.removeView(overlayView)

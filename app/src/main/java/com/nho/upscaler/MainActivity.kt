@@ -54,6 +54,7 @@ class MainActivity : Activity() {
     private var showPinnedOnly = false
     private var enableFpsOverlay = true
     private var overlaySizeLevel = 1
+    private var hudPollMode = 0
     private var overlayVertical = false
     private var isPreviewing = false
     private var currentQuery = ""
@@ -69,6 +70,7 @@ class MainActivity : Activity() {
         showPinnedOnly = prefs.getBoolean("show_pinned_only", false)
         enableFpsOverlay = prefs.getBoolean("enable_fps_overlay", true)
         overlaySizeLevel = prefs.getInt("overlay_size_level", 1)
+        hudPollMode = prefs.getInt("hud_poll_mode", 0)
         overlayVertical = prefs.getBoolean("overlay_vertical", false)
 
         if (handleIncomingIntent(intent)) {
@@ -176,7 +178,7 @@ class MainActivity : Activity() {
         }
         root.addView(resetBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 10 })
 
-        // Khối điều khiển HUD Overlay (Bật/Tắt + Ngang/Dọc + Cỡ chữ + 9 công tắc thông số)
+        // Khối điều khiển HUD Overlay
         val hudCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(16, 12, 16, 14)
@@ -212,7 +214,6 @@ class MainActivity : Activity() {
         }
         hudHeaderRow.addView(fpsCheck)
 
-        // Nút chuyển hướng Ngang / Dọc
         val orientBtn = TextView(this).apply {
             text = if (overlayVertical) "↕️ Dọc" else "↔️ Ngang"
             textSize = 11.5f
@@ -248,7 +249,7 @@ class MainActivity : Activity() {
                     startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
                     return@setOnClickListener
                 }
-                if (!isPreviewing) {
+                if (!FpsOverlayService.isServiceRunning) {
                     val svc = Intent(this@MainActivity, FpsOverlayService::class.java).apply {
                         putExtra("target_pkg", "")
                         putExtra("game_name", "Xem thử HUD")
@@ -267,7 +268,7 @@ class MainActivity : Activity() {
         // Hàng 4 mức kích thước HUD
         val sizeRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 6, 0, 8)
+            setPadding(0, 6, 0, 6)
         }
         val sizeChips = mutableListOf<TextView>()
         val sizeLabels = listOf(0 to "Siêu gọn", 1 to "Nhỏ", 2 to "Vừa", 3 to "To")
@@ -301,7 +302,44 @@ class MainActivity : Activity() {
         refreshSizeChips()
         hudCard.addView(sizeRow)
 
-        // 2 hàng bật/tắt 7 thông số phần cứng (Đã gỡ Ping & Màn Hz)
+        // Hàng chọn nhịp quét cảm biến (Auto / 1s / 2s / 3s)
+        val pollRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, 8)
+        }
+        val pollChips = mutableListOf<TextView>()
+        val pollLabels = listOf(0 to "⚡ Auto", 1 to "Quét 1s", 2 to "Quét 2s", 3 to "Quét 3s")
+        fun refreshPollChips() {
+            pollChips.forEachIndexed { idx, chip ->
+                val active = (idx == hudPollMode)
+                chip.setTextColor(if (active) Color.parseColor("#101216") else Color.parseColor("#B0BEC5"))
+                chip.background = GradientDrawable().apply {
+                    setColor(if (active) Color.parseColor("#00E676") else Color.parseColor("#222630"))
+                    cornerRadius = 10f
+                }
+            }
+        }
+        pollLabels.forEach { (mode, lbl) ->
+            val chip = TextView(this).apply {
+                text = lbl
+                textSize = 10.5f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setPadding(6, 7, 6, 7)
+                setOnClickListener {
+                    hudPollMode = mode
+                    prefs.edit().putInt("hud_poll_mode", mode).apply()
+                    refreshPollChips()
+                    notifyOverlayStyleUpdated()
+                }
+            }
+            pollChips.add(chip)
+            pollRow.addView(chip, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (mode < 3) rightMargin = 6 })
+        }
+        refreshPollChips()
+        hudCard.addView(pollRow)
+
+        // 2 hàng bật/tắt 7 thông số phần cứng
         val metricRows = listOf(
             listOf(
                 Triple("m_fps", "⚡ FPS", true),
@@ -349,13 +387,20 @@ class MainActivity : Activity() {
             }
             hudCard.addView(mRow)
         }
+
+        // Hàng tiện ích nhanh: Thêm Control Center + Đặt lại vị trí HUD
+        val actionBottomRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 8, 0, 0)
+        }
+
         val addQsTileBtn = TextView(this).apply {
-            text = "🎛️ Thêm nút bật HUD lên Control Center"
-            textSize = 11.5f
+            text = "🎛️ Gắn Control Center"
+            textSize = 11f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#64FFDA"))
             gravity = Gravity.CENTER
-            setPadding(16, 12, 16, 12)
+            setPadding(12, 11, 12, 11)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#182429"))
                 cornerRadius = 12f
@@ -384,7 +429,35 @@ class MainActivity : Activity() {
                 }
             }
         }
-        hudCard.addView(addQsTileBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 })
+        actionBottomRow.addView(addQsTileBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.3f).apply { rightMargin = 8 })
+
+        val resetPosBtn = TextView(this).apply {
+            text = "🎯 Đặt lại vị trí"
+            textSize = 11f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.parseColor("#FFD740"))
+            gravity = Gravity.CENTER
+            setPadding(12, 11, 12, 11)
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#242118"))
+                cornerRadius = 12f
+                setStroke(1, Color.parseColor("#4A4228"))
+            }
+            setOnClickListener {
+                prefs.edit()
+                    .remove("overlay_land_x")
+                    .remove("overlay_land_y")
+                    .remove("overlay_port_x")
+                    .remove("overlay_port_y")
+                    .apply()
+                if (FpsOverlayService.isServiceRunning) {
+                    startService(Intent(this@MainActivity, FpsOverlayService::class.java).apply { action = "RESET_POS" })
+                }
+                Toast.makeText(this@MainActivity, "✅ Đã đặt lại tọa độ HUD về mặc định!", Toast.LENGTH_SHORT).show()
+            }
+        }
+        actionBottomRow.addView(resetPosBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        hudCard.addView(actionBottomRow)
 
         root.addView(hudCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8 })
 
@@ -512,7 +585,7 @@ class MainActivity : Activity() {
     }
 
     private fun notifyOverlayStyleUpdated() {
-        if (isPreviewing) {
+        if (FpsOverlayService.isServiceRunning) {
             val upd = Intent(this, FpsOverlayService::class.java).apply {
                 action = "UPDATE_STYLE"
             }
