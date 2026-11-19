@@ -8,8 +8,6 @@
 
 ## 📸 Hình ảnh thực tế
 
-> Đặt ảnh chụp màn hình vào thư mục `screenshots/` với đúng tên file bên dưới để tự động hiển thị trên trang chủ GitHub:
-
 | Giao diện chính & Cấu hình | HUD đo thông số trong Game | Phím tắt Control Center |
 | :---: | :---: | :---: |
 | <img src="screenshots/main_ui.png" width="240" alt="Giao diện chính" /> | <img src="screenshots/hud_ingame.png" width="320" alt="HUD trong game" /> | <img src="screenshots/control_center.png" width="240" alt="Control Center Tile" /> |
