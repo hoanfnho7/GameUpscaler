@@ -21,7 +21,7 @@
 
 ### 🛠️ Setup & Download
 1. Install and activate **[Shizuku](https://github.com/RikkaApps/Shizuku)** on your Android device.
-2. Download the latest `app-debug.apk` for free from **Releases** (or fork this repo ➔ open **Actions** ➔ run **Build APK**).
+2. Download the latest `app-release.apk` for free from **Releases** (or fork this repo ➔ open **Actions** ➔ run **Build APK**).
 3. Open **GameUpscaler Pro** and grant **Display over other apps** permission.
 
 ### 🌍 Translate to Your Language (For Contributors)
@@ -44,7 +44,7 @@ All UI texts are isolated in XML resource files—no Kotlin code edits needed:
 
 ### 🛠️ Cài đặt & Tải APK
 1. Cài đặt và kích hoạt **[Shizuku](https://github.com/RikkaApps/Shizuku)** trên điện thoại.
-2. Tải file `app-debug.apk` miễn phí ở mục **Releases** (hoặc Fork repo ➔ vào tab **Actions** ➔ chạy **Build APK**).
+2. Tải file `app-release.apk` miễn phí ở mục **Releases** (hoặc Fork repo ➔ vào tab **Actions** ➔ chạy **Build APK**).
 3. Mở app và cấp quyền **Hiển thị trên ứng dụng khác** *(trên máy iQOO / Vivo nên cho phép Shizuku chạy nền không giới hạn để tránh bị ngắt giữa trận)*.
 
 ### 🌍 Hướng dẫn dịch sang ngôn ngữ khác

@@ -10,13 +10,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
-import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
@@ -55,7 +52,7 @@ class FpsOverlayService : Service() {
     private var overlayView: TextView? = null
     private var overlayParams: WindowManager.LayoutParams? = null
     private var closeTargetView: TextView? = null
-    private lateinit var prefs: SharedPreferences
+    private lateinit var prefsMgr: PrefsManager
     private var batteryManager: BatteryManager? = null
 
     @Volatile private var isRunning = false
@@ -132,6 +129,7 @@ class FpsOverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        prefsMgr = PrefsManager(this)
         batteryManager = getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         isScreenOn = pm.isInteractive
@@ -166,12 +164,8 @@ class FpsOverlayService : Service() {
 
     private fun applyPositionForCurrentOrientation() {
         val params = overlayParams ?: return
-        val isLand = isLandscapeMode()
         val dm = resources.displayMetrics
-
-        val rawX = if (isLand) prefs.getInt("overlay_land_x", 160) else prefs.getInt("overlay_port_x", 60)
-        val rawY = if (isLand) prefs.getInt("overlay_land_y", 36) else prefs.getInt("overlay_port_y", 120)
-
+        val (rawX, rawY) = prefsMgr.getHudPosition(isLandscapeMode())
         val maxX = (dm.widthPixels - 120).coerceAtLeast(20)
         val maxY = (dm.heightPixels - 140).coerceAtLeast(20)
         params.x = rawX.coerceIn(10, maxX)
@@ -190,10 +184,9 @@ class FpsOverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        prefs = getSharedPreferences("upscaler_prefs", Context.MODE_PRIVATE)
-        sizeLevel = prefs.getInt("overlay_size_level", 1)
-        pollMode = prefs.getInt("hud_poll_mode", 0)
-        isVertical = prefs.getBoolean("overlay_vertical", false)
+        sizeLevel = prefsMgr.overlaySizeLevel
+        pollMode = prefsMgr.hudPollMode
+        isVertical = prefsMgr.overlayVertical
 
         when (intent?.action) {
             "STOP_OVERLAY" -> {
@@ -342,14 +335,10 @@ class FpsOverlayService : Service() {
                 text = "✕"
                 textSize = 22f
                 setTypeface(null, Typeface.BOLD)
-                setTextColor(Color.WHITE)
+                setTextColor(UiTheme.TEXT_WHITE)
                 gravity = Gravity.CENTER
                 visibility = View.GONE
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(Color.parseColor("#CC261212"))
-                    setStroke(3, Color.parseColor("#FF5252"))
-                }
+                background = UiTheme.ovalBox(UiTheme.CLOSE_ZONE_IDLE, 3, UiTheme.ACCENT_RED_BRIGHT)
             }
             closeTargetView = closeTv
 
@@ -369,7 +358,7 @@ class FpsOverlayService : Service() {
 
             val tv = TextView(this).apply {
                 setTypeface(null, Typeface.BOLD)
-                setTextColor(Color.parseColor("#00E676"))
+                setTextColor(UiTheme.ACCENT_GREEN)
             }
             overlayView = tv
             applyOverlayStyle()
@@ -438,14 +427,10 @@ class FpsOverlayService : Service() {
                                     stopSelf()
                                     return true
                                 }
-                                if (isLandscapeMode()) {
-                                    prefs.edit().putInt("overlay_land_x", params.x).putInt("overlay_land_y", params.y).apply()
-                                } else {
-                                    prefs.edit().putInt("overlay_port_x", params.x).putInt("overlay_port_y", params.y).apply()
-                                }
+                                prefsMgr.saveHudPosition(isLandscapeMode(), params.x, params.y)
                             } else {
                                 sizeLevel = (sizeLevel + 1) % 4
-                                prefs.edit().putInt("overlay_size_level", sizeLevel).apply()
+                                prefsMgr.overlaySizeLevel = sizeLevel
                                 lastRenderedText = ""
                                 applyOverlayStyle()
                                 renderTelemetryText()
@@ -472,19 +457,11 @@ class FpsOverlayService : Service() {
         if (active) {
             cView.scaleX = 1.18f
             cView.scaleY = 1.18f
-            cView.background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#FF1744"))
-                setStroke(4, Color.WHITE)
-            }
+            cView.background = UiTheme.ovalBox(UiTheme.ACCENT_RED_ALERT, 4, UiTheme.TEXT_WHITE)
         } else {
             cView.scaleX = 1.0f
             cView.scaleY = 1.0f
-            cView.background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#CC261212"))
-                setStroke(3, Color.parseColor("#FF5252"))
-            }
+            cView.background = UiTheme.ovalBox(UiTheme.CLOSE_ZONE_IDLE, 3, UiTheme.ACCENT_RED_BRIGHT)
         }
     }
 
@@ -493,63 +470,40 @@ class FpsOverlayService : Service() {
         tv.gravity = if (isVertical) Gravity.START else Gravity.CENTER_VERTICAL
         if (isVertical) tv.setLineSpacing(4f, 1.08f) else tv.setLineSpacing(0f, 1.0f)
 
-        when (sizeLevel) {
-            0 -> {
-                tv.textSize = 9.5f
-                tv.setPadding(14, 8, 14, 8)
-                tv.background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#88101216"))
-                    cornerRadius = 14f
-                    setStroke(1, Color.parseColor("#4400E676"))
-                }
-            }
-            1 -> {
-                tv.textSize = 11f
-                tv.setPadding(18, 10, 18, 10)
-                tv.background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#B3101216"))
-                    cornerRadius = 18f
-                    setStroke(1, Color.parseColor("#5500E676"))
-                }
-            }
-            2 -> {
-                tv.textSize = 12.5f
-                tv.setPadding(22, 12, 22, 12)
-                tv.background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#CC101216"))
-                    cornerRadius = 22f
-                    setStroke(2, Color.parseColor("#6600E676"))
-                }
-            }
-            else -> {
-                tv.textSize = 14f
-                tv.setPadding(26, 14, 26, 14)
-                tv.background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#DD101216"))
-                    cornerRadius = 26f
-                    setStroke(2, Color.parseColor("#7700E676"))
-                }
-            }
-        }
+        val idx = sizeLevel.coerceIn(0, 3)
+        val textSizes = floatArrayOf(9.5f, 11f, 12.5f, 14f)
+        val padH = intArrayOf(14, 18, 22, 26)
+        val padV = intArrayOf(8, 10, 12, 14)
+        val radii = floatArrayOf(14f, 18f, 22f, 26f)
+        val strokes = intArrayOf(1, 1, 2, 2)
+
+        tv.textSize = textSizes[idx]
+        tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
+        tv.background = UiTheme.roundBox(
+            UiTheme.HUD_BG_LEVELS[idx],
+            radii[idx],
+            strokes[idx],
+            UiTheme.HUD_STROKE_LEVELS[idx]
+        )
     }
 
     private fun renderTelemetryText() {
         val tv = overlayView ?: return
 
-        val showFps = prefs.getBoolean("m_fps", true)
-        val showWatt = prefs.getBoolean("m_watt", true)
-        val showGpu = prefs.getBoolean("m_gpu", true)
-        val showCpuFreq = prefs.getBoolean("m_cpu_freq", false)
+        val showFps = prefsMgr.getMetric("m_fps", true)
+        val showWatt = prefsMgr.getMetric("m_watt", true)
+        val showGpu = prefsMgr.getMetric("m_gpu", true)
+        val showCpuFreq = prefsMgr.getMetric("m_cpu_freq", false)
 
-        val showBatTemp = prefs.getBoolean("m_bat_temp", true)
-        val showSocTemp = prefs.getBoolean("m_soc_temp", true)
-        val showCpuTemp = prefs.getBoolean("m_cpu_temp", false)
-        val showGpuTemp = prefs.getBoolean("m_gpu_temp", false)
+        val showBatTemp = prefsMgr.getMetric("m_bat_temp", true)
+        val showSocTemp = prefsMgr.getMetric("m_soc_temp", true)
+        val showCpuTemp = prefsMgr.getMetric("m_cpu_temp", false)
+        val showGpuTemp = prefsMgr.getMetric("m_gpu_temp", false)
 
-        val showDdrTemp = prefs.getBoolean("m_ddr_temp", false)
-        val showCamTemp = prefs.getBoolean("m_cam_temp", false)
-        val showSkinTemp = prefs.getBoolean("m_skin_temp", false)
-        val showRam = prefs.getBoolean("m_ram", false)
+        val showDdrTemp = prefsMgr.getMetric("m_ddr_temp", false)
+        val showCamTemp = prefsMgr.getMetric("m_cam_temp", false)
+        val showSkinTemp = prefsMgr.getMetric("m_skin_temp", false)
+        val showRam = prefsMgr.getMetric("m_ram", false)
 
         val parts = ArrayList<String>(8)
         val isCompact = (sizeLevel == 0)
@@ -625,9 +579,9 @@ class FpsOverlayService : Service() {
 
         val maxChipTemp = maxOf(lastCpuTemp, lastGpuTemp, lastSocTemp)
         val color = when {
-            cachedBatTemp >= 43.0f || maxChipTemp >= 85.0f -> Color.parseColor("#FF5252")
-            cachedBatTemp >= 40.0f || maxChipTemp >= 75.0f -> Color.parseColor("#FFD740")
-            else -> Color.parseColor("#00E676")
+            cachedBatTemp >= 43.0f || maxChipTemp >= 85.0f -> UiTheme.ACCENT_RED_BRIGHT
+            cachedBatTemp >= 40.0f || maxChipTemp >= 75.0f -> UiTheme.ACCENT_GOLD
+            else -> UiTheme.ACCENT_GREEN
         }
         if (color != lastRenderedColor) {
             lastRenderedColor = color
@@ -670,11 +624,7 @@ class FpsOverlayService : Service() {
             closeShellSession()
             if (!Shizuku.pingBinder()) return false
 
-            val m = Shizuku::class.java.getDeclaredMethod(
-                "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java
-            )
-            m.isAccessible = true
-            val proc = m.invoke(null, arrayOf("sh"), null, null) as Process
+            val proc = ShizukuHelper.newShellProcess(arrayOf("sh"))
             val writer = BufferedWriter(OutputStreamWriter(proc.outputStream, Charsets.UTF_8), 2048)
             val reader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8), 4096)
 
@@ -767,17 +717,17 @@ class FpsOverlayService : Service() {
                 try {
                     tickCounter++
                     val currentPkg = targetPkg
-                    val showFps = prefs.getBoolean("m_fps", true)
-                    val showSocTemp = prefs.getBoolean("m_soc_temp", true)
-                    val showCpuTemp = prefs.getBoolean("m_cpu_temp", false)
-                    val showGpuTemp = prefs.getBoolean("m_gpu_temp", false)
-                    val showDdrTemp = prefs.getBoolean("m_ddr_temp", false)
-                    val showCamTemp = prefs.getBoolean("m_cam_temp", false)
-                    val showSkinTemp = prefs.getBoolean("m_skin_temp", false)
-                    val showWatt = prefs.getBoolean("m_watt", true)
-                    val showGpu = prefs.getBoolean("m_gpu", true)
-                    val showCpuFreq = prefs.getBoolean("m_cpu_freq", false)
-                    val showRam = prefs.getBoolean("m_ram", false)
+                    val showFps = prefsMgr.getMetric("m_fps", true)
+                    val showSocTemp = prefsMgr.getMetric("m_soc_temp", true)
+                    val showCpuTemp = prefsMgr.getMetric("m_cpu_temp", false)
+                    val showGpuTemp = prefsMgr.getMetric("m_gpu_temp", false)
+                    val showDdrTemp = prefsMgr.getMetric("m_ddr_temp", false)
+                    val showCamTemp = prefsMgr.getMetric("m_cam_temp", false)
+                    val showSkinTemp = prefsMgr.getMetric("m_skin_temp", false)
+                    val showWatt = prefsMgr.getMetric("m_watt", true)
+                    val showGpu = prefsMgr.getMetric("m_gpu", true)
+                    val showCpuFreq = prefsMgr.getMetric("m_cpu_freq", false)
+                    val showRam = prefsMgr.getMetric("m_ram", false)
 
                     if (showWatt) {
                         readInstantWattage()
@@ -787,7 +737,6 @@ class FpsOverlayService : Service() {
                     if (currentPkg.isNotEmpty() && tickCounter % 3 == 1) {
                         sb.append("printf \"PID=\"; pidof ").append(currentPkg).append("; ")
                     }
-                    // Giãn nhịp dumpsys gpu lên ~3.5s/lần để triệt tiêu hoàn toàn các đỉnh 10% CPU
                     if (showGpu && (tickCounter % 9 == 1 || lastGpuVramMb < 0)) {
                         sb.append("dumpsys gpu | head -n 45; ")
                     }
@@ -817,7 +766,6 @@ class FpsOverlayService : Service() {
                     }
                     if (showFps) {
                         sb.append("if [ -n \"\$DRM_NODE\" ]; then read -r dv < \"\$DRM_NODE\" 2>/dev/null && printf \"DRM_FPS=%s\\n\" \"\$dv\"; fi; ")
-                        // Chỉ gọi SurfaceFlinger nếu DRM_NODE chưa trả về FPS hợp lệ
                         if (!drmFpsAvailable || tickCounter % 15 == 1) {
                             if (initializedStatsForPkg != currentPkg) {
                                 sb.append("dumpsys SurfaceFlinger --timestats -clear -enable >/dev/null 2>&1; ")

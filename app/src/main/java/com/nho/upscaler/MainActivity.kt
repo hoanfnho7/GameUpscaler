@@ -10,17 +10,14 @@ import android.app.StatusBarManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
-import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
@@ -32,9 +29,6 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
-import rikka.shizuku.Shizuku
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.util.Locale
 import kotlin.concurrent.thread
 
@@ -50,9 +44,10 @@ class MainActivity : Activity() {
     private val allApps = mutableListOf<AppItem>()
     private val filteredApps = mutableListOf<AppItem>()
     private lateinit var adapter: BaseAdapter
-    private lateinit var prefs: SharedPreferences
+    private lateinit var prefsMgr: PrefsManager
     private lateinit var previewTv: TextView
     private val pinnedPkgs = mutableSetOf<String>()
+
     private var selectedFactor = 125
     private var showPinnedOnly = false
     private var enableFpsOverlay = true
@@ -67,99 +62,74 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        prefs = getSharedPreferences("upscaler_prefs", Context.MODE_PRIVATE)
-        selectedFactor = prefs.getInt("saved_factor", 125)
-        showPinnedOnly = prefs.getBoolean("show_pinned_only", false)
-        enableFpsOverlay = prefs.getBoolean("enable_fps_overlay", true)
-        overlaySizeLevel = prefs.getInt("overlay_size_level", 1)
-        hudPollMode = prefs.getInt("hud_poll_mode", 0)
-        overlayVertical = prefs.getBoolean("overlay_vertical", false)
+        prefsMgr = PrefsManager(this)
+        selectedFactor = prefsMgr.savedFactor
+        showPinnedOnly = prefsMgr.showPinnedOnly
+        enableFpsOverlay = prefsMgr.enableFpsOverlay
+        overlaySizeLevel = prefsMgr.overlaySizeLevel
+        hudPollMode = prefsMgr.hudPollMode
+        overlayVertical = prefsMgr.overlayVertical
 
         if (handleIncomingIntent(intent)) {
             finish()
             return
         }
 
-        if (Build.VERSION.SDK_INT >= 33) {
-            if (checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 102)
-            }
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 102)
         }
 
-        val defaultPins = setOf(
-            "com.activision.callofduty.shooter",
-            "com.garena.game.codm",
-            "com.vng.pubgmobile",
-            "com.tencent.ig"
-        )
-        val savedSet = prefs.getStringSet("pinned_pkgs", null)
-        if (savedSet == null) {
-            pinnedPkgs.addAll(defaultPins)
-            prefs.edit().putStringSet("pinned_pkgs", HashSet(pinnedPkgs)).apply()
-        } else {
-            pinnedPkgs.addAll(savedSet)
-        }
+        pinnedPkgs.addAll(prefsMgr.getPinnedPackages())
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#101216"))
+            setBackgroundColor(UiTheme.BG_ROOT)
             setPadding(32, 38, 32, 16)
         }
 
+        // Header + Language Switcher
         val headerBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-
-        val title = TextView(this).apply {
+        headerBar.addView(TextView(this).apply {
             text = "⚡ ${Lang.str(this@MainActivity, R.string.app_name).uppercase(Locale.US)}"
             textSize = 18.5f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.parseColor("#00E676"))
+            setTextColor(UiTheme.ACCENT_GREEN)
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        headerBar.addView(title)
-
-        val langBtn = TextView(this).apply {
+        })
+        headerBar.addView(TextView(this).apply {
             text = Lang.modeBadge(this@MainActivity)
             textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.parseColor("#64FFDA"))
+            setTextColor(UiTheme.ACCENT_CYAN)
             setPadding(18, 9, 18, 9)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1B242B"))
-                cornerRadius = 14f
-                setStroke(1, Color.parseColor("#2E4A52"))
-            }
+            background = UiTheme.roundBox(UiTheme.BTN_LANG_BG, 14f, 1, UiTheme.BTN_CYAN_STROKE)
             setOnClickListener {
-                val nextLang = (Lang.getMode(this@MainActivity) + 1) % 3
-                prefs.edit().putInt("app_lang", nextLang).apply()
+                prefsMgr.appLang = (prefsMgr.appLang + 1) % 3
                 notifyOverlayStyleUpdated()
                 recreate()
             }
-        }
-        headerBar.addView(langBtn)
+        })
         root.addView(headerBar)
 
-        val subTitle = TextView(this).apply {
+        root.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.subtitle_hint)
             textSize = 11f
-            setTextColor(Color.parseColor("#9E9E9E"))
+            setTextColor(UiTheme.TEXT_SUB)
             setPadding(0, 4, 0, 12)
-        }
-        root.addView(subTitle)
+        })
 
         previewTv = TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.reading_display)
             textSize = 12f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.parseColor("#64FFDA"))
+            setTextColor(UiTheme.ACCENT_CYAN)
             setPadding(20, 14, 20, 14)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#182026"))
-                cornerRadius = 14f
-                setStroke(1, Color.parseColor("#263238"))
-            }
+            background = UiTheme.roundBox(UiTheme.BG_PREVIEW, 14f, 1, UiTheme.STROKE_SUBTLE)
         }
         root.addView(previewTv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 10 })
 
@@ -167,37 +137,32 @@ class MainActivity : Activity() {
             orientation = RadioGroup.HORIZONTAL
             setPadding(0, 0, 0, 8)
         }
-        val scales = listOf(110 to "1.10x", 115 to "1.15x", 120 to "1.20x", 125 to "1.25x")
-        scales.forEach { (factor, label) ->
-            val rb = RadioButton(this).apply {
+        listOf(110 to "1.10x", 115 to "1.15x", 120 to "1.20x", 125 to "1.25x").forEach { (factor, label) ->
+            radioGroup.addView(RadioButton(this).apply {
                 text = label
                 textSize = 12.5f
-                setTextColor(Color.WHITE)
+                setTextColor(UiTheme.TEXT_WHITE)
                 id = factor
                 isChecked = (factor == selectedFactor)
                 layoutParams = RadioGroup.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                 setOnClickListener {
                     selectedFactor = factor
-                    prefs.edit().putInt("saved_factor", factor).apply()
+                    prefsMgr.savedFactor = factor
                     updatePreviewText()
                     adapter.notifyDataSetChanged()
                 }
-            }
-            radioGroup.addView(rb)
+            })
         }
         root.addView(radioGroup, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         val resetBtn = Button(this).apply {
             text = Lang.str(this@MainActivity, R.string.btn_reset_display)
             textSize = 12.5f
-            setTextColor(Color.WHITE)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#D32F2F"))
-                cornerRadius = 18f
-            }
+            setTextColor(UiTheme.TEXT_WHITE)
+            background = UiTheme.roundBox(UiTheme.ACCENT_RED, 18f)
             setOnClickListener {
-                if (checkShizuku()) {
-                    runShizukuScript("wm size reset; wm density reset")
+                if (ShizukuHelper.ensureReady(this@MainActivity)) {
+                    ShizukuHelper.resetDisplay()
                     cancelActiveNotification()
                     stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
                     Toast.makeText(context, Lang.str(this@MainActivity, R.string.toast_display_reset), Toast.LENGTH_SHORT).show()
@@ -206,30 +171,79 @@ class MainActivity : Activity() {
         }
         root.addView(resetBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 10 })
 
+        root.addView(buildHudControlCard(), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8 })
+
+        root.addView(CheckBox(this).apply {
+            text = Lang.str(this@MainActivity, R.string.chk_pinned_only)
+            textSize = 12.5f
+            setTextColor(UiTheme.ACCENT_STAR)
+            isChecked = showPinnedOnly
+            setOnCheckedChangeListener { _, isChecked ->
+                showPinnedOnly = isChecked
+                prefsMgr.showPinnedOnly = isChecked
+                sortAndFilterApps()
+            }
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 6 })
+
+        root.addView(EditText(this).apply {
+            hint = Lang.str(this@MainActivity, R.string.hint_search)
+            textSize = 13f
+            setHintTextColor(UiTheme.TEXT_MUTED)
+            setTextColor(UiTheme.TEXT_WHITE)
+            setPadding(24, 16, 24, 16)
+            background = UiTheme.roundBox(UiTheme.BG_INPUT, 16f)
+            addTextChangedListener(object : TextWatcher {
+                override fun afterTextChanged(s: Editable?) {
+                    currentQuery = s?.toString() ?: ""
+                    sortAndFilterApps()
+                }
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            })
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 10 })
+
+        val listView = ListView(this).apply {
+            divider = null
+            dividerHeight = 12
+        }
+        adapter = createAppAdapter()
+        listView.adapter = adapter
+        root.addView(listView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+
+        setContentView(root)
+        updatePreviewText()
+        if (ShizukuHelper.ensureReady(this)) {
+            ShizukuHelper.fetchPhysicalDisplay { w, h, den ->
+                physW = w
+                physH = h
+                physDen = den
+                runOnUiThread { updatePreviewText() }
+            }
+        }
+        loadInstalledApps()
+    }
+
+    private fun buildHudControlCard(): LinearLayout {
         val hudCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(16, 12, 16, 14)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#161920"))
-                cornerRadius = 18f
-                setStroke(1, Color.parseColor("#263238"))
-            }
+            background = UiTheme.roundBox(UiTheme.BG_CARD, 18f, 1, UiTheme.STROKE_SUBTLE)
         }
 
-        val hudHeaderRow = LinearLayout(this).apply {
+        val headerRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        val fpsCheck = CheckBox(this).apply {
+        headerRow.addView(CheckBox(this).apply {
             text = Lang.str(this@MainActivity, R.string.chk_telemetry_hud)
             textSize = 12.5f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.parseColor("#64FFDA"))
+            setTextColor(UiTheme.ACCENT_CYAN)
             isChecked = enableFpsOverlay
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             setOnCheckedChangeListener { _, isChecked ->
                 enableFpsOverlay = isChecked
-                prefs.edit().putBoolean("enable_fps_overlay", isChecked).apply()
+                prefsMgr.enableFpsOverlay = isChecked
                 if (isChecked && !Settings.canDrawOverlays(this@MainActivity)) {
                     Toast.makeText(this@MainActivity, Lang.str(this@MainActivity, R.string.toast_grant_overlay_long), Toast.LENGTH_LONG).show()
                     startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
@@ -237,38 +251,30 @@ class MainActivity : Activity() {
                     stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
                 }
             }
-        }
-        hudHeaderRow.addView(fpsCheck)
+        })
 
-        val orientBtn = TextView(this).apply {
+        headerRow.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, if (overlayVertical) R.string.btn_orient_vert else R.string.btn_orient_horiz)
             textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.parseColor("#101216"))
+            setTextColor(UiTheme.TEXT_DARK)
             setPadding(18, 8, 18, 8)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#FFD740"))
-                cornerRadius = 12f
-            }
+            background = UiTheme.roundBox(UiTheme.ACCENT_GOLD, 12f)
             setOnClickListener {
                 overlayVertical = !overlayVertical
-                prefs.edit().putBoolean("overlay_vertical", overlayVertical).apply()
+                prefsMgr.overlayVertical = overlayVertical
                 text = Lang.str(this@MainActivity, if (overlayVertical) R.string.btn_orient_vert else R.string.btn_orient_horiz)
                 notifyOverlayStyleUpdated()
             }
-        }
-        hudHeaderRow.addView(orientBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = 8 })
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = 8 })
 
-        val testOverlayBtn = TextView(this).apply {
+        headerRow.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.btn_test_hud)
             textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.WHITE)
+            setTextColor(UiTheme.TEXT_WHITE)
             setPadding(18, 8, 18, 8)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#2E7D32"))
-                cornerRadius = 12f
-            }
+            background = UiTheme.roundBox(UiTheme.ACCENT_TEST_GREEN, 12f)
             setOnClickListener {
                 if (!Settings.canDrawOverlays(this@MainActivity)) {
                     Toast.makeText(this@MainActivity, Lang.str(this@MainActivity, R.string.toast_grant_overlay_short), Toast.LENGTH_SHORT).show()
@@ -285,92 +291,46 @@ class MainActivity : Activity() {
                     stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
                 }
             }
-        }
-        hudHeaderRow.addView(testOverlayBtn)
-        hudCard.addView(hudHeaderRow)
+        })
+        hudCard.addView(headerRow)
 
-        val sizeRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 6, 0, 6)
-        }
-        val sizeChips = mutableListOf<TextView>()
-        val sizeLabels = listOf(
-            0 to Lang.str(this, R.string.size_tiny),
-            1 to Lang.str(this, R.string.size_small),
-            2 to Lang.str(this, R.string.size_medium),
-            3 to Lang.str(this, R.string.size_large)
-        )
-        fun refreshSizeChips() {
-            sizeChips.forEachIndexed { idx, chip ->
-                val active = (idx == overlaySizeLevel)
-                chip.setTextColor(if (active) Color.parseColor("#101216") else Color.parseColor("#B0BEC5"))
-                chip.background = GradientDrawable().apply {
-                    setColor(if (active) Color.parseColor("#64FFDA") else Color.parseColor("#222630"))
-                    cornerRadius = 10f
-                }
-            }
-        }
-        sizeLabels.forEach { (lvl, lbl) ->
-            val chip = TextView(this).apply {
-                text = lbl
-                textSize = 11f
-                setTypeface(null, Typeface.BOLD)
-                gravity = Gravity.CENTER
-                setPadding(8, 8, 8, 8)
-                setOnClickListener {
-                    overlaySizeLevel = lvl
-                    prefs.edit().putInt("overlay_size_level", lvl).apply()
-                    refreshSizeChips()
-                    notifyOverlayStyleUpdated()
-                }
-            }
-            sizeChips.add(chip)
-            sizeRow.addView(chip, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (lvl < 3) rightMargin = 6 })
-        }
-        refreshSizeChips()
-        hudCard.addView(sizeRow)
+        // Size chips row
+        hudCard.addView(buildChipRow(
+            items = listOf(
+                0 to Lang.str(this, R.string.size_tiny),
+                1 to Lang.str(this, R.string.size_small),
+                2 to Lang.str(this, R.string.size_medium),
+                3 to Lang.str(this, R.string.size_large)
+            ),
+            selectedIndex = overlaySizeLevel,
+            activeColor = UiTheme.ACCENT_CYAN,
+            padTop = 6,
+            padBottom = 6
+        ) { lvl ->
+            overlaySizeLevel = lvl
+            prefsMgr.overlaySizeLevel = lvl
+            notifyOverlayStyleUpdated()
+        })
 
-        val pollRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 0, 0, 8)
-        }
-        val pollChips = mutableListOf<TextView>()
-        val pollLabels = listOf(
-            0 to Lang.str(this, R.string.poll_auto),
-            1 to Lang.str(this, R.string.poll_300ms),
-            2 to Lang.str(this, R.string.poll_1s),
-            3 to Lang.str(this, R.string.poll_2s)
-        )
-        fun refreshPollChips() {
-            pollChips.forEachIndexed { idx, chip ->
-                val active = (idx == hudPollMode)
-                chip.setTextColor(if (active) Color.parseColor("#101216") else Color.parseColor("#B0BEC5"))
-                chip.background = GradientDrawable().apply {
-                    setColor(if (active) Color.parseColor("#00E676") else Color.parseColor("#222630"))
-                    cornerRadius = 10f
-                }
-            }
-        }
-        pollLabels.forEach { (mode, lbl) ->
-            val chip = TextView(this).apply {
-                text = lbl
-                textSize = 10.5f
-                setTypeface(null, Typeface.BOLD)
-                gravity = Gravity.CENTER
-                setPadding(6, 7, 6, 7)
-                setOnClickListener {
-                    hudPollMode = mode
-                    prefs.edit().putInt("hud_poll_mode", mode).apply()
-                    refreshPollChips()
-                    notifyOverlayStyleUpdated()
-                }
-            }
-            pollChips.add(chip)
-            pollRow.addView(chip, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (mode < 3) rightMargin = 6 })
-        }
-        refreshPollChips()
-        hudCard.addView(pollRow)
+        // Polling rate chips row
+        hudCard.addView(buildChipRow(
+            items = listOf(
+                0 to Lang.str(this, R.string.poll_auto),
+                1 to Lang.str(this, R.string.poll_300ms),
+                2 to Lang.str(this, R.string.poll_1s),
+                3 to Lang.str(this, R.string.poll_2s)
+            ),
+            selectedIndex = hudPollMode,
+            activeColor = UiTheme.ACCENT_GREEN,
+            padTop = 0,
+            padBottom = 8
+        ) { mode ->
+            hudPollMode = mode
+            prefsMgr.hudPollMode = mode
+            notifyOverlayStyleUpdated()
+        })
 
+        // 12 Telemetry Metric Toggles
         val metricRows = listOf(
             listOf(
                 Triple("m_fps", Lang.str(this, R.string.metric_fps), true),
@@ -398,162 +358,146 @@ class MainActivity : Activity() {
                 if (rowIdx > 0) setPadding(0, 6, 0, 0)
             }
             rowItems.forEachIndexed { colIdx, (key, label, defVal) ->
-                var enabled = prefs.getBoolean(key, defVal)
+                var enabled = prefsMgr.getMetric(key, defVal)
                 val pill = TextView(this).apply {
                     text = label
                     textSize = 10f
                     setTypeface(null, Typeface.BOLD)
                     gravity = Gravity.CENTER
                     setPadding(4, 8, 4, 8)
-                    fun updatePillStyle() {
-                        setTextColor(if (enabled) Color.parseColor("#00E676") else Color.parseColor("#757575"))
-                        background = GradientDrawable().apply {
-                            setColor(if (enabled) Color.parseColor("#1B2E24") else Color.parseColor("#1D2028"))
-                            cornerRadius = 10f
-                            setStroke(1, if (enabled) Color.parseColor("#00E676") else Color.parseColor("#2C303A"))
-                        }
+                    fun updateStyle() {
+                        setTextColor(if (enabled) UiTheme.ACCENT_GREEN else UiTheme.TEXT_MUTED)
+                        background = UiTheme.roundBox(
+                            if (enabled) UiTheme.BG_PILL_ACTIVE else UiTheme.BG_PILL_INACTIVE,
+                            10f,
+                            1,
+                            if (enabled) UiTheme.ACCENT_GREEN else UiTheme.STROKE_PILL_OFF
+                        )
                     }
-                    updatePillStyle()
+                    updateStyle()
                     setOnClickListener {
                         enabled = !enabled
-                        prefs.edit().putBoolean(key, enabled).apply()
-                        updatePillStyle()
+                        prefsMgr.setMetric(key, enabled)
+                        updateStyle()
                         notifyOverlayStyleUpdated()
                     }
                 }
-                mRow.addView(pill, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (colIdx < rowItems.size - 1) rightMargin = 5 })
+                mRow.addView(pill, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    if (colIdx < rowItems.size - 1) rightMargin = 5
+                })
             }
             hudCard.addView(mRow)
         }
 
-        val actionBottomRow = LinearLayout(this).apply {
+        // Bottom Utility Buttons (Quick Tile, Reset Pos, Sensors)
+        val bottomRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, 8, 0, 0)
         }
+        bottomRow.addView(makeActionChip(Lang.str(this, R.string.btn_quick_tile), UiTheme.ACCENT_CYAN, UiTheme.BTN_CYAN_BG, UiTheme.BTN_CYAN_STROKE) {
+            requestAddQuickTile()
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.15f).apply { rightMargin = 6 })
 
-        val addQsTileBtn = TextView(this).apply {
-            text = Lang.str(this@MainActivity, R.string.btn_quick_tile)
-            textSize = 10.5f
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.parseColor("#64FFDA"))
-            gravity = Gravity.CENTER
-            setPadding(8, 10, 8, 10)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#182429"))
-                cornerRadius = 12f
-                setStroke(1, Color.parseColor("#2E4A52"))
+        bottomRow.addView(makeActionChip(Lang.str(this, R.string.btn_reset_pos), UiTheme.ACCENT_GOLD, UiTheme.BTN_GOLD_BG, UiTheme.BTN_GOLD_STROKE) {
+            prefsMgr.resetHudPosition()
+            if (FpsOverlayService.isServiceRunning) {
+                startService(Intent(this, FpsOverlayService::class.java).apply { action = "RESET_POS" })
             }
-            setOnClickListener {
-                val hintMsg = Lang.str(this@MainActivity, R.string.hint_quick_tile)
-                if (Build.VERSION.SDK_INT >= 33) {
-                    try {
-                        val sbm = getSystemService(StatusBarManager::class.java)
-                        sbm?.requestAddTileService(
-                            ComponentName(this@MainActivity, HudTileService::class.java),
-                            Lang.tileLabel(this@MainActivity),
-                            Icon.createWithResource(this@MainActivity, R.drawable.ic_hud_tile),
-                            mainExecutor
-                        ) { result ->
-                            if (result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED ||
-                                result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED) {
-                                Toast.makeText(this@MainActivity, Lang.str(this@MainActivity, R.string.toast_quick_tile_added), Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    } catch (_: Exception) {
-                        Toast.makeText(this@MainActivity, hintMsg, Toast.LENGTH_LONG).show()
-                    }
-                } else {
-                    Toast.makeText(this@MainActivity, hintMsg, Toast.LENGTH_LONG).show()
+            Toast.makeText(this, Lang.str(this, R.string.toast_pos_reset), Toast.LENGTH_SHORT).show()
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 0.95f).apply { rightMargin = 6 })
+
+        bottomRow.addView(makeActionChip(Lang.str(this, R.string.btn_sensors), UiTheme.ACCENT_PURPLE, UiTheme.BTN_PURPLE_BG, UiTheme.BTN_PURPLE_STROKE) {
+            showThermalInspectorDialog()
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+
+        hudCard.addView(bottomRow)
+        return hudCard
+    }
+
+    private fun buildChipRow(
+        items: List<Pair<Int, String>>,
+        selectedIndex: Int,
+        activeColor: Int,
+        padTop: Int,
+        padBottom: Int,
+        onSelect: (Int) -> Unit
+    ): LinearLayout {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, padTop, 0, padBottom)
+        }
+        var current = selectedIndex
+        val chips = mutableListOf<TextView>()
+
+        fun refresh() {
+            chips.forEachIndexed { idx, chip ->
+                val active = (idx == current)
+                chip.setTextColor(if (active) UiTheme.TEXT_DARK else UiTheme.TEXT_CHIP)
+                chip.background = UiTheme.roundBox(if (active) activeColor else UiTheme.BG_CHIP_INACTIVE, 10f)
+            }
+        }
+
+        items.forEach { (id, label) ->
+            val chip = TextView(this).apply {
+                text = label
+                textSize = 10.5f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setPadding(6, 8, 6, 8)
+                setOnClickListener {
+                    current = id
+                    refresh()
+                    onSelect(id)
                 }
             }
-        }
-        actionBottomRow.addView(addQsTileBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.15f).apply { rightMargin = 6 })
-
-        val resetPosBtn = TextView(this).apply {
-            text = Lang.str(this@MainActivity, R.string.btn_reset_pos)
-            textSize = 10.5f
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.parseColor("#FFD740"))
-            gravity = Gravity.CENTER
-            setPadding(8, 10, 8, 10)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#242118"))
-                cornerRadius = 12f
-                setStroke(1, Color.parseColor("#4A4228"))
-            }
-            setOnClickListener {
-                prefs.edit()
-                    .remove("overlay_land_x")
-                    .remove("overlay_land_y")
-                    .remove("overlay_port_x")
-                    .remove("overlay_port_y")
-                    .apply()
-                if (FpsOverlayService.isServiceRunning) {
-                    startService(Intent(this@MainActivity, FpsOverlayService::class.java).apply { action = "RESET_POS" })
-                }
-                Toast.makeText(this@MainActivity, Lang.str(this@MainActivity, R.string.toast_pos_reset), Toast.LENGTH_SHORT).show()
-            }
-        }
-        actionBottomRow.addView(resetPosBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 0.95f).apply { rightMargin = 6 })
-
-        val inspectSensorsBtn = TextView(this).apply {
-            text = Lang.str(this@MainActivity, R.string.btn_sensors)
-            textSize = 10.5f
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.parseColor("#CE93D8"))
-            gravity = Gravity.CENTER
-            setPadding(8, 10, 8, 10)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#231926"))
-                cornerRadius = 12f
-                setStroke(1, Color.parseColor("#472D4F"))
-            }
-            setOnClickListener { showThermalInspectorDialog() }
-        }
-        actionBottomRow.addView(inspectSensorsBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        hudCard.addView(actionBottomRow)
-
-        root.addView(hudCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8 })
-
-        val favCheck = CheckBox(this).apply {
-            text = Lang.str(this@MainActivity, R.string.chk_pinned_only)
-            textSize = 12.5f
-            setTextColor(Color.parseColor("#FFD600"))
-            isChecked = showPinnedOnly
-            setOnCheckedChangeListener { _, isChecked ->
-                showPinnedOnly = isChecked
-                prefs.edit().putBoolean("show_pinned_only", isChecked).apply()
-                sortAndFilterApps()
-            }
-        }
-        root.addView(favCheck, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 6 })
-
-        val searchBox = EditText(this).apply {
-            hint = Lang.str(this@MainActivity, R.string.hint_search)
-            textSize = 13f
-            setHintTextColor(Color.parseColor("#757575"))
-            setTextColor(Color.WHITE)
-            setPadding(24, 16, 24, 16)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1E2229"))
-                cornerRadius = 16f
-            }
-            addTextChangedListener(object : TextWatcher {
-                override fun afterTextChanged(s: Editable?) {
-                    currentQuery = s?.toString() ?: ""
-                    sortAndFilterApps()
-                }
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            chips.add(chip)
+            row.addView(chip, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                if (id < items.size - 1) rightMargin = 6
             })
         }
-        root.addView(searchBox, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 10 })
+        refresh()
+        return row
+    }
 
-        val listView = ListView(this).apply {
-            divider = null
-            dividerHeight = 12
+    private fun makeActionChip(label: String, textColor: Int, bgColor: Int, strokeColor: Int, onClick: () -> Unit): TextView {
+        return TextView(this).apply {
+            text = label
+            textSize = 10.5f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(textColor)
+            gravity = Gravity.CENTER
+            setPadding(8, 10, 8, 10)
+            background = UiTheme.roundBox(bgColor, 12f, 1, strokeColor)
+            setOnClickListener { onClick() }
         }
+    }
 
+    private fun requestAddQuickTile() {
+        val hintMsg = Lang.str(this, R.string.hint_quick_tile)
+        if (Build.VERSION.SDK_INT >= 33) {
+            try {
+                val sbm = getSystemService(StatusBarManager::class.java)
+                sbm?.requestAddTileService(
+                    ComponentName(this, HudTileService::class.java),
+                    Lang.tileLabel(this),
+                    Icon.createWithResource(this, R.drawable.ic_hud_tile),
+                    mainExecutor
+                ) { result ->
+                    if (result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED ||
+                        result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED
+                    ) {
+                        Toast.makeText(this, Lang.str(this, R.string.toast_quick_tile_added), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (_: Exception) {
+                Toast.makeText(this, hintMsg, Toast.LENGTH_LONG).show()
+            }
+        } else {
+            Toast.makeText(this, hintMsg, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun createAppAdapter(): BaseAdapter {
         class RowHolder(
             val row: LinearLayout,
             val img: ImageView,
@@ -563,7 +507,7 @@ class MainActivity : Activity() {
             val pinBtn: TextView
         )
 
-        adapter = object : BaseAdapter() {
+        return object : BaseAdapter() {
             override fun getCount() = filteredApps.size
             override fun getItem(pos: Int) = filteredApps[pos]
             override fun getItemId(pos: Int) = pos.toLong()
@@ -591,7 +535,7 @@ class MainActivity : Activity() {
                     }
                     val pkgTv = TextView(this@MainActivity).apply {
                         textSize = 10.5f
-                        setTextColor(Color.parseColor("#888888"))
+                        setTextColor(UiTheme.TEXT_PKG)
                     }
                     textCol.addView(nameTv)
                     textCol.addView(pkgTv)
@@ -600,12 +544,8 @@ class MainActivity : Activity() {
                         textSize = 11.5f
                         setTypeface(null, Typeface.BOLD)
                         setPadding(18, 10, 18, 10)
-                        background = GradientDrawable().apply {
-                            setColor(Color.parseColor("#263238"))
-                            cornerRadius = 12f
-                        }
+                        background = UiTheme.roundBox(UiTheme.BG_BADGE, 12f)
                     }
-
                     val pinBtn = TextView(this@MainActivity).apply {
                         textSize = 19f
                         setPadding(18, 8, 6, 8)
@@ -622,23 +562,24 @@ class MainActivity : Activity() {
                     holder = convertView.tag as RowHolder
                 }
 
-                holder.row.background = GradientDrawable().apply {
-                    setColor(if (item.isPinned) Color.parseColor("#1E2822") else Color.parseColor("#1A1D24"))
-                    cornerRadius = 20f
-                    if (item.isPinned) setStroke(2, Color.parseColor("#00E676"))
-                }
+                holder.row.background = UiTheme.roundBox(
+                    if (item.isPinned) UiTheme.BG_ROW_PINNED else UiTheme.BG_ROW,
+                    20f,
+                    if (item.isPinned) 2 else 0,
+                    UiTheme.ACCENT_GREEN
+                )
                 holder.img.setImageDrawable(item.icon)
                 holder.nameTv.text = item.name
-                holder.nameTv.setTextColor(if (item.isPinned) Color.parseColor("#00E676") else Color.WHITE)
+                holder.nameTv.setTextColor(if (item.isPinned) UiTheme.ACCENT_GREEN else UiTheme.TEXT_WHITE)
                 holder.pkgTv.text = item.pkg
 
                 val labelStr = "${effectiveScale / 100}.${effectiveScale % 100}x"
                 holder.scaleBadge.text = if (item.customScale > 0) "🎯 $labelStr" else labelStr
-                holder.scaleBadge.setTextColor(if (item.customScale > 0) Color.parseColor("#00E676") else Color.parseColor("#B0BEC5"))
+                holder.scaleBadge.setTextColor(if (item.customScale > 0) UiTheme.ACCENT_GREEN else UiTheme.TEXT_CHIP)
                 holder.scaleBadge.setOnClickListener { cyclePerGameScale(item) }
 
                 holder.pinBtn.text = if (item.isPinned) "⭐" else "☆"
-                holder.pinBtn.setTextColor(if (item.isPinned) Color.parseColor("#FFD600") else Color.parseColor("#616161"))
+                holder.pinBtn.setTextColor(if (item.isPinned) UiTheme.ACCENT_STAR else UiTheme.TEXT_STAR_OFF)
                 holder.pinBtn.setOnClickListener { togglePin(item) }
 
                 holder.row.setOnClickListener { launchGameByPkg(item.pkg, item.name, effectiveScale) }
@@ -649,13 +590,6 @@ class MainActivity : Activity() {
                 return holder.row
             }
         }
-        listView.adapter = adapter
-        root.addView(listView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-
-        setContentView(root)
-        updatePreviewText()
-        if (checkShizuku()) fetchPhysicalDisplayInfo()
-        loadInstalledApps()
     }
 
     override fun onDestroy() {
@@ -665,60 +599,28 @@ class MainActivity : Activity() {
     }
 
     private fun showThermalInspectorDialog() {
-        if (!checkShizuku()) return
+        if (!ShizukuHelper.ensureReady(this)) return
         Toast.makeText(this, Lang.str(this, R.string.toast_scanning_sensors), Toast.LENGTH_SHORT).show()
-        thread {
-            try {
-                val m = Shizuku::class.java.getDeclaredMethod(
-                    "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java
-                )
-                m.isAccessible = true
-                val cmd = "for z in /sys/class/thermal/thermal_zone*; do " +
-                        "if [ -r \"\$z/type\" ] && [ -r \"\$z/temp\" ]; then " +
-                        "read -r t < \"\$z/type\"; read -r v < \"\$z/temp\"; " +
-                        "printf \"%s|%s\\n\" \"\$t\" \"\$v\"; fi; done"
-                val proc = m.invoke(null, arrayOf("sh", "-c", cmd), null, null) as Process
-                val lines = BufferedReader(InputStreamReader(proc.inputStream)).readLines()
-                proc.waitFor()
-
-                val report = StringBuilder()
-                for (line in lines) {
-                    val parts = line.split("|")
-                    if (parts.size == 2) {
-                        val name = parts[0].trim()
-                        val raw = parts[1].trim().toFloatOrNull() ?: continue
-                        val c = when {
-                            raw > 1000f -> raw / 1000f
-                            raw > 200f -> raw / 10f
-                            else -> raw
-                        }
-                        if (c in 15f..125f) {
-                            report.append(String.format(Locale.US, "• %-22s : %.1f°C\n", name, c))
-                        }
-                    }
-                }
-                val finalText = if (report.isEmpty()) Lang.str(this, R.string.no_sensors_found) else report.toString()
-                val dlgTitle = Lang.str(this, R.string.dlg_sensors_title, lines.size)
-                val btnText = Lang.str(this, R.string.btn_close)
+        ShizukuHelper.scanThermalZones(
+            onSuccess = { count, report ->
+                val finalText = report.ifEmpty { Lang.str(this, R.string.no_sensors_found) }
                 runOnUiThread {
                     AlertDialog.Builder(this)
-                        .setTitle(dlgTitle)
+                        .setTitle(Lang.str(this, R.string.dlg_sensors_title, count))
                         .setMessage(finalText)
-                        .setPositiveButton(btnText, null)
+                        .setPositiveButton(Lang.str(this, R.string.btn_close), null)
                         .show()
                 }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+            },
+            onError = { err ->
+                runOnUiThread { Toast.makeText(this, "Error: $err", Toast.LENGTH_SHORT).show() }
             }
-        }
+        )
     }
 
     private fun notifyOverlayStyleUpdated() {
         if (FpsOverlayService.isServiceRunning) {
-            val upd = Intent(this, FpsOverlayService::class.java).apply { action = "UPDATE_STYLE" }
-            startService(upd)
+            startService(Intent(this, FpsOverlayService::class.java).apply { action = "UPDATE_STYLE" })
         }
     }
 
@@ -730,8 +632,8 @@ class MainActivity : Activity() {
     private fun handleIncomingIntent(intent: Intent): Boolean {
         val action = intent.getStringExtra("action_type") ?: return false
         if (action == "RESET_NOW") {
-            if (checkShizuku()) {
-                runShizukuScript("wm size reset; wm density reset")
+            if (ShizukuHelper.ensureReady(this)) {
+                ShizukuHelper.resetDisplay()
                 cancelActiveNotification()
                 stopService(Intent(this, FpsOverlayService::class.java))
                 Toast.makeText(this, Lang.str(this, R.string.toast_display_reset_short), Toast.LENGTH_SHORT).show()
@@ -740,8 +642,8 @@ class MainActivity : Activity() {
         } else if (action == "QUICK_LAUNCH") {
             val pkg = intent.getStringExtra("target_pkg") ?: return true
             val name = intent.getStringExtra("target_name") ?: pkg
-            val savedCustom = prefs.getInt("scale_$pkg", 0)
-            val factor = if (savedCustom > 0) savedCustom else prefs.getInt("saved_factor", 125)
+            val savedCustom = prefsMgr.getGameScale(pkg)
+            val factor = if (savedCustom > 0) savedCustom else prefsMgr.savedFactor
             launchGameByPkg(pkg, name, factor)
             return true
         }
@@ -750,9 +652,8 @@ class MainActivity : Activity() {
 
     private fun cyclePerGameScale(item: AppItem) {
         val cycle = listOf(0, 110, 115, 120, 125)
-        val nextIdx = (cycle.indexOf(item.customScale) + 1) % cycle.size
-        item.customScale = cycle[nextIdx]
-        prefs.edit().putInt("scale_${item.pkg}", item.customScale).apply()
+        item.customScale = cycle[(cycle.indexOf(item.customScale) + 1) % cycle.size]
+        prefsMgr.setGameScale(item.pkg, item.customScale)
 
         val msg = if (item.customScale == 0) {
             Lang.str(this, R.string.toast_scale_global, item.name, selectedFactor)
@@ -797,30 +698,6 @@ class MainActivity : Activity() {
         return bmp
     }
 
-    private fun fetchPhysicalDisplayInfo() {
-        thread {
-            try {
-                val m = Shizuku::class.java.getDeclaredMethod(
-                    "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java
-                )
-                m.isAccessible = true
-                val cmd = "wm size | grep 'Physical size' | cut -d: -f2 | tr -d ' \\r'; wm density | grep 'Physical density' | cut -d: -f2 | tr -d ' \\r'"
-                val proc = m.invoke(null, arrayOf("sh", "-c", cmd), null, null) as Process
-                val lines = BufferedReader(InputStreamReader(proc.inputStream)).readLines()
-                proc.waitFor()
-                if (lines.size >= 2) {
-                    val parts = lines[0].split("x")
-                    if (parts.size == 2) {
-                        physW = parts[0].toIntOrNull() ?: 1440
-                        physH = parts[1].toIntOrNull() ?: 3168
-                    }
-                    physDen = lines[1].toIntOrNull() ?: 624
-                    runOnUiThread { updatePreviewText() }
-                }
-            } catch (_: Exception) {}
-        }
-    }
-
     private fun updatePreviewText() {
         if (!::previewTv.isInitialized) return
         val newW = physW * selectedFactor / 100
@@ -833,16 +710,15 @@ class MainActivity : Activity() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "upscaler_active_channel"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, Lang.str(this, R.string.notif_channel_upscale), NotificationManager.IMPORTANCE_LOW)
-            nm.createNotificationChannel(channel)
+            nm.createNotificationChannel(
+                NotificationChannel(channelId, Lang.str(this, R.string.notif_channel_upscale), NotificationManager.IMPORTANCE_LOW)
+            )
         }
         val resetIntent = Intent(this, MainActivity::class.java).apply {
             putExtra("action_type", "RESET_NOW")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
-        val pi = PendingIntent.getActivity(
-            this, 99, resetIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val pi = PendingIntent.getActivity(this, 99, resetIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val scaleStr = "${factor / 100}.${factor % 100}x"
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, channelId)
@@ -859,8 +735,7 @@ class MainActivity : Activity() {
     }
 
     private fun cancelActiveNotification() {
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.cancel(1001)
+        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(1001)
     }
 
     private fun togglePin(item: AppItem) {
@@ -871,14 +746,14 @@ class MainActivity : Activity() {
             pinnedPkgs.add(item.pkg)
             item.isPinned = true
         }
-        prefs.edit().putStringSet("pinned_pkgs", HashSet(pinnedPkgs)).apply()
+        prefsMgr.savePinnedPackages(pinnedPkgs)
         sortAndFilterApps()
     }
 
     private fun sortAndFilterApps() {
         allApps.forEach {
             it.isPinned = pinnedPkgs.contains(it.pkg)
-            it.customScale = prefs.getInt("scale_${it.pkg}", 0)
+            it.customScale = prefsMgr.getGameScale(it.pkg)
         }
         allApps.sortWith(compareByDescending<AppItem> { it.isPinned }.thenBy { it.name.lowercase() })
 
@@ -893,21 +768,6 @@ class MainActivity : Activity() {
         adapter.notifyDataSetChanged()
     }
 
-    private fun checkShizuku(): Boolean {
-        return try {
-            if (!Shizuku.pingBinder()) {
-                Toast.makeText(this, Lang.str(this, R.string.toast_start_shizuku), Toast.LENGTH_LONG).show()
-                false
-            } else if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
-                Shizuku.requestPermission(1001)
-                false
-            } else true
-        } catch (e: Exception) {
-            Toast.makeText(this, Lang.str(this, R.string.toast_shizuku_error), Toast.LENGTH_SHORT).show()
-            false
-        }
-    }
-
     private fun loadInstalledApps() {
         thread {
             val pm = packageManager
@@ -916,14 +776,13 @@ class MainActivity : Activity() {
             val temp = resolves.mapNotNull { r ->
                 val pkg = r.activityInfo.packageName
                 if (pkg == packageName) return@mapNotNull null
-                // Thu nhỏ icon về 64x64px để giảm ~16 lần RAM chiếm dụng
                 val scaledIcon = BitmapDrawable(resources, drawableToBitmap(r.loadIcon(pm), 64))
                 AppItem(
                     r.loadLabel(pm).toString(),
                     pkg,
                     scaledIcon,
                     pinnedPkgs.contains(pkg),
-                    prefs.getInt("scale_$pkg", 0)
+                    prefsMgr.getGameScale(pkg)
                 )
             }.distinctBy { it.pkg }
 
@@ -938,7 +797,7 @@ class MainActivity : Activity() {
     }
 
     private fun launchGameByPkg(pkg: String, gameName: String, factor: Int) {
-        if (!checkShizuku()) return
+        if (!ShizukuHelper.ensureReady(this)) return
         val scaleStr = "${factor / 100}.${factor % 100}x"
         Toast.makeText(this, Lang.str(this, R.string.toast_boosting, gameName, scaleStr), Toast.LENGTH_SHORT).show()
         showActiveNotification(gameName, factor)
@@ -956,38 +815,7 @@ class MainActivity : Activity() {
             }
         }
 
-        val dl = "$"
-        val script = "PHYS_RES=" + dl + "(wm size | grep 'Physical size' | cut -d: -f2 | tr -d ' \\r'); " +
-                "PHYS_DEN=" + dl + "(wm density | grep 'Physical density' | cut -d: -f2 | tr -d ' \\r'); " +
-                "W=" + dl + "(echo " + dl + "PHYS_RES | cut -dx -f1); " +
-                "H=" + dl + "(echo " + dl + "PHYS_RES | cut -dx -f2); " +
-                "NEW_W=" + dl + "(( W * " + factor + " / 100 )); " +
-                "NEW_H=" + dl + "(( H * " + factor + " / 100 )); " +
-                "NEW_DEN=" + dl + "(( PHYS_DEN * " + factor + " / 100 )); " +
-                "wm size " + dl + "{NEW_W}x" + dl + "{NEW_H}; " +
-                "wm density " + dl + "{NEW_DEN}; " +
-                "sleep 1; " +
-                "ACT=" + dl + "(cmd package resolve-activity --brief " + pkg + " | tr -d '\\r' | tail -n 1); " +
-                "am start --user 0 -n \"" + dl + "ACT\" > /dev/null 2>&1; " +
-                "nohup sh -c 'sleep 8; while pidof " + pkg + " > /dev/null; do sleep 3; done; wm size reset; wm density reset' >/dev/null 2>&1 &"
-
-        runShizukuScript(script)
-        // Đóng MainActivity để giải phóng toàn bộ giao diện và danh sách icon khỏi RAM
+        ShizukuHelper.launchGameWithUpscale(pkg, factor)
         finish()
-    }
-
-    private fun runShizukuScript(cmd: String) {
-        thread {
-            try {
-                val m = Shizuku::class.java.getDeclaredMethod(
-                    "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java
-                )
-                m.isAccessible = true
-                val proc = m.invoke(null, arrayOf("sh", "-c", cmd), null, null) as Process
-                proc.waitFor()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
     }
 }

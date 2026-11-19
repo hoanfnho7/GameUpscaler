@@ -30,7 +30,8 @@ android {
         }
         release {
             signingConfig signingConfigs.fixedKey
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
         }
     }
 
