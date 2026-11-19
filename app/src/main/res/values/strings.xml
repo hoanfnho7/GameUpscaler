@@ -51,6 +51,7 @@
     <string name="btn_reset_pos">🎯 Reset Pos</string>
     <string name="toast_pos_reset">✅ HUD position reset to default!</string>
     <string name="btn_sensors">🔍 Sensors</string>
+    <string name="btn_perf_logs">📈 Perf Logs</string>
 
     <string name="chk_pinned_only">⭐ Show Pinned Games Only</string>
     <string name="hint_search">🔍 Search game name or package...</string>
@@ -86,4 +87,18 @@
     <string name="hud_vert_bat">🔋 Bat: %1$sC</string>
     <string name="hud_vert_skin">📱 Board: %1$sC</string>
     <string name="hud_no_metrics">⚡ No metrics selected</string>
+
+    <string name="toast_rec_start">🔴 Recording: %1$s (%2$s)...</string>
+    <string name="toast_rec_saved">💾 Saved %1$s: %2$.1f FPS | %3$.1fW</string>
+    <string name="toast_rec_short">⚠️ Session too short (under 3s), discarded</string>
+
+    <string name="chart_title">📈 Performance Analysis</string>
+    <string name="chart_all_games">🎮 All (%1$d)</string>
+    <string name="chart_no_logs">No performance logs yet.\nStart a game and tap the floating HUD to record!</string>
+    <string name="chart_delete_btn">🗑️ Delete</string>
+    <string name="chart_deleted_toast">🗑️ Session log deleted</string>
+    <string name="chart_fps_title">⚡ Frame Rate (FPS)</string>
+    <string name="chart_power_title">🔌 Power Draw (Watts)</string>
+    <string name="chart_temp_title">🌡️ Thermal Profile (SoC vs Battery °C)</string>
+    <string name="chart_scrub_hint">Touch &amp; drag across any chart to inspect exact values</string>
 </resources>

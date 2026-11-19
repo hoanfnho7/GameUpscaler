@@ -51,6 +51,7 @@
     <string name="btn_reset_pos">🎯 Reset vị trí</string>
     <string name="toast_pos_reset">✅ Đã đặt lại tọa độ HUD về mặc định!</string>
     <string name="btn_sensors">🔍 Soi cảm biến</string>
+    <string name="btn_perf_logs">📈 Lịch sử Log</string>
 
     <string name="chk_pinned_only">⭐ Chỉ hiện Game đã ghim (Ẩn ứng dụng khác)</string>
     <string name="hint_search">🔍 Gõ tên game hoặc package để lọc nhanh...</string>
@@ -86,4 +87,18 @@
     <string name="hud_vert_bat">🔋 Pin: %1$sC</string>
     <string name="hud_vert_skin">📱 Vỏ: %1$sC</string>
     <string name="hud_no_metrics">⚡ Chưa chọn thông số</string>
+
+    <string name="toast_rec_start">🔴 Đang ghi log: %1$s (%2$s)...</string>
+    <string name="toast_rec_saved">💾 Đã lưu %1$s: %2$.1f FPS | %3$.1fW</string>
+    <string name="toast_rec_short">⚠️ Phiên đo quá ngắn (dưới 3s), đã hủy</string>
+
+    <string name="chart_title">📈 Biểu đồ phân tích hiệu năng</string>
+    <string name="chart_all_games">🎮 Tất cả (%1$d)</string>
+    <string name="chart_no_logs">Chưa có dữ liệu log nào.\nVào game và chạm 1 cái vào thanh HUD để bắt đầu ghi!</string>
+    <string name="chart_delete_btn">🗑️ Xóa log</string>
+    <string name="chart_deleted_toast">🗑️ Đã xóa log phiên chơi</string>
+    <string name="chart_fps_title">⚡ Tốc độ khung hình (FPS)</string>
+    <string name="chart_power_title">🔌 Công suất tiêu thụ điện (Watt)</string>
+    <string name="chart_temp_title">🌡️ Biến thiên nhiệt độ (SoC &amp; Pin °C)</string>
+    <string name="chart_scrub_hint">Chạm và kéo ngang trên biểu đồ để soi thông số từng giây</string>
 </resources>

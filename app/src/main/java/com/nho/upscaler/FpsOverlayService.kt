@@ -62,6 +62,10 @@ class FpsOverlayService : Service() {
     private var targetPkg = ""
     private var gameName = "Game"
     private var scaleLabel = ""
+
+    @Volatile private var detectedPkg = ""
+    @Volatile private var detectedAppName = ""
+
     private var sizeLevel = 1
     private var bgMode = 1
     private var pollMode = 0
@@ -328,6 +332,23 @@ class FpsOverlayService : Service() {
         }
     }
 
+    private fun resolveEffectiveSessionInfo(): Triple<String, String, String> {
+        val effPkg = targetPkg.ifBlank { detectedPkg }
+        val effName = when {
+            targetPkg.isNotBlank() -> gameName
+            detectedAppName.isNotBlank() -> detectedAppName
+            detectedPkg.isNotBlank() -> detectedPkg
+            else -> "Screen Session"
+        }
+        val effScale = if (scaleLabel.isNotBlank()) {
+            scaleLabel
+        } else {
+            val savedSc = if (effPkg.isNotBlank()) prefsMgr.getGameScale(effPkg) else 0
+            if (savedSc > 0) "${savedSc / 100}.${savedSc % 100}x" else "Native"
+        }
+        return Triple(effPkg, effName, effScale)
+    }
+
     private fun createOverlayViews() {
         try {
             windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -437,10 +458,24 @@ class FpsOverlayService : Service() {
                                 }
                                 prefsMgr.saveHudPosition(isLandscapeMode(), params.x, params.y)
                             } else {
-                                sizeLevel = (sizeLevel + 1) % 4
-                                prefsMgr.overlaySizeLevel = sizeLevel
+                                if (!PerfLogManager.isRecording) {
+                                    val (recPkg, recName, recScale) = resolveEffectiveSessionInfo()
+                                    PerfLogManager.startSession(recPkg, recName, recScale)
+                                    Toast.makeText(
+                                        this@FpsOverlayService,
+                                        Lang.str(this@FpsOverlayService, R.string.toast_rec_start, recName, recScale),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    val saved = PerfLogManager.stopAndSave(this@FpsOverlayService)
+                                    val msg = if (saved != null) {
+                                        Lang.str(this@FpsOverlayService, R.string.toast_rec_saved, saved.gameName, saved.avgFps, saved.avgWatts)
+                                    } else {
+                                        Lang.str(this@FpsOverlayService, R.string.toast_rec_short)
+                                    }
+                                    Toast.makeText(this@FpsOverlayService, msg, Toast.LENGTH_LONG).show()
+                                }
                                 lastRenderedText = ""
-                                applyOverlayStyle()
                                 renderTelemetryText()
                             }
                             isOverCloseZone = false
@@ -479,7 +514,6 @@ class FpsOverlayService : Service() {
         val idx = sizeLevel.coerceIn(0, 3)
         val bIdx = bgMode.coerceIn(0, 3)
 
-        // Ở chế độ ngang (khi không chọn Dọc): ép cứng 1 dòng duy nhất, không bao giờ tự rớt dòng
         if (!isVertical && isLand) {
             tv.isSingleLine = true
             tv.maxLines = 1
@@ -498,7 +532,6 @@ class FpsOverlayService : Service() {
             tv.setLineSpacing(2f, 1.0f)
         }
 
-        // Chế độ ngang dùng kích thước siêu nhỏ (7.5sp ở mức Siêu gọn) để không che la bàn BR
         val textSizes = if (isLand) {
             floatArrayOf(7.5f, 9.0f, 10.5f, 12.0f)
         } else {
@@ -512,7 +545,6 @@ class FpsOverlayService : Service() {
         tv.textSize = textSizes[idx]
         tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
 
-        // Đổ bóng chữ đậm khi nền siêu trong hoặc trong suốt hoàn toàn để chữ luôn nét trên nền game sáng
         if (bIdx >= 2) {
             tv.setShadowLayer(3.0f, 1.2f, 1.2f, UiTheme.TEXT_SHADOW)
         } else {
@@ -550,8 +582,11 @@ class FpsOverlayService : Service() {
         val showSkinTemp = prefsMgr.getMetric("m_skin_temp", false)
         val showRam = prefsMgr.getMetric("m_ram", false)
 
-        val parts = ArrayList<String>(12)
+        val parts = ArrayList<String>(13)
         val isCompact = (sizeLevel == 0) || (isLand && !isVertical)
+        if (PerfLogManager.isRecording) {
+            parts.add("🔴")
+        }
 
         if (showFps) {
             val fpsVal = if (lastFps >= 0f) String.format(Locale.US, "%.1f", lastFps) else "--.-"
@@ -746,14 +781,34 @@ class FpsOverlayService : Service() {
             1 -> 150L
             2 -> 300L
             3 -> 1000L
-            else -> if (targetPkg.isNotEmpty() || isLandscapeMode() || lastFps > 1f) 250L else 500L
+            else -> if (targetPkg.isNotEmpty() || detectedPkg.isNotEmpty() || isLandscapeMode() || lastFps > 1f) 250L else 500L
+        }
+    }
+
+    private fun isSystemOrLauncherPkg(pkg: String): Boolean {
+        return pkg.isBlank() ||
+                pkg == packageName ||
+                pkg == "com.android.systemui" ||
+                pkg.contains("launcher") ||
+                pkg.contains("permissioncontroller") ||
+                pkg.contains("gamecube") ||
+                pkg.contains("inputmethod") ||
+                pkg == "com.android.settings"
+    }
+
+    private fun resolveAppName(pkg: String): String {
+        return try {
+            val ai = packageManager.getApplicationInfo(pkg, 0)
+            packageManager.getApplicationLabel(ai).toString().ifBlank { pkg }
+        } catch (_: Exception) {
+            pkg
         }
     }
 
     private fun startTelemetryLoop() {
         telemetryThread = thread(name = "HudTelemetryLoop") {
             var graceTicks = 0
-            val sb = StringBuilder(384)
+            val sb = StringBuilder(420)
 
             while (isRunning) {
                 if (!isScreenOn) {
@@ -769,7 +824,7 @@ class FpsOverlayService : Service() {
                     val vramMod = (3000L / intervalMs).toInt().coerceAtLeast(1)
                     val isVramTick = (tickCounter % vramMod == 1)
 
-                    val currentPkg = targetPkg
+                    val activePkg = targetPkg.ifBlank { detectedPkg }
                     val showFps = prefsMgr.getMetric("m_fps", true)
                     val showSocTemp = prefsMgr.getMetric("m_soc_temp", true)
                     val showCpuTemp = prefsMgr.getMetric("m_cpu_temp", false)
@@ -787,8 +842,14 @@ class FpsOverlayService : Service() {
                     }
 
                     sb.setLength(0)
-                    if (currentPkg.isNotEmpty() && isSlowTick) {
-                        sb.append("printf \"PID=\"; pidof ").append(currentPkg).append("; ")
+                    // Khi mở HUD từ Control Center (targetPkg rỗng), tự dò ứng dụng/game đang hiển thị trên màn hình
+                    if (targetPkg.isEmpty() && (isVramTick || detectedPkg.isEmpty())) {
+                        sb.append("printf \"FG_ACT=\"; dumpsys activity activities | grep -m 1 -E 'topResumedActivity|mResumedActivity'; ")
+                    }
+                    if (targetPkg.isNotEmpty() && isSlowTick) {
+                        sb.append("printf \"PID=\"; pidof ").append(targetPkg).append("; ")
+                    } else if (detectedPkg.isNotEmpty() && isSlowTick) {
+                        sb.append("printf \"DPID=\"; pidof ").append(detectedPkg).append("; ")
                     }
                     if (showGpu && (isVramTick || lastGpuVramMb < 0)) {
                         sb.append("dumpsys gpu | head -n 45; ")
@@ -812,15 +873,15 @@ class FpsOverlayService : Service() {
                         sb.append("printf \"SKIN_T=\"; _rdz \"\$SKIN_ZONES\"; ")
                     }
                     if (showRam && (isVramTick || lastRamText.isEmpty())) {
-                        if (currentPkg.isNotEmpty()) {
-                            sb.append("printf \"APP_PSS=\"; dumpsys meminfo ").append(currentPkg).append(" 2>/dev/null | grep 'TOTAL PSS:' | awk '{print \$3}'; ")
+                        if (activePkg.isNotEmpty()) {
+                            sb.append("printf \"APP_PSS=\"; dumpsys meminfo ").append(activePkg).append(" 2>/dev/null | grep 'TOTAL PSS:' | awk '{print \$3}'; ")
                         }
                         sb.append("{ read -r m1; read -r m2; read -r m3; printf \"%s\\n%s\\n%s\\n\" \"\$m1\" \"\$m2\" \"\$m3\"; } < /proc/meminfo; ")
                     }
                     if (showFps) {
-                        if (initializedStatsForPkg != currentPkg) {
+                        if (initializedStatsForPkg != activePkg) {
                             sb.append("dumpsys SurfaceFlinger --timestats -clear -enable >/dev/null 2>&1; ")
-                            initializedStatsForPkg = currentPkg
+                            initializedStatsForPkg = activePkg
                         }
                         sb.append("if [ -n \"\$DRM_NODE\" ] && [ ").append(frozenDrmTicks).append(" -lt 4 ]; then read -r dv < \"\$DRM_NODE\" 2>/dev/null && printf \"DRM_FPS=%s\\n\" \"\$dv\"; fi; ")
                         sb.append("printf \"===TIMESTATS===\\n\"; ")
@@ -835,7 +896,7 @@ class FpsOverlayService : Service() {
 
                         val (activePids, drmFpsFallback) = parseBatchOutput(batchSection)
 
-                        if (currentPkg.isNotEmpty() && batchSection.contains("PID=")) {
+                        if (targetPkg.isNotEmpty() && batchSection.contains("PID=")) {
                             if (activePids.isEmpty()) {
                                 graceTicks++
                                 if (graceTicks > 5) {
@@ -848,10 +909,14 @@ class FpsOverlayService : Service() {
                         }
 
                         if (showFps) {
-                            lastFps = parseRealFps(currentPkg, timeStatsSection, drmFpsFallback)
+                            val currentMeasurePkg = targetPkg.ifBlank { detectedPkg }
+                            lastFps = parseRealFps(currentMeasurePkg, timeStatsSection, drmFpsFallback)
                         }
                     }
 
+                    if (PerfLogManager.isRecording && isSlowTick) {
+                        PerfLogManager.addSample(lastFps, lastWatts, cachedBatTemp, lastSocTemp, lastGpuVramMb, lastCpuKhz)
+                    }
                     mainHandler.post { renderTelemetryText() }
                 } catch (_: Exception) {}
 
@@ -896,8 +961,25 @@ class FpsOverlayService : Service() {
             if (l.isEmpty()) continue
 
             when {
+                l.startsWith("FG_ACT=") -> {
+                    val slashIdx = l.indexOf('/')
+                    if (slashIdx > 7) {
+                        val beforeSlash = l.substring(7, slashIdx)
+                        val pkgCandidate = beforeSlash.substringAfterLast(' ').trim()
+                        if (pkgCandidate.contains('.') && !isSystemOrLauncherPkg(pkgCandidate)) {
+                            if (pkgCandidate != detectedPkg) {
+                                detectedPkg = pkgCandidate
+                                detectedAppName = resolveAppName(pkgCandidate)
+                            }
+                        }
+                    }
+                }
                 l.startsWith("PID=") -> {
                     val rawPids = l.substring(4).trim()
+                    if (rawPids.isNotEmpty()) pidSet = rawPids.split(WS_REGEX).toSet()
+                }
+                l.startsWith("DPID=") -> {
+                    val rawPids = l.substring(5).trim()
                     if (rawPids.isNotEmpty()) pidSet = rawPids.split(WS_REGEX).toSet()
                 }
                 l.startsWith("Global total:") -> {
@@ -1085,6 +1167,16 @@ class FpsOverlayService : Service() {
     }
 
     override fun onDestroy() {
+        if (PerfLogManager.isRecording) {
+            val saved = PerfLogManager.stopAndSave(this)
+            if (saved != null) {
+                Toast.makeText(
+                    this,
+                    Lang.str(this, R.string.toast_rec_saved, saved.gameName, saved.avgFps, saved.avgWatts),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
         isRunning = false
         isServiceRunning = false
         syncQuickSettingsTile()
