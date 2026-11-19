@@ -48,6 +48,10 @@ class PrefsManager(context: Context) {
         get() = prefs.getInt("app_lang", 0)
         set(value) = prefs.edit().putInt("app_lang", value).apply()
 
+    var themeMode: Int
+        get() = prefs.getInt("theme_mode", 0)
+        set(value) = prefs.edit().putInt("theme_mode", value).apply()
+
     fun getPinnedPackages(): MutableSet<String> {
         val saved = prefs.getStringSet("pinned_pkgs", null)
         return if (saved == null) {

@@ -27,7 +27,7 @@ import java.util.Locale
 class PerfChartActivity : Activity() {
     private var allSessions = mutableListOf<PerfSession>()
     private var filteredSessions = mutableListOf<PerfSession>()
-    private var gameGroups = mutableListOf<Pair<String, String>>() // key -> displayLabel
+    private var gameGroups = mutableListOf<Pair<String, String>>()
     private var selectedGameKey = "__ALL__"
     private var currentSessionIndex = 0
 
@@ -42,11 +42,10 @@ class PerfChartActivity : Activity() {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(UiTheme.BG_ROOT)
+            setBackgroundColor(UiTheme.bgRoot(this@PerfChartActivity))
             setPadding(28, 36, 28, 16)
         }
 
-        // Top Bar
         val topBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -55,15 +54,15 @@ class PerfChartActivity : Activity() {
             text = "←"
             textSize = 20f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(UiTheme.ACCENT_CYAN)
+            setTextColor(UiTheme.accent(this@PerfChartActivity))
             setPadding(12, 6, 22, 6)
             setOnClickListener { finish() }
         })
         topBar.addView(TextView(this).apply {
-            text = Lang.str(this@PerfChartActivity, R.string.chart_title)
-            textSize = 17.5f
+            text = Lang.str(this@PerfChartActivity, R.string.chart_title).uppercase(Locale.US)
+            textSize = 16.5f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(UiTheme.ACCENT_GREEN)
+            setTextColor(UiTheme.textPrimary(this@PerfChartActivity))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
         topBar.addView(TextView(this).apply {
@@ -72,7 +71,7 @@ class PerfChartActivity : Activity() {
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.ACCENT_RED_BRIGHT)
             setPadding(16, 8, 16, 8)
-            background = UiTheme.roundBox(UiTheme.CLOSE_ZONE_IDLE, 12f, 1, UiTheme.ACCENT_RED_BRIGHT)
+            background = UiTheme.roundBox(UiTheme.bgCard(this@PerfChartActivity), 12f, 1, UiTheme.ACCENT_RED_BRIGHT)
             setOnClickListener {
                 if (filteredSessions.isNotEmpty()) {
                     val target = filteredSessions[currentSessionIndex]
@@ -84,35 +83,24 @@ class PerfChartActivity : Activity() {
         })
         root.addView(topBar)
 
-        // Row 1: Game Filter Bar (Gom nhóm lịch sử theo từng Game)
         val gameScroll = HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
             setPadding(0, 12, 0, 6)
         }
-        gameChipRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
+        gameChipRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         gameScroll.addView(gameChipRow)
         root.addView(gameScroll)
 
-        // Row 2: Session History of the selected Game
         val sessionScroll = HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
             setPadding(0, 4, 0, 10)
         }
-        sessionChipRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
+        sessionChipRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         sessionScroll.addView(sessionChipRow)
         root.addView(sessionScroll)
 
-        // Main Scrollable Chart Body
-        val scroll = ScrollView(this).apply {
-            isVerticalScrollBarEnabled = false
-        }
-        contentContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
+        val scroll = ScrollView(this).apply { isVerticalScrollBarEnabled = false }
+        contentContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         scroll.addView(contentContainer)
         root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
@@ -120,9 +108,7 @@ class PerfChartActivity : Activity() {
         reloadAll()
     }
 
-    private fun sessionGroupKey(s: PerfSession): String {
-        return s.pkg.ifBlank { s.gameName }
-    }
+    private fun sessionGroupKey(s: PerfSession): String = s.pkg.ifBlank { s.gameName }
 
     private fun reloadAll() {
         allSessions = PerfLogManager.listSessions(this).toMutableList()
@@ -130,14 +116,11 @@ class PerfChartActivity : Activity() {
 
         val grouped = LinkedHashMap<String, MutableList<PerfSession>>()
         for (s in allSessions) {
-            val k = sessionGroupKey(s)
-            grouped.getOrPut(k) { mutableListOf() }.add(s)
+            grouped.getOrPut(sessionGroupKey(s)) { mutableListOf() }.add(s)
         }
         for ((k, list) in grouped) {
-            val displayTitle = list.first().gameName
-            gameGroups.add(k to "$displayTitle (${list.size})")
+            gameGroups.add(k to "${list.first().gameName} (${list.size})")
         }
-
         if (selectedGameKey != "__ALL__" && grouped[selectedGameKey] == null) {
             selectedGameKey = "__ALL__"
         }
@@ -160,18 +143,19 @@ class PerfChartActivity : Activity() {
         gameChipRow.removeAllViews()
         if (allSessions.isEmpty()) return
 
+        val accentCol = UiTheme.accent(this)
         val allActive = (selectedGameKey == "__ALL__")
         gameChipRow.addView(TextView(this).apply {
             text = Lang.str(this@PerfChartActivity, R.string.chart_all_games, allSessions.size)
             textSize = 11f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(if (allActive) UiTheme.TEXT_DARK else UiTheme.ACCENT_CYAN)
+            setTextColor(if (allActive) UiTheme.textOnAccent(this@PerfChartActivity) else UiTheme.textPrimary(this@PerfChartActivity))
             setPadding(16, 8, 16, 8)
             background = UiTheme.roundBox(
-                if (allActive) UiTheme.ACCENT_CYAN else UiTheme.BTN_CYAN_BG,
+                if (allActive) accentCol else UiTheme.bgCard(this@PerfChartActivity),
                 12f,
                 if (allActive) 0 else 1,
-                UiTheme.BTN_CYAN_STROKE
+                UiTheme.strokeSubtle(this@PerfChartActivity)
             )
             setOnClickListener {
                 selectedGameKey = "__ALL__"
@@ -182,16 +166,16 @@ class PerfChartActivity : Activity() {
         for ((key, label) in gameGroups) {
             val active = (selectedGameKey == key)
             gameChipRow.addView(TextView(this).apply {
-                text = "🎮 $label"
+                text = label
                 textSize = 11f
                 setTypeface(null, Typeface.BOLD)
-                setTextColor(if (active) UiTheme.TEXT_DARK else UiTheme.TEXT_WHITE)
+                setTextColor(if (active) UiTheme.textOnAccent(this@PerfChartActivity) else UiTheme.textPrimary(this@PerfChartActivity))
                 setPadding(16, 8, 16, 8)
                 background = UiTheme.roundBox(
-                    if (active) UiTheme.ACCENT_CYAN else UiTheme.BG_INPUT,
+                    if (active) accentCol else UiTheme.bgCard(this@PerfChartActivity),
                     12f,
                     if (active) 0 else 1,
-                    UiTheme.STROKE_SUBTLE
+                    UiTheme.strokeSubtle(this@PerfChartActivity)
                 )
                 setOnClickListener {
                     selectedGameKey = key
@@ -204,6 +188,7 @@ class PerfChartActivity : Activity() {
     private fun rebuildSessionChips() {
         sessionChipRow.removeAllViews()
         val fmt = SimpleDateFormat("dd/MM HH:mm", Locale.US)
+        val accentCol = UiTheme.accent(this)
         filteredSessions.forEachIndexed { idx, s ->
             val active = (idx == currentSessionIndex)
             val durStr = formatDuration(s.durationSec)
@@ -212,13 +197,13 @@ class PerfChartActivity : Activity() {
                 text = "$prefix${s.scaleLabel} • ${String.format(Locale.US, "%.1fF", s.avgFps)} • $durStr • ${fmt.format(Date(s.timestampMs))}"
                 textSize = 10.5f
                 setTypeface(null, Typeface.BOLD)
-                setTextColor(if (active) UiTheme.TEXT_DARK else UiTheme.TEXT_CHIP)
+                setTextColor(if (active) accentCol else UiTheme.textSecondary(this@PerfChartActivity))
                 setPadding(16, 9, 16, 9)
                 background = UiTheme.roundBox(
-                    if (active) UiTheme.ACCENT_GREEN else UiTheme.BG_CARD,
+                    if (active) UiTheme.bgTileActive(this@PerfChartActivity) else UiTheme.bgCard(this@PerfChartActivity),
                     12f,
-                    if (active) 0 else 1,
-                    UiTheme.STROKE_SUBTLE
+                    1,
+                    if (active) accentCol else UiTheme.strokeSubtle(this@PerfChartActivity)
                 )
                 setOnClickListener {
                     currentSessionIndex = idx
@@ -226,9 +211,7 @@ class PerfChartActivity : Activity() {
                     renderSelectedSession()
                 }
             }
-            sessionChipRow.addView(chip, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                rightMargin = 8
-            })
+            sessionChipRow.addView(chip, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = 8 })
         }
     }
 
@@ -240,7 +223,7 @@ class PerfChartActivity : Activity() {
             contentContainer.addView(TextView(this).apply {
                 text = Lang.str(this@PerfChartActivity, R.string.chart_no_logs)
                 textSize = 14f
-                setTextColor(UiTheme.TEXT_SUB)
+                setTextColor(UiTheme.textSecondary(this@PerfChartActivity))
                 gravity = Gravity.CENTER
                 setPadding(24, 140, 24, 40)
             })
@@ -248,24 +231,25 @@ class PerfChartActivity : Activity() {
         }
 
         val s = filteredSessions[currentSessionIndex]
+        val accentCol = UiTheme.accent(this)
 
         val row1 = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, 4, 0, 8)
         }
-        row1.addView(makeKpiCard("⚡ AVG / 1% LOW", String.format(Locale.US, "%.1f / %.1f", s.avgFps, s.low1Fps), "Min ${String.format(Locale.US, "%.0f", s.minFps)} • Max ${String.format(Locale.US, "%.0f", s.maxFps)}", UiTheme.ACCENT_GREEN), kpiLp(true))
-        row1.addView(makeKpiCard("🔌 AVG / PEAK W", String.format(Locale.US, "%.1fW / %.1fW", s.avgWatts, s.maxWatts), String.format(Locale.US, "%.0f mWh • %s", s.energyMwh, formatDuration(s.durationSec)), UiTheme.ACCENT_GOLD), kpiLp(true))
-        row1.addView(makeKpiCard("🌡️ PEAK TEMP", String.format(Locale.US, "SoC %.0f°C", s.peakSocTemp), String.format(Locale.US, "Bat %.1f°C • %s", s.peakBatTemp, s.scaleLabel), UiTheme.ACCENT_RED_BRIGHT), kpiLp(false))
+        row1.addView(makeKpiCard("AVG / 1% LOW", String.format(Locale.US, "%.1f / %.1f", s.avgFps, s.low1Fps), "Min ${String.format(Locale.US, "%.0f", s.minFps)} • Max ${String.format(Locale.US, "%.0f", s.maxFps)}", accentCol), kpiLp(true))
+        row1.addView(makeKpiCard("AVG / PEAK W", String.format(Locale.US, "%.1fW / %.1fW", s.avgWatts, s.maxWatts), String.format(Locale.US, "%.0f mWh • %s", s.energyMwh, formatDuration(s.durationSec)), UiTheme.ACCENT_GOLD), kpiLp(true))
+        row1.addView(makeKpiCard("PEAK TEMP", String.format(Locale.US, "SoC %.0f°C", s.peakSocTemp), String.format(Locale.US, "Bat %.1f°C • %s", s.peakBatTemp, s.scaleLabel), UiTheme.ACCENT_RED_BRIGHT), kpiLp(false))
         contentContainer.addView(row1)
 
         val banner = TextView(this).apply {
             text = Lang.str(this@PerfChartActivity, R.string.chart_scrub_hint)
             textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(UiTheme.ACCENT_CYAN)
+            setTextColor(accentCol)
             gravity = Gravity.CENTER
             setPadding(16, 12, 16, 12)
-            background = UiTheme.roundBox(UiTheme.BG_PREVIEW, 14f, 1, UiTheme.STROKE_SUBTLE)
+            background = UiTheme.roundBox(UiTheme.bgTileActive(this@PerfChartActivity), 14f, 1, UiTheme.strokeSubtle(this@PerfChartActivity))
         }
         scrubBannerTv = banner
         contentContainer.addView(banner, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 10 })
@@ -273,12 +257,11 @@ class PerfChartActivity : Activity() {
         val fpsChart = TelemetryChartView(
             context = this,
             title = Lang.str(this, R.string.chart_fps_title),
-            unit = "FPS",
             minVal = 0f,
             maxVal = 144f,
             gridSteps = listOf(30f, 60f, 90f, 120f, 144f),
             primaryValues = s.samples.map { it.fps },
-            primaryColor = UiTheme.ACCENT_GREEN,
+            primaryColor = accentCol,
             secondaryValues = null,
             secondaryColor = 0
         ) { idx -> syncScrub(s, idx) }
@@ -290,7 +273,6 @@ class PerfChartActivity : Activity() {
         val wattChart = TelemetryChartView(
             context = this,
             title = Lang.str(this, R.string.chart_power_title),
-            unit = "W",
             minVal = 0f,
             maxVal = maxW,
             gridSteps = listOf(midW * 0.5f, midW, midW * 1.5f),
@@ -306,7 +288,6 @@ class PerfChartActivity : Activity() {
         val tempChart = TelemetryChartView(
             context = this,
             title = Lang.str(this, R.string.chart_temp_title),
-            unit = "°C",
             minVal = 25f,
             maxVal = maxT,
             gridSteps = listOf(40f, 55f, 70f, 85f).filter { it < maxT },
@@ -320,15 +301,12 @@ class PerfChartActivity : Activity() {
     }
 
     private fun syncScrub(session: PerfSession, sampleIndex: Int) {
-        for (cv in chartViews) {
-            cv.setScrubIndex(sampleIndex)
-        }
+        for (cv in chartViews) cv.setScrubIndex(sampleIndex)
         val pt = session.samples.getOrNull(sampleIndex) ?: return
-        val tStr = formatDuration(pt.sec)
         scrubBannerTv?.text = String.format(
             Locale.US,
-            "⏱ %s  |  ⚡ %.1f FPS  |  🔌 %.1fW  |  🌡️ SoC %.1f°C  |  🔋 Bat %.1f°C",
-            tStr, pt.fps, pt.watts, pt.socTemp, pt.batTemp
+            "%s  |  %.1f FPS  |  %.1fW  |  SoC %.1f°C  |  Bat %.1f°C",
+            formatDuration(pt.sec), pt.fps, pt.watts, pt.socTemp, pt.batTemp
         )
     }
 
@@ -342,12 +320,12 @@ class PerfChartActivity : Activity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(14, 12, 14, 12)
-            background = UiTheme.roundBox(UiTheme.BG_CARD, 14f, 1, UiTheme.STROKE_SUBTLE)
+            background = UiTheme.roundBox(UiTheme.bgCard(this@PerfChartActivity), 14f, 1, UiTheme.strokeSubtle(this@PerfChartActivity))
             addView(TextView(this@PerfChartActivity).apply {
                 text = title
                 textSize = 9.5f
                 setTypeface(null, Typeface.BOLD)
-                setTextColor(UiTheme.TEXT_SUB)
+                setTextColor(UiTheme.textSecondary(this@PerfChartActivity))
             })
             addView(TextView(this@PerfChartActivity).apply {
                 text = mainVal
@@ -359,22 +337,19 @@ class PerfChartActivity : Activity() {
             addView(TextView(this@PerfChartActivity).apply {
                 text = subVal
                 textSize = 9.5f
-                setTextColor(UiTheme.TEXT_CHIP)
+                setTextColor(UiTheme.textSecondary(this@PerfChartActivity))
             })
         }
     }
 
     private fun formatDuration(totalSec: Int): String {
-        val m = totalSec / 60
-        val s = totalSec % 60
-        return String.format(Locale.US, "%02d:%02d", m, s)
+        return String.format(Locale.US, "%02d:%02d", totalSec / 60, totalSec % 60)
     }
 }
 
 class TelemetryChartView(
     context: Context,
     private val title: String,
-    private val unit: String,
     private val minVal: Float,
     private val maxVal: Float,
     private val gridSteps: List<Float>,
@@ -388,27 +363,27 @@ class TelemetryChartView(
     private var scrubIdx = -1
 
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = UiTheme.BG_CARD
+        color = UiTheme.bgCard(context)
         style = Paint.Style.FILL
     }
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = UiTheme.STROKE_SUBTLE
+        color = UiTheme.strokeSubtle(context)
         style = Paint.Style.STROKE
         strokeWidth = 2f
     }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#2A303C")
+        color = UiTheme.divider(context)
         style = Paint.Style.STROKE
         strokeWidth = 1.5f
         pathEffect = DashPathEffect(floatArrayOf(8f, 8f), 0f)
     }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = UiTheme.TEXT_SUB
+        color = UiTheme.textSecondary(context)
         textSize = 24f
     }
     private val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = UiTheme.TEXT_WHITE
-        textSize = 28f
+        color = UiTheme.textPrimary(context)
+        textSize = 27f
         typeface = Typeface.DEFAULT_BOLD
     }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -421,11 +396,9 @@ class TelemetryChartView(
         style = Paint.Style.STROKE
         strokeWidth = 3.5f
     }
-    private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
+    private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val scrubPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = UiTheme.textPrimary(context)
         strokeWidth = 2.5f
     }
 
@@ -501,7 +474,7 @@ class TelemetryChartView(
 
         fillPaint.shader = LinearGradient(
             0f, padTop, 0f, padTop + plotH,
-            Color.argb(65, Color.red(primaryColor), Color.green(primaryColor), Color.blue(primaryColor)),
+            Color.argb(60, Color.red(primaryColor), Color.green(primaryColor), Color.blue(primaryColor)),
             Color.TRANSPARENT,
             Shader.TileMode.CLAMP
         )

@@ -7,30 +7,46 @@
     <string name="lang_badge_vi">🇻🇳 VI</string>
     <string name="lang_badge_en">🇺🇸 EN</string>
 
-    <string name="status_shizuku_ok">● SHIZUKU SẴN SÀNG</string>
-    <string name="status_shizuku_off">● CHƯA BẬT SHIZUKU</string>
+    <string name="theme_auto">🌓 Tự động</string>
+    <string name="theme_dark">🌙 Tối</string>
+    <string name="theme_light">☀️ Sáng</string>
 
-    <string name="tab_armory">🎮 KHO GAME</string>
-    <string name="tab_hud_studio">📊 TÙY CHỈNH HUD</string>
+    <string name="status_shizuku_ok">SHIZUKU SẴN SÀNG</string>
+    <string name="status_shizuku_off">CHƯA BẬT SHIZUKU</string>
 
-    <string name="sec_ssaa_engine">TĂNG ĐỘ NÉT MÀN HÌNH (SSAA)</string>
+    <string name="tab_dashboard">TỔNG QUAN</string>
+    <string name="tab_hud_cfg">CẤU HÌNH HUD</string>
+    <string name="tab_games">KHO GAME</string>
+
+    <string name="dash_insights">PHÂN TÍCH HIỆU NĂNG</string>
+    <string name="dash_reset">RESET MÀN HÌNH</string>
+    <string name="dash_my_games">GAME ĐÃ GHIM</string>
+    <string name="dash_manage">QUẢN LÝ</string>
+    <string name="dash_add_game">Thêm</string>
+    <string name="dash_live_monitor">GIÁM SÁT HỆ THỐNG</string>
+    <string name="dash_free_ram">TRỐNG %1$s GB</string>
+
+    <string name="tool_ssaa">MỨC NÉT SSAA</string>
+    <string name="tool_auto_hud">TỰ BẬT HUD</string>
+    <string name="tool_live_hud">THANH ĐO HUD</string>
+    <string name="tool_tile">CONTROL CENTER</string>
+    <string name="tool_sensors">CẢM BIẾN NHIỆT</string>
+    <string name="tool_logs">LỊCH SỬ LOG</string>
+
     <string name="sec_hud_preview">XEM TRƯỚC THANH ĐO</string>
-    <string name="sec_hud_style">BỐ CỤC &amp; ĐỘ TRONG SUỐT</string>
-    <string name="sec_hud_poll">TỐC ĐỘ QUÉT CẢM BIẾN</string>
-    <string name="sec_metrics_perf">HIỆU NĂNG &amp; ĐIỆN NĂNG</string>
-    <string name="sec_metrics_core_temp">NHIỆT ĐỘ LÕI &amp; PIN</string>
-    <string name="sec_metrics_hw_temp">LINH KIỆN &amp; BỘ NHỚ</string>
-    <string name="sec_hud_tools">TIỆN ÍCH &amp; PHÂN TÍCH</string>
+    <string name="sec_hud_style">KIỂU DÁNG &amp; ĐỘ TRONG SUỐT</string>
+    <string name="sec_hud_poll">NHỊP QUÉT CẢM BIẾN</string>
+    <string name="sec_hud_metrics">DANH SÁCH THÔNG SỐ ĐO</string>
 
     <string name="subtitle_hint">Chạm game để chạy • Nhấn giữ tạo Shortcut • Chạm HUD để ghi log</string>
-    <string name="reading_display">Đang đọc độ phân giải vật lý...</string>
-    <string name="preview_display_fmt">GỐC %1$dx%2$d (%3$d DPI)  ➔  SSAA %4$dx%5$d (%6$d DPI)</string>
-    <string name="btn_reset_display">↺ RESET GỐC</string>
+    <string name="reading_display">Đang đọc độ phân giải...</string>
+    <string name="preview_display_fmt">%1$dx%2$d ➔ %4$dx%5$d (%6$d DPI)</string>
+    <string name="btn_reset_display">RESET</string>
 
     <string name="chk_telemetry_hud">Tự bật HUD khi vào game</string>
-    <string name="btn_orient_vert">↕️ Xếp dọc</string>
-    <string name="btn_orient_horiz">↔️ Ngang 1 dòng</string>
-    <string name="btn_test_hud">👁️ Bật/Tắt HUD</string>
+    <string name="btn_orient_vert">Xếp dọc</string>
+    <string name="btn_orient_horiz">Ngang 1 dòng</string>
+    <string name="btn_test_hud">Bật / Tắt HUD</string>
 
     <string name="size_tiny">Siêu gọn</string>
     <string name="size_small">Nhỏ</string>
@@ -42,38 +58,50 @@
     <string name="bg_sheer">Siêu trong</string>
     <string name="bg_clear">Chỉ chữ</string>
 
-    <string name="poll_auto">⚡ Auto</string>
-    <string name="poll_300ms">🚀 150ms</string>
-    <string name="poll_1s">⚡ 300ms</string>
-    <string name="poll_2s">Quét 1s</string>
+    <string name="poll_auto">Auto</string>
+    <string name="poll_300ms">150ms</string>
+    <string name="poll_1s">300ms</string>
+    <string name="poll_2s">1 giây</string>
 
-    <string name="metric_fps">⚡ FPS (xx.x)</string>
-    <string name="metric_watt">🔌 Công suất (W)</string>
-    <string name="metric_vram">🎮 VRAM GPU</string>
-    <string name="metric_cpu_freq">⚙️ Xung CPU</string>
-    <string name="metric_bat_temp">🔋 Nhiệt Pin °C</string>
-    <string name="metric_soc_temp">🌡️ Nhiệt SoC °C</string>
-    <string name="metric_cpu_temp">🔥 Nhiệt CPU °C</string>
-    <string name="metric_gpu_temp">📟 Nhiệt GPU °C</string>
-    <string name="metric_ddr_temp">🧬 Nhiệt DDR °C</string>
-    <string name="metric_cam_temp">📷 Nhiệt CAM °C</string>
-    <string name="metric_skin_temp">📱 Nhiệt Vỏ °C</string>
-    <string name="metric_ram">💾 Bộ nhớ RAM</string>
+    <string name="metric_fps">Tốc độ khung hình (FPS)</string>
+    <string name="desc_fps">Đo khung hình thực tế chính xác tới 0.1 FPS</string>
+    <string name="metric_watt">Công suất điện (Watt)</string>
+    <string name="desc_watt">Đo mức ăn điện hoặc dòng sạc tức thời của máy</string>
+    <string name="metric_vram">Bộ nhớ đồ họa (VRAM)</string>
+    <string name="desc_vram">Dung lượng VRAM tiến trình game đang chiếm dụng</string>
+    <string name="metric_cpu_freq">Xung nhịp CPU</string>
+    <string name="desc_cpu_freq">Xung nhịp cao nhất của các cụm nhân xử lý</string>
+    <string name="metric_bat_temp">Nhiệt độ Pin</string>
+    <string name="desc_bat_temp">Nhiệt độ viên pin chính xác từng 0.1°C</string>
+    <string name="metric_soc_temp">Nhiệt độ đỉnh SoC</string>
+    <string name="desc_soc_temp">Lấy mức nhiệt cao hơn giữa CPU và GPU</string>
+    <string name="metric_cpu_temp">Nhiệt độ lõi CPU</string>
+    <string name="desc_cpu_temp">Cảm biến nhiệt trực tiếp trên cụm nhân CPU</string>
+    <string name="metric_gpu_temp">Nhiệt độ lõi GPU</string>
+    <string name="desc_gpu_temp">Cảm biến nhiệt nhân đồ họa Adreno / Mali</string>
+    <string name="metric_ddr_temp">Nhiệt độ chip RAM (DDR)</string>
+    <string name="desc_ddr_temp">Nhiệt độ bộ nhớ LPDDR và bộ đệm LLCC</string>
+    <string name="metric_cam_temp">Nhiệt độ cụm Camera</string>
+    <string name="desc_cam_temp">Cảm biến nhiệt vùng ống kính và chống rung OIS</string>
+    <string name="metric_skin_temp">Nhiệt độ vỏ &amp; bo mạch</string>
+    <string name="desc_skin_temp">Nhiệt độ bề mặt khung máy và bo mạch chính</string>
+    <string name="metric_ram">Dung lượng RAM</string>
+    <string name="desc_ram">RAM game đang chiếm hoặc tổng RAM hệ thống</string>
 
-    <string name="btn_quick_tile">🎛️ Control Center</string>
+    <string name="btn_quick_tile">Control Center</string>
     <string name="hint_quick_tile">Vuốt Control Center xuống -&gt; Bấm Sửa (✏️) -&gt; Kéo nút \'HUD Đo FPS\' lên!</string>
     <string name="toast_quick_tile_added">✅ Đã thêm nút HUD lên Control Center!</string>
-    <string name="btn_reset_pos">🎯 Reset vị trí</string>
+    <string name="btn_reset_pos">Reset vị trí</string>
     <string name="toast_pos_reset">✅ Đã đặt lại tọa độ HUD về mặc định!</string>
-    <string name="btn_sensors">🔍 Soi cảm biến</string>
-    <string name="btn_perf_logs">📈 Lịch sử Log &amp; Biểu đồ</string>
+    <string name="btn_sensors">Soi cảm biến</string>
+    <string name="btn_perf_logs">Lịch sử Log</string>
 
-    <string name="chk_pinned_only">⭐ Chỉ hiện Game đã ghim</string>
-    <string name="hint_search">🔍 Tìm tên game hoặc package...</string>
+    <string name="chk_pinned_only">Chỉ game ghim</string>
+    <string name="hint_search">Tìm tên game hoặc package...</string>
 
     <string name="toast_scanning_sensors">Đang quét thermal_zone trên máy...</string>
     <string name="no_sensors_found">Không đọc được cảm biến nào.</string>
-    <string name="dlg_sensors_title">🌡️ Cảm biến nhiệt trên máy (%1$d zone)</string>
+    <string name="dlg_sensors_title">Cảm biến nhiệt trên máy (%1$d zone)</string>
     <string name="btn_close">Đóng</string>
 
     <string name="toast_display_reset">Đã Reset màn hình về gốc!</string>
@@ -107,13 +135,13 @@
     <string name="toast_rec_saved">💾 Đã lưu %1$s: %2$.1f FPS | %3$.1fW</string>
     <string name="toast_rec_short">⚠️ Phiên đo quá ngắn (dưới 3s), đã hủy</string>
 
-    <string name="chart_title">📈 Biểu đồ phân tích hiệu năng</string>
-    <string name="chart_all_games">🎮 Tất cả (%1$d)</string>
+    <string name="chart_title">Phân tích hiệu năng</string>
+    <string name="chart_all_games">Tất cả (%1$d)</string>
     <string name="chart_no_logs">Chưa có dữ liệu log nào.\nVào game và chạm 1 cái vào thanh HUD để bắt đầu ghi!</string>
-    <string name="chart_delete_btn">🗑️ Xóa log</string>
-    <string name="chart_deleted_toast">🗑️ Đã xóa log phiên chơi</string>
-    <string name="chart_fps_title">⚡ Tốc độ khung hình (FPS)</string>
-    <string name="chart_power_title">🔌 Công suất tiêu thụ điện (Watt)</string>
-    <string name="chart_temp_title">🌡️ Biến thiên nhiệt độ (SoC &amp; Pin °C)</string>
+    <string name="chart_delete_btn">Xóa log</string>
+    <string name="chart_deleted_toast">Đã xóa log phiên chơi</string>
+    <string name="chart_fps_title">Tốc độ khung hình (FPS)</string>
+    <string name="chart_power_title">Công suất tiêu thụ điện (Watt)</string>
+    <string name="chart_temp_title">Biến thiên nhiệt độ (SoC &amp; Pin °C)</string>
     <string name="chart_scrub_hint">Chạm và kéo ngang trên biểu đồ để soi thông số từng giây</string>
 </resources>

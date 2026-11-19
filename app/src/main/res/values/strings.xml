@@ -7,30 +7,46 @@
     <string name="lang_badge_vi">🇻🇳 VI</string>
     <string name="lang_badge_en">🇺🇸 EN</string>
 
-    <string name="status_shizuku_ok">● SHIZUKU READY</string>
-    <string name="status_shizuku_off">● SHIZUKU OFFLINE</string>
+    <string name="theme_auto">🌓 Auto</string>
+    <string name="theme_dark">🌙 Dark</string>
+    <string name="theme_light">☀️ Light</string>
 
-    <string name="tab_armory">🎮 GAME ARMORY</string>
-    <string name="tab_hud_studio">📊 HUD STUDIO</string>
+    <string name="status_shizuku_ok">SHIZUKU READY</string>
+    <string name="status_shizuku_off">SHIZUKU OFFLINE</string>
 
-    <string name="sec_ssaa_engine">DISPLAY SUPERSAMPLING (SSAA)</string>
+    <string name="tab_dashboard">DASHBOARD</string>
+    <string name="tab_hud_cfg">HUD CONFIG</string>
+    <string name="tab_games">ALL GAMES</string>
+
+    <string name="dash_insights">GAME INSIGHTS</string>
+    <string name="dash_reset">RESET DISPLAY</string>
+    <string name="dash_my_games">MY GAMES</string>
+    <string name="dash_manage">MANAGE</string>
+    <string name="dash_add_game">Add</string>
+    <string name="dash_live_monitor">LIVE MONITOR</string>
+    <string name="dash_free_ram">FREE %1$s GB</string>
+
+    <string name="tool_ssaa">SSAA SCALE</string>
+    <string name="tool_auto_hud">AUTO HUD</string>
+    <string name="tool_live_hud">GAME HUD</string>
+    <string name="tool_tile">QUICK TILE</string>
+    <string name="tool_sensors">THERMALS</string>
+    <string name="tool_logs">PERF LOGS</string>
+
     <string name="sec_hud_preview">LIVE HUD PREVIEW</string>
-    <string name="sec_hud_style">LAYOUT &amp; TRANSPARENCY</string>
-    <string name="sec_hud_poll">TELEMETRY POLLING RATE</string>
-    <string name="sec_metrics_perf">PERFORMANCE &amp; POWER</string>
-    <string name="sec_metrics_core_temp">CORE &amp; BATTERY TEMPS</string>
-    <string name="sec_metrics_hw_temp">HARDWARE &amp; MEMORY</string>
-    <string name="sec_hud_tools">DIAGNOSTICS &amp; LOGS</string>
+    <string name="sec_hud_style">HUD APPEARANCE</string>
+    <string name="sec_hud_poll">POLLING INTERVAL</string>
+    <string name="sec_hud_metrics">TELEMETRY METRICS</string>
 
     <string name="subtitle_hint">Tap game to launch • Long-press for Shortcut • Tap HUD to record</string>
-    <string name="reading_display">Reading physical display specs...</string>
-    <string name="preview_display_fmt">NATIVE %1$dx%2$d (%3$d DPI)  ➔  SSAA %4$dx%5$d (%6$d DPI)</string>
-    <string name="btn_reset_display">↺ RESET DISPLAY</string>
+    <string name="reading_display">Reading display...</string>
+    <string name="preview_display_fmt">%1$dx%2$d ➔ %4$dx%5$d (%6$d DPI)</string>
+    <string name="btn_reset_display">RESET</string>
 
     <string name="chk_telemetry_hud">Enable HUD in Game</string>
-    <string name="btn_orient_vert">↕️ Vertical</string>
-    <string name="btn_orient_horiz">↔️ 1-Line Horiz</string>
-    <string name="btn_test_hud">👁️ Toggle HUD</string>
+    <string name="btn_orient_vert">Vertical</string>
+    <string name="btn_orient_horiz">1-Line Horiz</string>
+    <string name="btn_test_hud">Toggle HUD</string>
 
     <string name="size_tiny">Micro</string>
     <string name="size_small">Small</string>
@@ -42,38 +58,50 @@
     <string name="bg_sheer">Sheer</string>
     <string name="bg_clear">Text Only</string>
 
-    <string name="poll_auto">⚡ Auto</string>
-    <string name="poll_300ms">🚀 150ms</string>
-    <string name="poll_1s">⚡ 300ms</string>
-    <string name="poll_2s">1s Poll</string>
+    <string name="poll_auto">Auto</string>
+    <string name="poll_300ms">150ms</string>
+    <string name="poll_1s">300ms</string>
+    <string name="poll_2s">1s</string>
 
-    <string name="metric_fps">⚡ FPS (xx.x)</string>
-    <string name="metric_watt">🔌 Power (W)</string>
-    <string name="metric_vram">🎮 GPU VRAM</string>
-    <string name="metric_cpu_freq">⚙️ CPU Clock</string>
-    <string name="metric_bat_temp">🔋 Battery °C</string>
-    <string name="metric_soc_temp">🌡️ SoC Peak °C</string>
-    <string name="metric_cpu_temp">🔥 CPU Core °C</string>
-    <string name="metric_gpu_temp">📟 GPU Core °C</string>
-    <string name="metric_ddr_temp">🧬 DDR RAM °C</string>
-    <string name="metric_cam_temp">📷 Camera °C</string>
-    <string name="metric_skin_temp">📱 Board / Skin °C</string>
-    <string name="metric_ram">💾 System RAM</string>
+    <string name="metric_fps">Frame Rate (FPS)</string>
+    <string name="desc_fps">Real-time frame rate with 0.1 decimal precision</string>
+    <string name="metric_watt">Power Draw (W)</string>
+    <string name="desc_watt">Instantaneous battery discharge / charge wattage</string>
+    <string name="metric_vram">GPU VRAM</string>
+    <string name="desc_vram">Graphics memory allocated by the active game</string>
+    <string name="metric_cpu_freq">CPU Clock</string>
+    <string name="desc_cpu_freq">Peak frequency across active CPU clusters</string>
+    <string name="metric_bat_temp">Battery Temp</string>
+    <string name="desc_bat_temp">Battery cell temperature in Celsius</string>
+    <string name="metric_soc_temp">SoC Peak Temp</string>
+    <string name="desc_soc_temp">Highest thermal reading between CPU and GPU</string>
+    <string name="metric_cpu_temp">CPU Core Temp</string>
+    <string name="desc_cpu_temp">Silicon core temperature of processor clusters</string>
+    <string name="metric_gpu_temp">GPU Core Temp</string>
+    <string name="desc_gpu_temp">Graphics processor thermal zone reading</string>
+    <string name="metric_ddr_temp">DDR Memory Temp</string>
+    <string name="desc_ddr_temp">LPDDR / LLCC memory controller temperature</string>
+    <string name="metric_cam_temp">Camera Sensor Temp</string>
+    <string name="desc_cam_temp">Camera module and OIS thermal reading</string>
+    <string name="metric_skin_temp">Board / Skin Temp</string>
+    <string name="desc_skin_temp">Device chassis and mainboard surface temperature</string>
+    <string name="metric_ram">Memory Usage (RAM)</string>
+    <string name="desc_ram">Game PSS memory or system RAM utilization</string>
 
-    <string name="btn_quick_tile">🎛️ Add Quick Tile</string>
+    <string name="btn_quick_tile">Quick Tile</string>
     <string name="hint_quick_tile">Pull down Quick Settings -&gt; Tap Edit (✏️) -&gt; Drag \'FPS HUD\' tile up!</string>
     <string name="toast_quick_tile_added">✅ Added FPS HUD tile to Quick Settings!</string>
-    <string name="btn_reset_pos">🎯 Reset HUD Pos</string>
+    <string name="btn_reset_pos">Reset Pos</string>
     <string name="toast_pos_reset">✅ HUD position reset to default!</string>
-    <string name="btn_sensors">🔍 Thermal Zones</string>
-    <string name="btn_perf_logs">📈 Performance Logs &amp; Charts</string>
+    <string name="btn_sensors">Sensors</string>
+    <string name="btn_perf_logs">Perf Logs</string>
 
-    <string name="chk_pinned_only">⭐ Pinned Games Only</string>
-    <string name="hint_search">🔍 Search game name or package...</string>
+    <string name="chk_pinned_only">Pinned Only</string>
+    <string name="hint_search">Search game name or package...</string>
 
     <string name="toast_scanning_sensors">Scanning device thermal zones...</string>
     <string name="no_sensors_found">No readable thermal sensors found.</string>
-    <string name="dlg_sensors_title">🌡️ Device Thermal Sensors (%1$d zones)</string>
+    <string name="dlg_sensors_title">Device Thermal Sensors (%1$d zones)</string>
     <string name="btn_close">Close</string>
 
     <string name="toast_display_reset">Display restored to native resolution!</string>
@@ -107,13 +135,13 @@
     <string name="toast_rec_saved">💾 Saved %1$s: %2$.1f FPS | %3$.1fW</string>
     <string name="toast_rec_short">⚠️ Session too short (under 3s), discarded</string>
 
-    <string name="chart_title">📈 Performance Analysis</string>
-    <string name="chart_all_games">🎮 All (%1$d)</string>
+    <string name="chart_title">Performance Analysis</string>
+    <string name="chart_all_games">All (%1$d)</string>
     <string name="chart_no_logs">No performance logs yet.\nStart a game and tap the floating HUD to record!</string>
-    <string name="chart_delete_btn">🗑️ Delete</string>
-    <string name="chart_deleted_toast">🗑️ Session log deleted</string>
-    <string name="chart_fps_title">⚡ Frame Rate (FPS)</string>
-    <string name="chart_power_title">🔌 Power Draw (Watts)</string>
-    <string name="chart_temp_title">🌡️ Thermal Profile (SoC vs Battery °C)</string>
+    <string name="chart_delete_btn">Delete</string>
+    <string name="chart_deleted_toast">Session log deleted</string>
+    <string name="chart_fps_title">Frame Rate (FPS)</string>
+    <string name="chart_power_title">Power Draw (Watts)</string>
+    <string name="chart_temp_title">Thermal Profile (SoC vs Battery °C)</string>
     <string name="chart_scrub_hint">Touch &amp; drag across any chart to inspect exact values</string>
 </resources>
