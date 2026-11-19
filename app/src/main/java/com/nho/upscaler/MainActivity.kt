@@ -1,6 +1,7 @@
 package com.nho.upscaler
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -33,6 +34,7 @@ import android.widget.*
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.util.Locale
 import kotlin.concurrent.thread
 
 data class AppItem(
@@ -56,7 +58,6 @@ class MainActivity : Activity() {
     private var overlaySizeLevel = 1
     private var hudPollMode = 0
     private var overlayVertical = false
-    private var isPreviewing = false
     private var currentQuery = ""
     private var physW = 1440
     private var physH = 3168
@@ -171,7 +172,6 @@ class MainActivity : Activity() {
                     runShizukuScript("wm size reset; wm density reset")
                     cancelActiveNotification()
                     stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
-                    isPreviewing = false
                     Toast.makeText(context, "Đã Reset màn hình về gốc!", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -208,7 +208,6 @@ class MainActivity : Activity() {
                     startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
                 } else if (!isChecked) {
                     stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
-                    isPreviewing = false
                 }
             }
         }
@@ -255,10 +254,8 @@ class MainActivity : Activity() {
                         putExtra("game_name", "Xem thử HUD")
                     }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svc) else startService(svc)
-                    isPreviewing = true
                 } else {
                     stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
-                    isPreviewing = false
                 }
             }
         }
@@ -302,13 +299,13 @@ class MainActivity : Activity() {
         refreshSizeChips()
         hudCard.addView(sizeRow)
 
-        // Hàng chọn nhịp quét cảm biến (Auto / 1s / 2s / 3s)
+        // Hàng chọn nhịp quét cảm biến (Auto / 300ms / 1s / 2s)
         val pollRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, 0, 0, 8)
         }
         val pollChips = mutableListOf<TextView>()
-        val pollLabels = listOf(0 to "⚡ Auto", 1 to "Quét 1s", 2 to "Quét 2s", 3 to "Quét 3s")
+        val pollLabels = listOf(0 to "⚡ Auto", 1 to "🚀 300ms", 2 to "Quét 1s", 3 to "Quét 2s")
         fun refreshPollChips() {
             pollChips.forEachIndexed { idx, chip ->
                 val active = (idx == hudPollMode)
@@ -339,17 +336,24 @@ class MainActivity : Activity() {
         refreshPollChips()
         hudCard.addView(pollRow)
 
-        // 2 hàng bật/tắt 7 thông số phần cứng
+        // 3 hàng bật/tắt 12 thông số phần cứng & toàn bộ cụm cảm biến nhiệt (chuẩn Scene)
         val metricRows = listOf(
             listOf(
-                Triple("m_fps", "⚡ FPS", true),
-                Triple("m_bat_temp", "🔋 Nhiệt Pin", true),
-                Triple("m_cpu_temp", "🔥 Nhiệt CPU", false),
-                Triple("m_watt", "🔌 Công suất W", true)
+                Triple("m_fps", "⚡ FPS (xx.x)", true),
+                Triple("m_watt", "🔌 Công suất", true),
+                Triple("m_gpu", "🎮 VRAM", true),
+                Triple("m_cpu_freq", "⚙️ Xung CPU", false)
             ),
             listOf(
-                Triple("m_gpu", "🎮 VRAM GPU", true),
-                Triple("m_cpu_freq", "⚙️ Xung CPU", false),
+                Triple("m_bat_temp", "🔋 Pin °C", true),
+                Triple("m_soc_temp", "🌡️ SoC °C", true),
+                Triple("m_cpu_temp", "🔥 CPU °C", false),
+                Triple("m_gpu_temp", "📟 GPU °C", false)
+            ),
+            listOf(
+                Triple("m_ddr_temp", "🧬 DDR °C", false),
+                Triple("m_cam_temp", "📷 CAM °C", false),
+                Triple("m_skin_temp", "📱 Vỏ máy °C", false),
                 Triple("m_ram", "💾 RAM", false)
             )
         )
@@ -363,10 +367,10 @@ class MainActivity : Activity() {
                 var enabled = prefs.getBoolean(key, defVal)
                 val pill = TextView(this).apply {
                     text = label
-                    textSize = 10.5f
+                    textSize = 10f
                     setTypeface(null, Typeface.BOLD)
                     gravity = Gravity.CENTER
-                    setPadding(6, 8, 6, 8)
+                    setPadding(4, 8, 4, 8)
                     fun updatePillStyle() {
                         setTextColor(if (enabled) Color.parseColor("#00E676") else Color.parseColor("#757575"))
                         background = GradientDrawable().apply {
@@ -383,24 +387,24 @@ class MainActivity : Activity() {
                         notifyOverlayStyleUpdated()
                     }
                 }
-                mRow.addView(pill, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (colIdx < rowItems.size - 1) rightMargin = 6 })
+                mRow.addView(pill, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (colIdx < rowItems.size - 1) rightMargin = 5 })
             }
             hudCard.addView(mRow)
         }
 
-        // Hàng tiện ích nhanh: Thêm Control Center + Đặt lại vị trí HUD
+        // Hàng tiện ích nhanh: Control Center + Đặt lại vị trí + Soi cảm biến thực tế trên máy
         val actionBottomRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, 8, 0, 0)
         }
 
         val addQsTileBtn = TextView(this).apply {
-            text = "🎛️ Gắn Control Center"
-            textSize = 11f
+            text = "🎛️ Control Center"
+            textSize = 10.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#64FFDA"))
             gravity = Gravity.CENTER
-            setPadding(12, 11, 12, 11)
+            setPadding(8, 10, 8, 10)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#182429"))
                 cornerRadius = 12f
@@ -429,15 +433,15 @@ class MainActivity : Activity() {
                 }
             }
         }
-        actionBottomRow.addView(addQsTileBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.3f).apply { rightMargin = 8 })
+        actionBottomRow.addView(addQsTileBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.15f).apply { rightMargin = 6 })
 
         val resetPosBtn = TextView(this).apply {
-            text = "🎯 Đặt lại vị trí"
-            textSize = 11f
+            text = "🎯 Reset vị trí"
+            textSize = 10.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#FFD740"))
             gravity = Gravity.CENTER
-            setPadding(12, 11, 12, 11)
+            setPadding(8, 10, 8, 10)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#242118"))
                 cornerRadius = 12f
@@ -456,12 +460,27 @@ class MainActivity : Activity() {
                 Toast.makeText(this@MainActivity, "✅ Đã đặt lại tọa độ HUD về mặc định!", Toast.LENGTH_SHORT).show()
             }
         }
-        actionBottomRow.addView(resetPosBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        actionBottomRow.addView(resetPosBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 0.95f).apply { rightMargin = 6 })
+
+        val inspectSensorsBtn = TextView(this).apply {
+            text = "🔍 Soi cảm biến"
+            textSize = 10.5f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.parseColor("#CE93D8"))
+            gravity = Gravity.CENTER
+            setPadding(8, 10, 8, 10)
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#231926"))
+                cornerRadius = 12f
+                setStroke(1, Color.parseColor("#472D4F"))
+            }
+            setOnClickListener { showThermalInspectorDialog() }
+        }
+        actionBottomRow.addView(inspectSensorsBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         hudCard.addView(actionBottomRow)
 
         root.addView(hudCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8 })
 
-        // Công tắc Chỉ hiện game đã ghim
         val favCheck = CheckBox(this).apply {
             text = "⭐ Chỉ hiện Game đã ghim (Ẩn ứng dụng khác)"
             textSize = 12.5f
@@ -582,6 +601,55 @@ class MainActivity : Activity() {
         updatePreviewText()
         if (checkShizuku()) fetchPhysicalDisplayInfo()
         loadInstalledApps()
+    }
+
+    private fun showThermalInspectorDialog() {
+        if (!checkShizuku()) return
+        Toast.makeText(this, "Đang quét thermal_zone trên máy...", Toast.LENGTH_SHORT).show()
+        thread {
+            try {
+                val m = Shizuku::class.java.getDeclaredMethod(
+                    "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java
+                )
+                m.isAccessible = true
+                val cmd = "for z in /sys/class/thermal/thermal_zone*; do " +
+                        "if [ -r \"\$z/type\" ] && [ -r \"\$z/temp\" ]; then " +
+                        "read -r t < \"\$z/type\"; read -r v < \"\$z/temp\"; " +
+                        "printf \"%s|%s\\n\" \"\$t\" \"\$v\"; fi; done"
+                val proc = m.invoke(null, arrayOf("sh", "-c", cmd), null, null) as Process
+                val lines = BufferedReader(InputStreamReader(proc.inputStream)).readLines()
+                proc.waitFor()
+
+                val report = StringBuilder()
+                for (line in lines) {
+                    val parts = line.split("|")
+                    if (parts.size == 2) {
+                        val name = parts[0].trim()
+                        val raw = parts[1].trim().toFloatOrNull() ?: continue
+                        val c = when {
+                            raw > 1000f -> raw / 1000f
+                            raw > 200f -> raw / 10f
+                            else -> raw
+                        }
+                        if (c in 15f..125f) {
+                            report.append(String.format(Locale.US, "• %-22s : %.1f°C\n", name, c))
+                        }
+                    }
+                }
+                val finalText = if (report.isEmpty()) "Không đọc được cảm biến nào." else report.toString()
+                runOnUiThread {
+                    AlertDialog.Builder(this)
+                        .setTitle("🌡️ Cảm biến nhiệt trên máy (${lines.size} zone)")
+                        .setMessage(finalText)
+                        .setPositiveButton("Đóng", null)
+                        .show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this, "Lỗi đọc cảm biến: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     private fun notifyOverlayStyleUpdated() {
@@ -821,7 +889,6 @@ class MainActivity : Activity() {
                     putExtra("scale_label", scaleStr)
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svcIntent) else startService(svcIntent)
-                isPreviewing = false
             } else {
                 Toast.makeText(this, "⚠️ Chưa bật quyền Hiển thị trên ứng dụng khác để đo HUD!", Toast.LENGTH_LONG).show()
             }

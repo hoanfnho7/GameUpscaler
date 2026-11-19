@@ -678,7 +678,7 @@ class FpsOverlayService : Service() {
             val writer = BufferedWriter(OutputStreamWriter(proc.outputStream, Charsets.UTF_8))
             val reader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8))
 
-            // Khởi tạo hàm đọc built-in _rdz (0 fork) và cache sẵn đường dẫn cảm biến nhiệt + xung CPU + DRM FPS 1 lần duy nhất
+            // Khởi tạo hàm đọc built-in _rdz (0 fork) và cache sẵn đường dẫn cảm biến nhiệt trên SM8750 / Vivo / iQOO
             val initCmd = "_rdz() { for f in \$1; do read -r v < \"\$f\" 2>/dev/null && printf \"%s \" \"\$v\"; done; printf \"\\n\"; }; " +
                     "CPU_ZONES=\"\"; GPU_ZONES=\"\"; DDR_ZONES=\"\"; CAM_ZONES=\"\"; SKIN_ZONES=\"\"; " +
                     "for z in /sys/class/thermal/thermal_zone*; do " +
@@ -687,9 +687,9 @@ class FpsOverlayService : Service() {
                     "t=\$(printf \"%s\" \"\$t\" | tr 'A-Z' 'a-z'); " +
                     "case \"\$t\" in " +
                     "*gpu*) GPU_ZONES=\"\$GPU_ZONES \$z/temp\" ;; " +
-                    "*ddr*|*llcc*) DDR_ZONES=\"\$DDR_ZONES \$z/temp\" ;; " +
-                    "*cam*|*ois*) CAM_ZONES=\"\$CAM_ZONES \$z/temp\" ;; " +
-                    "*skin*|*quiet*|*xo-therm*|*sys-therm*|*board*|*msm-therm*) SKIN_ZONES=\"\$SKIN_ZONES \$z/temp\" ;; " +
+                    "*ddr*|*llcc*|*dram*|*lpddr*) DDR_ZONES=\"\$DDR_ZONES \$z/temp\" ;; " +
+                    "*cam*|*ois*|*actuator*|*tof*) CAM_ZONES=\"\$CAM_ZONES \$z/temp\" ;; " +
+                    "*skin*|*quiet*|*xo-therm*|*sys-therm*|*board*|*msm-therm*|*shell*|*sub-therm*|*main-therm*|*vivo*) SKIN_ZONES=\"\$SKIN_ZONES \$z/temp\" ;; " +
                     "*npu*|*nspss*|*modem*|*pa*|*bat*|*wlan*|*usb*|*flash*|*chg*) ;; " +
                     "*cpu*|*cpuss*|*apc*|*tsens*|*ap*|*soc*) CPU_ZONES=\"\$CPU_ZONES \$z/temp\" ;; " +
                     "esac; done; " +
@@ -783,7 +783,6 @@ class FpsOverlayService : Service() {
                         readNativeBatteryPower()
                     }
 
-                    // Toàn bộ đọc cảm biến sử dụng built-in read/printf -> 0 process fork mỗi nhịp
                     val sb = StringBuilder()
                     if (showFps && initializedStatsForPkg != currentPkg) {
                         sb.append("dumpsys SurfaceFlinger --timestats -clear -enable >/dev/null 2>&1; ")
@@ -862,7 +861,6 @@ class FpsOverlayService : Service() {
         }
     }
 
-    // Giống Scene (sensor.md): Khi có nhiều cảm biến cùng nhóm, tự động lấy giá trị lớn nhất (max)
     private fun parseMaxThermalTokens(rawTokens: String): Float {
         var maxTemp = 0f
         for (tok in rawTokens.trim().split(Regex("\\s+"))) {
@@ -949,7 +947,6 @@ class FpsOverlayService : Service() {
             }
         }
 
-        // Cảm biến ảo soc của Scene: lấy giá trị lớn hơn giữa CPU và GPU
         val socMax = maxOf(lastCpuTemp, lastGpuTemp)
         if (socMax > 0f) {
             lastSocTemp = socMax
