@@ -97,7 +97,8 @@ class FpsOverlayService : Service() {
     private var emptyFpsTicks = 0
     private var hasValidFpsSample = false
     private var initializedStatsForPkg: String? = null
-    private var drmFpsAvailable = false
+    private var lastDrmFps = -1f
+    private var frozenDrmTicks = 0
     private var tickCounter = 0
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -719,7 +720,6 @@ class FpsOverlayService : Service() {
                 try {
                     tickCounter++
                     val intervalMs = computeNextIntervalMs()
-                    // Các thông số nhiệt/xung/RAM chỉ cần đọc mỗi ~1 giây; riêng FPS & Watt chạy ở tốc độ cao 150-250ms
                     val slowMod = (1000L / intervalMs).toInt().coerceAtLeast(1)
                     val isSlowTick = (tickCounter % slowMod == 1)
                     val vramMod = (3000L / intervalMs).toInt().coerceAtLeast(1)
@@ -774,15 +774,13 @@ class FpsOverlayService : Service() {
                         sb.append("{ read -r m1; read -r m2; read -r m3; printf \"%s\\n%s\\n%s\\n\" \"\$m1\" \"\$m2\" \"\$m3\"; } < /proc/meminfo; ")
                     }
                     if (showFps) {
-                        sb.append("if [ -n \"\$DRM_NODE\" ]; then read -r dv < \"\$DRM_NODE\" 2>/dev/null && printf \"DRM_FPS=%s\\n\" \"\$dv\"; fi; ")
-                        if (!drmFpsAvailable || isVramTick) {
-                            if (initializedStatsForPkg != currentPkg) {
-                                sb.append("dumpsys SurfaceFlinger --timestats -clear -enable >/dev/null 2>&1; ")
-                                initializedStatsForPkg = currentPkg
-                            }
-                            sb.append("printf \"===TIMESTATS===\\n\"; ")
-                            sb.append("dumpsys SurfaceFlinger --timestats -dump; ")
+                        if (initializedStatsForPkg != currentPkg) {
+                            sb.append("dumpsys SurfaceFlinger --timestats -clear -enable >/dev/null 2>&1; ")
+                            initializedStatsForPkg = currentPkg
                         }
+                        sb.append("if [ -n \"\$DRM_NODE\" ] && [ ").append(frozenDrmTicks).append(" -lt 4 ]; then read -r dv < \"\$DRM_NODE\" 2>/dev/null && printf \"DRM_FPS=%s\\n\" \"\$dv\"; fi; ")
+                        sb.append("printf \"===TIMESTATS===\\n\"; ")
+                        sb.append("dumpsys SurfaceFlinger --timestats -dump; ")
                     }
 
                     if (sb.isNotEmpty()) {
@@ -806,7 +804,6 @@ class FpsOverlayService : Service() {
                         }
 
                         if (showFps) {
-                            drmFpsAvailable = (drmFpsFallback > 1f)
                             lastFps = parseRealFps(currentPkg, timeStatsSection, drmFpsFallback)
                         }
                     }
@@ -935,6 +932,7 @@ class FpsOverlayService : Service() {
 
     private fun isIgnoredLayer(layer: String): Boolean {
         return layer.contains("com.nho.upscaler") ||
+                layer.contains("gamecube") ||
                 layer.contains("Wallpaper") ||
                 layer.contains("StatusBar") ||
                 layer.contains("NavigationBar") ||
@@ -945,11 +943,6 @@ class FpsOverlayService : Service() {
     }
 
     private fun parseRealFps(pkg: String, dump: String, drmFpsFallback: Float): Float {
-        if (drmFpsFallback > 1f) {
-            hasValidFpsSample = true
-            return drmFpsFallback.coerceIn(1f, 144f)
-        }
-
         val nowNs = System.nanoTime()
         if (dump.isNotEmpty()) {
             var statsEnabled = true
@@ -1009,12 +1002,27 @@ class FpsOverlayService : Service() {
 
                     if (bestDelta > 0L) {
                         emptyFpsTicks = 0
+                        frozenDrmTicks = 0
                         hasValidFpsSample = true
                         val computed = (bestDelta / dtSec).toFloat()
                         return computed.coerceIn(1f, 144f)
                     } else {
                         emptyFpsTicks++
                         if (emptyFpsTicks >= 6) initializedStatsForPkg = null
+
+                        if (drmFpsFallback > 1f) {
+                            if (abs(drmFpsFallback - lastDrmFps) < 0.01f) {
+                                frozenDrmTicks++
+                            } else {
+                                frozenDrmTicks = 0
+                            }
+                            lastDrmFps = drmFpsFallback
+                            if (frozenDrmTicks < 4) {
+                                hasValidFpsSample = true
+                                return drmFpsFallback.coerceIn(1f, 144f)
+                            }
+                        }
+
                         if (hasValidFpsSample) {
                             return if (emptyFpsTicks <= 2 && lastFps > 0f) lastFps else 0f
                         }
