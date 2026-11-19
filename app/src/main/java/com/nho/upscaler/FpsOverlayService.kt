@@ -72,7 +72,7 @@ class FpsOverlayService : Service() {
     @Volatile private var shellWriter: BufferedWriter? = null
     @Volatile private var shellReader: BufferedReader? = null
 
-    private var lastFps = 0
+    private var lastFps = -1
     private var lastBatTemp = 0f
     private var lastCpuTemp = 0f
     private var lastWatts = 0f
@@ -84,9 +84,12 @@ class FpsOverlayService : Service() {
     private var lastRenderedText = ""
     private var lastRenderedColor = 0
 
-    private var lastFramesCount = -1L
-    private var lastSampleTimeMs = 0L
-    private var lastTrackedSource = ""
+    // Biến theo dõi chênh lệch khung hình từng layer (Per-layer Delta)
+    private var prevLayerFrames = mutableMapOf<String, Long>()
+    private var prevGlobalFrames = -1L
+    private var lastFpsSampleMs = 0L
+    private var emptyFpsTicks = 0
+    private var hasValidFpsSample = false
     private var initializedStatsForPkg: String? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -530,7 +533,7 @@ class FpsOverlayService : Service() {
         val isCompact = (sizeLevel == 0)
 
         if (showFps) {
-            val fpsVal = if (lastFps > 0) "$lastFps" else "--"
+            val fpsVal = if (lastFps >= 0) "$lastFps" else "--"
             parts.add(if (isCompact) "${fpsVal}F" else if (isVertical) "⚡ FPS: $fpsVal" else "⚡$fpsVal FPS")
         }
         if (showBatTemp) {
@@ -706,9 +709,7 @@ class FpsOverlayService : Service() {
             1 -> 1000L
             2 -> 2000L
             3 -> 3000L
-            else -> {
-                if (targetPkg.isNotEmpty() || isLandscapeMode() || lastFps >= 45) 1000L else 2500L
-            }
+            else -> 1000L
         }
     }
 
@@ -762,7 +763,7 @@ class FpsOverlayService : Service() {
                     if (showFps) {
                         sb.append("echo \"DRM_FPS=\$(cat /sys/class/drm/sde-crtc-0/measured_fps /sys/class/drm/card0/sde-crtc-0/measured_fps 2>/dev/null | head -n 1)\"; ")
                         sb.append("echo \"===TIMESTATS===\"; ")
-                        sb.append("dumpsys SurfaceFlinger --timestats -dump; ")
+                        sb.append("dumpsys SurfaceFlinger --timestats -dump | grep -E 'statsEnabled|layerName|totalFrames'; ")
                     }
 
                     val cmdStr = sb.toString()
@@ -891,12 +892,24 @@ class FpsOverlayService : Service() {
         return pidSet to drmFps
     }
 
+    private fun isIgnoredLayer(layer: String): Boolean {
+        return layer.contains("com.nho.upscaler") ||
+                layer.contains("Wallpaper") ||
+                layer.contains("StatusBar") ||
+                layer.contains("NavigationBar") ||
+                layer.contains("NotificationShade") ||
+                layer.contains("ScreenDecor") ||
+                layer.contains("Splash") ||
+                layer.contains("Taskbar")
+    }
+
     private fun parseRealFps(pkg: String, dump: String, drmFpsFallback: Int): Int {
+        val nowMs = System.currentTimeMillis()
         if (dump.isNotEmpty()) {
             var statsEnabled = true
             var globalFrames = -1L
             var currentLayer = ""
-            val matchingLayers = mutableListOf<Pair<String, Long>>()
+            val currentLayerMap = mutableMapOf<String, Long>()
 
             for (rawLine in dump.lines()) {
                 val line = rawLine.trim()
@@ -906,10 +919,17 @@ class FpsOverlayService : Service() {
                     currentLayer = line.substringAfter("=").trim()
                 } else if (line.startsWith("totalFrames =")) {
                     val frames = line.substringAfter("=").trim().toLongOrNull() ?: -1L
-                    if (currentLayer.isEmpty()) {
-                        globalFrames = frames
-                    } else if (pkg.isNotEmpty() && currentLayer.contains(pkg) && !currentLayer.contains("Splash")) {
-                        matchingLayers.add(currentLayer to frames)
+                    if (frames >= 0L) {
+                        if (currentLayer.isEmpty()) {
+                            if (globalFrames < 0L) globalFrames = frames
+                        } else if (!isIgnoredLayer(currentLayer)) {
+                            if (pkg.isEmpty() || currentLayer.contains(pkg)) {
+                                val existing = currentLayerMap[currentLayer] ?: -1L
+                                if (frames > existing) {
+                                    currentLayerMap[currentLayer] = frames
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -918,37 +938,70 @@ class FpsOverlayService : Service() {
                 initializedStatsForPkg = null
             }
 
-            val bestLayer = matchingLayers.maxByOrNull { it.second }
-            if (pkg.isNotEmpty() && bestLayer == null) {
-                initializedStatsForPkg = null
-            }
-
-            val sourceKey = bestLayer?.first ?: "GLOBAL"
-            val currentFrames = bestLayer?.second ?: globalFrames
-            val nowMs = System.currentTimeMillis()
-
-            if (currentFrames >= 0L) {
-                if (sourceKey == lastTrackedSource && lastFramesCount >= 0L && currentFrames >= lastFramesCount) {
-                    val dt = (nowMs - lastSampleTimeMs) / 1000.0
-                    val df = currentFrames - lastFramesCount
-                    lastFramesCount = currentFrames
-                    lastSampleTimeMs = nowMs
-                    if (dt > 0.25) {
-                        val fps = (df / dt).roundToInt()
-                        if (fps in 1..165) return fps
-                        if (fps == 0) return lastFps
+            if (lastFpsSampleMs > 0L) {
+                val dt = (nowMs - lastFpsSampleMs) / 1000.0
+                if (dt >= 0.25) {
+                    var maxLayerDelta = 0L
+                    for ((layer, frames) in currentLayerMap) {
+                        val prev = prevLayerFrames[layer]
+                        if (prev != null && frames >= prev) {
+                            val delta = frames - prev
+                            if (delta > maxLayerDelta) {
+                                maxLayerDelta = delta
+                            }
+                        }
                     }
-                } else {
-                    lastTrackedSource = sourceKey
-                    lastFramesCount = currentFrames
-                    lastSampleTimeMs = nowMs
-                    if (lastFps > 0) return lastFps
+
+                    val globalDelta = if (prevGlobalFrames >= 0L && globalFrames >= prevGlobalFrames) {
+                        globalFrames - prevGlobalFrames
+                    } else {
+                        0L
+                    }
+
+                    prevLayerFrames = currentLayerMap
+                    prevGlobalFrames = globalFrames
+                    lastFpsSampleMs = nowMs
+
+                    val bestDelta = if (pkg.isNotEmpty() && maxLayerDelta > 0L) {
+                        maxLayerDelta
+                    } else {
+                        maxOf(maxLayerDelta, globalDelta)
+                    }
+
+                    if (bestDelta > 0L) {
+                        emptyFpsTicks = 0
+                        hasValidFpsSample = true
+                        val computed = (bestDelta / dt).roundToInt()
+                        return computed.coerceIn(1, 144)
+                    } else {
+                        emptyFpsTicks++
+                        if (emptyFpsTicks >= 3) {
+                            initializedStatsForPkg = null
+                        }
+                        if (drmFpsFallback > 0) {
+                            hasValidFpsSample = true
+                            return drmFpsFallback.coerceIn(1, 144)
+                        }
+                        if (hasValidFpsSample) {
+                            // Giữ số cũ 1 nhịp nếu chỉ bị khựng 1 giây, sau đó trả về 0 FPS thay vì --F
+                            return if (emptyFpsTicks == 1 && lastFps > 0) lastFps else 0
+                        }
+                    }
+                } else if (lastFps >= 0) {
+                    return lastFps
                 }
+            } else {
+                prevLayerFrames = currentLayerMap
+                prevGlobalFrames = globalFrames
+                lastFpsSampleMs = nowMs
             }
         }
 
-        if (drmFpsFallback > 0) return drmFpsFallback
-        return 0
+        if (drmFpsFallback > 0) {
+            hasValidFpsSample = true
+            return drmFpsFallback.coerceIn(1, 144)
+        }
+        return if (hasValidFpsSample && lastFps >= 0) lastFps else -1
     }
 
     override fun onDestroy() {
