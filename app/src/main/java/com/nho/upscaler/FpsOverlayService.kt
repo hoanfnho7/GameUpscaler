@@ -31,7 +31,9 @@ import android.widget.TextView
 import android.widget.Toast
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
+import java.io.BufferedWriter
 import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.util.Locale
 import kotlin.concurrent.thread
 import kotlin.math.abs
@@ -57,6 +59,12 @@ class FpsOverlayService : Service() {
     private var isVertical = false
     private var isOverCloseZone = false
 
+    // Persistent Shizuku Shell Stream
+    private val shellLock = Any()
+    @Volatile private var shellProcess: Process? = null
+    @Volatile private var shellWriter: BufferedWriter? = null
+    @Volatile private var shellReader: BufferedReader? = null
+
     private var lastFps = 0
     private var lastBatTemp = 0f
     private var lastCpuTemp = 0f
@@ -68,7 +76,7 @@ class FpsOverlayService : Service() {
     private var lastFramesCount = -1L
     private var lastSampleTimeMs = 0L
     private var lastTrackedSource = ""
-    private var clearedForPkg = ""
+    private var initializedStatsForPkg: String? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -520,13 +528,82 @@ class FpsOverlayService : Service() {
         } catch (_: Exception) {}
     }
 
-    private fun startTelemetryLoop() {
-        thread {
-            execShizuku("dumpsys SurfaceFlinger --timestats -clear -enable")
+    private fun isProcessAlive(proc: Process?): Boolean {
+        if (proc == null) return false
+        return try {
+            proc.exitValue()
+            false
+        } catch (_: IllegalThreadStateException) {
+            true
+        }
+    }
 
+    private fun ensureShellSession(): Boolean {
+        try {
+            if (isProcessAlive(shellProcess) && shellWriter != null && shellReader != null) {
+                return true
+            }
+            closeShellSession()
+            if (!Shizuku.pingBinder()) return false
+
+            val m = Shizuku::class.java.getDeclaredMethod(
+                "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java
+            )
+            m.isAccessible = true
+            val proc = m.invoke(null, arrayOf("sh"), null, null) as Process
+            shellProcess = proc
+            shellWriter = BufferedWriter(OutputStreamWriter(proc.outputStream, Charsets.UTF_8))
+            shellReader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8))
+            return true
+        } catch (_: Exception) {
+            closeShellSession()
+            return false
+        }
+    }
+
+    private fun closeShellSession() {
+        val proc = shellProcess
+        val w = shellWriter
+        val r = shellReader
+        shellProcess = null
+        shellWriter = null
+        shellReader = null
+        try { proc?.destroy() } catch (_: Exception) {}
+        try { w?.close() } catch (_: Exception) {}
+        try { r?.close() } catch (_: Exception) {}
+    }
+
+    private fun execPersistentShizuku(cmd: String): String {
+        synchronized(shellLock) {
+            if (!ensureShellSession()) return ""
+            return try {
+                val writer = shellWriter ?: return ""
+                val reader = shellReader ?: return ""
+                val marker = "___HUD_EOF_${System.nanoTime()}___"
+
+                writer.write("$cmd\necho $marker\n")
+                writer.flush()
+
+                val out = StringBuilder()
+                while (true) {
+                    val line = reader.readLine() ?: break
+                    if (line == marker) break
+                    out.append(line).append('\n')
+                }
+                out.toString()
+            } catch (_: Exception) {
+                closeShellSession()
+                ""
+            }
+        }
+    }
+
+    private fun startTelemetryLoop() {
+        thread(name = "HudTelemetryLoop") {
             var graceTicks = 0
             while (isRunning) {
                 try {
+                    val currentPkg = targetPkg
                     val showFps = prefs.getBoolean("m_fps", true)
                     val showBatTemp = prefs.getBoolean("m_bat_temp", true)
                     val showCpuTemp = prefs.getBoolean("m_cpu_temp", false)
@@ -539,9 +616,15 @@ class FpsOverlayService : Service() {
                         readNativeBatteryPower()
                     }
 
+                    // Gộp toàn bộ truy vấn Shizuku vào 1 lần giao tiếp pipe duy nhất
                     val sb = StringBuilder()
-                    if (targetPkg.isNotEmpty()) {
-                        sb.append("echo \"PID=\$(pidof $targetPkg)\"; ")
+                    if (showFps && initializedStatsForPkg != currentPkg) {
+                        sb.append("dumpsys SurfaceFlinger --timestats -clear -enable >/dev/null 2>&1; ")
+                        initializedStatsForPkg = currentPkg
+                    }
+
+                    if (currentPkg.isNotEmpty()) {
+                        sb.append("echo \"PID=\$(pidof $currentPkg)\"; ")
                     }
                     if (showGpu) {
                         sb.append("dumpsys gpu | grep -E 'Global total:|Proc [0-9]+ total:'; ")
@@ -553,18 +636,27 @@ class FpsOverlayService : Service() {
                         sb.append("echo \"CPU_T=\$(for z in /sys/class/thermal/thermal_zone*; do t=\$(cat \"\$z/type\" 2>/dev/null); case \"\$t\" in *cpu*|*CPU*|*soc*|*SOC*|*tsens*|*ap*|*nspss*) cat \"\$z/temp\" 2>/dev/null;; esac; done | sort -nr | head -n 1)\"; ")
                     }
                     if (showRam) {
-                        if (targetPkg.isNotEmpty()) {
-                            sb.append("echo \"APP_PSS=\$(dumpsys meminfo $targetPkg 2>/dev/null | grep 'TOTAL PSS:' | awk '{print \$3}')\"; ")
+                        if (currentPkg.isNotEmpty()) {
+                            sb.append("echo \"APP_PSS=\$(dumpsys meminfo $currentPkg 2>/dev/null | grep 'TOTAL PSS:' | awk '{print \$3}')\"; ")
                         }
                         sb.append("grep -E 'MemTotal:|MemAvailable:' /proc/meminfo; ")
+                    }
+                    if (showFps) {
+                        sb.append("echo \"DRM_FPS=\$(cat /sys/class/drm/sde-crtc-0/measured_fps /sys/class/drm/card0/sde-crtc-0/measured_fps 2>/dev/null | head -n 1)\"; ")
+                        sb.append("echo \"===TIMESTATS===\"; ")
+                        sb.append("dumpsys SurfaceFlinger --timestats -dump; ")
                     }
 
                     val cmdStr = sb.toString()
                     if (cmdStr.isNotEmpty()) {
-                        val batchOut = execShizuku(cmdStr)
-                        val activePids = parseBatchOutput(batchOut)
+                        val rawOut = execPersistentShizuku(cmdStr)
+                        val splitIdx = rawOut.indexOf("===TIMESTATS===")
+                        val batchSection = if (splitIdx >= 0) rawOut.substring(0, splitIdx) else rawOut
+                        val timeStatsSection = if (splitIdx >= 0) rawOut.substring(splitIdx + "===TIMESTATS===".length) else ""
 
-                        if (targetPkg.isNotEmpty() && batchOut.contains("PID=")) {
+                        val (activePids, drmFpsFallback) = parseBatchOutput(batchSection)
+
+                        if (currentPkg.isNotEmpty() && batchSection.contains("PID=")) {
                             if (activePids.isEmpty()) {
                                 graceTicks++
                                 if (graceTicks > 8) {
@@ -575,10 +667,10 @@ class FpsOverlayService : Service() {
                                 graceTicks = 0
                             }
                         }
-                    }
 
-                    if (showFps) {
-                        lastFps = measureRealFps(targetPkg)
+                        if (showFps) {
+                            lastFps = parseRealFps(currentPkg, timeStatsSection, drmFpsFallback)
+                        }
                     }
 
                     mainHandler.post { renderTelemetryText() }
@@ -589,13 +681,14 @@ class FpsOverlayService : Service() {
         }
     }
 
-    private fun parseBatchOutput(raw: String): Set<String> {
+    private fun parseBatchOutput(raw: String): Pair<Set<String>, Int> {
         var memTotalKb = 0L
         var memAvailKb = 0L
         var appPssKb = 0L
         var globalGpuBytes = -1L
         val procGpuMap = mutableMapOf<String, Long>()
         var pidSet = emptySet<String>()
+        var drmFps = 0
 
         for (line in raw.lines()) {
             val l = line.trim()
@@ -636,6 +729,12 @@ class FpsOverlayService : Service() {
                 l.startsWith("MemAvailable:") -> {
                     memAvailKb = Regex("([0-9]+)").find(l)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
                 }
+                l.startsWith("DRM_FPS=") && l.contains("fps:") -> {
+                    val fpsVal = Regex("fps:\\s*([0-9.]+)").find(l)?.groupValues?.getOrNull(1)?.toFloatOrNull()
+                    if (fpsVal != null && fpsVal > 0f) {
+                        drmFps = fpsVal.roundToInt()
+                    }
+                }
             }
         }
 
@@ -661,11 +760,10 @@ class FpsOverlayService : Service() {
             lastRamText = String.format(Locale.US, "%.1f/%.0fG", usedGb, totalGb)
         }
 
-        return pidSet
+        return pidSet to drmFps
     }
 
-    private fun measureRealFps(pkg: String): Int {
-        val dump = execShizuku("dumpsys SurfaceFlinger --timestats -dump")
+    private fun parseRealFps(pkg: String, dump: String, drmFpsFallback: Int): Int {
         if (dump.isNotEmpty()) {
             var statsEnabled = true
             var globalFrames = -1L
@@ -689,13 +787,12 @@ class FpsOverlayService : Service() {
             }
 
             if (!statsEnabled) {
-                execShizuku("dumpsys SurfaceFlinger --timestats -clear -enable")
+                initializedStatsForPkg = null
             }
 
             val bestLayer = matchingLayers.maxByOrNull { it.second }
-            if (pkg.isNotEmpty() && bestLayer == null && clearedForPkg != pkg) {
-                execShizuku("dumpsys SurfaceFlinger --timestats -clear -enable")
-                clearedForPkg = pkg
+            if (pkg.isNotEmpty() && bestLayer == null) {
+                initializedStatsForPkg = null
             }
 
             val sourceKey = bestLayer?.first ?: "GLOBAL"
@@ -722,37 +819,15 @@ class FpsOverlayService : Service() {
             }
         }
 
-        val drmOut = execShizuku("cat /sys/class/drm/sde-crtc-0/measured_fps /sys/class/drm/card0/sde-crtc-0/measured_fps 2>/dev/null").trim()
-        if (drmOut.contains("fps:")) {
-            val fpsVal = Regex("fps:\\s*([0-9.]+)").find(drmOut)?.groupValues?.getOrNull(1)?.toFloatOrNull()
-            if (fpsVal != null && fpsVal > 0f) {
-                return fpsVal.roundToInt()
-            }
-        }
-
+        if (drmFpsFallback > 0) return drmFpsFallback
         return 0
-    }
-
-    private fun execShizuku(cmd: String): String {
-        return try {
-            if (!Shizuku.pingBinder()) return ""
-            val m = Shizuku::class.java.getDeclaredMethod(
-                "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java
-            )
-            m.isAccessible = true
-            val proc = m.invoke(null, arrayOf("sh", "-c", cmd), null, null) as Process
-            val out = BufferedReader(InputStreamReader(proc.inputStream)).readText()
-            proc.waitFor()
-            out
-        } catch (_: Exception) {
-            ""
-        }
     }
 
     override fun onDestroy() {
         isRunning = false
         isServiceRunning = false
         syncQuickSettingsTile()
+        closeShellSession()
         try {
             if (overlayView != null) {
                 windowManager?.removeView(overlayView)
