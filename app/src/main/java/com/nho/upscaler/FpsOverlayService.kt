@@ -61,11 +61,10 @@ class FpsOverlayService : Service() {
     private var gameName = "Game"
     private var scaleLabel = ""
     private var sizeLevel = 1
-    private var pollMode = 0 // 0: Auto (400ms game / 800ms app), 1: 300ms, 2: 1s, 3: 2s
+    private var pollMode = 0
     private var isVertical = false
     private var isOverCloseZone = false
 
-    // Persistent Shizuku Shell Stream
     private val shellLock = Any()
     @Volatile private var shellProcess: Process? = null
     @Volatile private var shellWriter: BufferedWriter? = null
@@ -88,7 +87,6 @@ class FpsOverlayService : Service() {
     private var lastRenderedText = ""
     private var lastRenderedColor = 0
 
-    // Theo dõi khung hình từng layer bằng nanoTime để tính chính xác tới xx.x FPS
     private var prevLayerFrames = mutableMapOf<String, Long>()
     private var prevGlobalFrames = -1L
     private var lastFpsSampleNs = 0L
@@ -102,9 +100,7 @@ class FpsOverlayService : Service() {
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
-                Intent.ACTION_SCREEN_OFF -> {
-                    isScreenOn = false
-                }
+                Intent.ACTION_SCREEN_OFF -> isScreenOn = false
                 Intent.ACTION_SCREEN_ON -> {
                     isScreenOn = true
                     telemetryThread?.interrupt()
@@ -143,16 +139,8 @@ class FpsOverlayService : Service() {
         val isLand = isLandscapeMode()
         val dm = resources.displayMetrics
 
-        val rawX = if (isLand) {
-            prefs.getInt("overlay_land_x", 160)
-        } else {
-            prefs.getInt("overlay_port_x", 60)
-        }
-        val rawY = if (isLand) {
-            prefs.getInt("overlay_land_y", 36)
-        } else {
-            prefs.getInt("overlay_port_y", 120)
-        }
+        val rawX = if (isLand) prefs.getInt("overlay_land_x", 160) else prefs.getInt("overlay_port_x", 60)
+        val rawY = if (isLand) prefs.getInt("overlay_land_y", 36) else prefs.getInt("overlay_port_y", 120)
 
         val maxX = (dm.widthPixels - 120).coerceAtLeast(20)
         val maxY = (dm.heightPixels - 140).coerceAtLeast(20)
@@ -195,8 +183,10 @@ class FpsOverlayService : Service() {
                 if (overlayView != null) {
                     lastRenderedText = ""
                     lastRenderedColor = 0
+                    startAsForeground()
                     applyOverlayStyle()
                     renderTelemetryText()
+                    syncQuickSettingsTile()
                     telemetryThread?.interrupt()
                 } else {
                     stopSelf()
@@ -212,7 +202,8 @@ class FpsOverlayService : Service() {
         startAsForeground()
 
         if (!Settings.canDrawOverlays(this)) {
-            Toast.makeText(this, "⚠️ Thiếu quyền Hiển thị trên ứng dụng khác!", Toast.LENGTH_LONG).show()
+            val msg = if (Lang.isVi(this)) "⚠️ Thiếu quyền Hiển thị trên ứng dụng khác!" else "⚠️ Missing 'Display over other apps' permission!"
+            Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
             stopSelf()
             return START_NOT_STICKY
         }
@@ -242,12 +233,13 @@ class FpsOverlayService : Service() {
     }
 
     private fun startAsForeground() {
+        val isVi = Lang.isVi(this)
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "upscaler_hud_silent_v2"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "Dịch vụ HUD & Upscale",
+                if (isVi) "Dịch vụ HUD & Upscale" else "HUD & Upscale Service",
                 NotificationManager.IMPORTANCE_MIN
             ).apply {
                 setShowBadge(false)
@@ -274,15 +266,15 @@ class FpsOverlayService : Service() {
         }
 
         val titleText = if (isUpscaleActive) {
-            "⚡ Đang kích SSAA $scaleLabel cho $gameName"
+            if (isVi) "⚡ Đang kích SSAA $scaleLabel cho $gameName" else "⚡ SSAA $scaleLabel active for $gameName"
         } else {
-            "📊 Đang chạy HUD đo thông số"
+            if (isVi) "📊 Đang chạy HUD đo thông số" else "📊 Hardware Telemetry HUD Running"
         }
 
         val contentText = if (isUpscaleActive) {
-            "Chạm để Khôi phục màn hình gốc & tắt HUD"
+            if (isVi) "Chạm để Khôi phục màn hình gốc & tắt HUD" else "Tap to reset display resolution & close HUD"
         } else {
-            "Chạm để tắt nhanh thanh đo (Không reset màn hình)"
+            if (isVi) "Chạm để tắt nhanh thanh đo (Không reset màn hình)" else "Tap to close HUD overlay (keeps display unchanged)"
         }
 
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -414,20 +406,15 @@ class FpsOverlayService : Service() {
                             closeTargetView?.visibility = View.GONE
                             if (isDragging) {
                                 if (isOverCloseZone) {
-                                    Toast.makeText(this@FpsOverlayService, "Đã ẩn thanh đo thông số", Toast.LENGTH_SHORT).show()
+                                    val msg = if (Lang.isVi(this@FpsOverlayService)) "Đã ẩn thanh đo thông số" else "HUD overlay closed"
+                                    Toast.makeText(this@FpsOverlayService, msg, Toast.LENGTH_SHORT).show()
                                     stopSelf()
                                     return true
                                 }
                                 if (isLandscapeMode()) {
-                                    prefs.edit()
-                                        .putInt("overlay_land_x", params.x)
-                                        .putInt("overlay_land_y", params.y)
-                                        .apply()
+                                    prefs.edit().putInt("overlay_land_x", params.x).putInt("overlay_land_y", params.y).apply()
                                 } else {
-                                    prefs.edit()
-                                        .putInt("overlay_port_x", params.x)
-                                        .putInt("overlay_port_y", params.y)
-                                        .apply()
+                                    prefs.edit().putInt("overlay_port_x", params.x).putInt("overlay_port_y", params.y).apply()
                                 }
                             } else {
                                 sizeLevel = (sizeLevel + 1) % 4
@@ -448,7 +435,8 @@ class FpsOverlayService : Service() {
             windowManager?.addView(tv, params)
         } catch (e: Exception) {
             overlayView = null
-            Toast.makeText(this, "Lỗi bật cửa sổ nổi: ${e.message}", Toast.LENGTH_LONG).show()
+            val msg = if (Lang.isVi(this)) "Lỗi bật cửa sổ nổi: ${e.message}" else "Overlay error: ${e.message}"
+            Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
             stopSelf()
         }
     }
@@ -477,11 +465,7 @@ class FpsOverlayService : Service() {
     private fun applyOverlayStyle() {
         val tv = overlayView ?: return
         tv.gravity = if (isVertical) Gravity.START else Gravity.CENTER_VERTICAL
-        if (isVertical) {
-            tv.setLineSpacing(4f, 1.08f)
-        } else {
-            tv.setLineSpacing(0f, 1.0f)
-        }
+        if (isVertical) tv.setLineSpacing(4f, 1.08f) else tv.setLineSpacing(0f, 1.0f)
 
         when (sizeLevel) {
             0 -> {
@@ -525,6 +509,7 @@ class FpsOverlayService : Service() {
 
     private fun renderTelemetryText() {
         val tv = overlayView ?: return
+        val isVi = Lang.isVi(this)
 
         val showFps = prefs.getBoolean("m_fps", true)
         val showWatt = prefs.getBoolean("m_watt", true)
@@ -551,11 +536,11 @@ class FpsOverlayService : Service() {
         if (showWatt) {
             val prefix = if (isChargingNow) "⚡+" else ""
             val wVal = if (lastWatts > 0f) String.format(Locale.US, "%s%.1fW", prefix, lastWatts) else "--W"
-            parts.add(if (isCompact) wVal else if (isVertical) "🔌 Điện: $wVal" else "🔌$wVal")
+            parts.add(if (isCompact) wVal else if (isVertical) (if (isVi) "🔌 Điện: $wVal" else "🔌 Power: $wVal") else "🔌$wVal")
         }
         if (showBatTemp) {
             val tVal = if (lastBatTemp > 0f) String.format(Locale.US, "%.1f°", lastBatTemp) else "--°"
-            parts.add(if (isCompact) "🔋$tVal" else if (isVertical) "🔋 Pin: ${tVal}C" else "🔋${tVal}C")
+            parts.add(if (isCompact) "🔋$tVal" else if (isVertical) (if (isVi) "🔋 Pin: ${tVal}C" else "🔋 Bat: ${tVal}C") else "🔋${tVal}C")
         }
         if (showSocTemp) {
             val stVal = if (lastSocTemp > 0f) String.format(Locale.US, "%.1f°", lastSocTemp) else "--°"
@@ -579,7 +564,7 @@ class FpsOverlayService : Service() {
         }
         if (showSkinTemp) {
             val skVal = if (lastSkinTemp > 0f) String.format(Locale.US, "%.1f°", lastSkinTemp) else "--°"
-            parts.add(if (isCompact) "📱$skVal" else if (isVertical) "📱 Vỏ: ${skVal}C" else "📱${skVal}C")
+            parts.add(if (isCompact) "📱$skVal" else if (isVertical) (if (isVi) "📱 Vỏ: ${skVal}C" else "📱 Board: ${skVal}C") else "📱${skVal}C")
         }
         if (showGpu) {
             val vramStr = if (lastGpuVramMb >= 0) "${lastGpuVramMb}MB" else "--MB"
@@ -599,7 +584,7 @@ class FpsOverlayService : Service() {
         }
 
         if (parts.isEmpty()) {
-            parts.add("⚡ Chưa chọn thông số")
+            parts.add(if (isVi) "⚡ Chưa chọn thông số" else "⚡ No metrics selected")
         }
 
         val newText = if (isVertical) {
@@ -678,7 +663,6 @@ class FpsOverlayService : Service() {
             val writer = BufferedWriter(OutputStreamWriter(proc.outputStream, Charsets.UTF_8))
             val reader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8))
 
-            // Khởi tạo hàm đọc built-in _rdz (0 fork) và cache sẵn đường dẫn cảm biến nhiệt trên SM8750 / Vivo / iQOO
             val initCmd = "_rdz() { for f in \$1; do read -r v < \"\$f\" 2>/dev/null && printf \"%s \" \"\$v\"; done; printf \"\\n\"; }; " +
                     "CPU_ZONES=\"\"; GPU_ZONES=\"\"; DDR_ZONES=\"\"; CAM_ZONES=\"\"; SKIN_ZONES=\"\"; " +
                     "for z in /sys/class/thermal/thermal_zone*; do " +
@@ -891,22 +875,16 @@ class FpsOverlayService : Service() {
             when {
                 l.startsWith("PID=") -> {
                     val rawPids = l.substringAfter("PID=").trim()
-                    if (rawPids.isNotEmpty()) {
-                        pidSet = rawPids.split(Regex("\\s+")).toSet()
-                    }
+                    if (rawPids.isNotEmpty()) pidSet = rawPids.split(Regex("\\s+")).toSet()
                 }
-                l.startsWith("Global total:") -> {
-                    globalGpuBytes = l.substringAfter(":").trim().toLongOrNull() ?: -1L
-                }
+                l.startsWith("Global total:") -> globalGpuBytes = l.substringAfter(":").trim().toLongOrNull() ?: -1L
                 l.startsWith("Proc ") && l.contains(" total:") -> {
                     val pidKey = l.substringAfter("Proc ").substringBefore(" total:").trim()
                     val bytesVal = l.substringAfter("total:").trim().toLongOrNull() ?: 0L
                     procGpuMap[pidKey] = bytesVal
                 }
                 l.startsWith("CPU_KHZ=") -> {
-                    val maxKhz = l.substringAfter("=").trim().split(Regex("\\s+"))
-                        .mapNotNull { it.toLongOrNull() }
-                        .maxOrNull() ?: 0L
+                    val maxKhz = l.substringAfter("=").trim().split(Regex("\\s+")).mapNotNull { it.toLongOrNull() }.maxOrNull() ?: 0L
                     if (maxKhz > 0L) lastCpuKhz = maxKhz
                 }
                 l.startsWith("CPU_T=") -> {
@@ -929,34 +907,22 @@ class FpsOverlayService : Service() {
                     val v = parseMaxThermalTokens(l.substringAfter("="))
                     if (v > 0f) lastSkinTemp = v
                 }
-                l.startsWith("APP_PSS=") -> {
-                    appPssKb = l.substringAfter("=").trim().toLongOrNull() ?: 0L
-                }
-                l.startsWith("MemTotal:") -> {
-                    memTotalKb = Regex("([0-9]+)").find(l)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
-                }
-                l.startsWith("MemAvailable:") -> {
-                    memAvailKb = Regex("([0-9]+)").find(l)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
-                }
+                l.startsWith("APP_PSS=") -> appPssKb = l.substringAfter("=").trim().toLongOrNull() ?: 0L
+                l.startsWith("MemTotal:") -> memTotalKb = Regex("([0-9]+)").find(l)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
+                l.startsWith("MemAvailable:") -> memAvailKb = Regex("([0-9]+)").find(l)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
                 l.startsWith("DRM_FPS=") && l.contains("fps:") -> {
                     val fpsVal = Regex("fps:\\s*([0-9.]+)").find(l)?.groupValues?.getOrNull(1)?.toFloatOrNull()
-                    if (fpsVal != null && fpsVal > 0f) {
-                        drmFps = fpsVal
-                    }
+                    if (fpsVal != null && fpsVal > 0f) drmFps = fpsVal
                 }
             }
         }
 
         val socMax = maxOf(lastCpuTemp, lastGpuTemp)
-        if (socMax > 0f) {
-            lastSocTemp = socMax
-        }
+        if (socMax > 0f) lastSocTemp = socMax
 
         if (pidSet.isNotEmpty()) {
             var gameGpuBytes = 0L
-            for (p in pidSet) {
-                gameGpuBytes += procGpuMap[p] ?: 0L
-            }
+            for (p in pidSet) gameGpuBytes += procGpuMap[p] ?: 0L
             if (gameGpuBytes > 0L) {
                 lastGpuVramMb = (gameGpuBytes / 1_048_576L).toInt()
             } else if (globalGpuBytes > 0L) {
@@ -1015,18 +981,14 @@ class FpsOverlayService : Service() {
                         } else if (!isIgnoredLayer(currentLayer)) {
                             if (pkg.isEmpty() || currentLayer.contains(pkg)) {
                                 val existing = currentLayerMap[currentLayer] ?: -1L
-                                if (frames > existing) {
-                                    currentLayerMap[currentLayer] = frames
-                                }
+                                if (frames > existing) currentLayerMap[currentLayer] = frames
                             }
                         }
                     }
                 }
             }
 
-            if (!statsEnabled) {
-                initializedStatsForPkg = null
-            }
+            if (!statsEnabled) initializedStatsForPkg = null
 
             if (lastFpsSampleNs > 0L) {
                 val dtSec = (nowNs - lastFpsSampleNs) / 1_000_000_000.0
@@ -1036,27 +998,19 @@ class FpsOverlayService : Service() {
                         val prev = prevLayerFrames[layer]
                         if (prev != null && frames >= prev) {
                             val delta = frames - prev
-                            if (delta > maxLayerDelta) {
-                                maxLayerDelta = delta
-                            }
+                            if (delta > maxLayerDelta) maxLayerDelta = delta
                         }
                     }
 
                     val globalDelta = if (prevGlobalFrames >= 0L && globalFrames >= prevGlobalFrames) {
                         globalFrames - prevGlobalFrames
-                    } else {
-                        0L
-                    }
+                    } else 0L
 
                     prevLayerFrames = currentLayerMap
                     prevGlobalFrames = globalFrames
                     lastFpsSampleNs = nowNs
 
-                    val bestDelta = if (pkg.isNotEmpty() && maxLayerDelta > 0L) {
-                        maxLayerDelta
-                    } else {
-                        maxOf(maxLayerDelta, globalDelta)
-                    }
+                    val bestDelta = if (pkg.isNotEmpty() && maxLayerDelta > 0L) maxLayerDelta else maxOf(maxLayerDelta, globalDelta)
 
                     if (bestDelta > 0L) {
                         emptyFpsTicks = 0
@@ -1065,9 +1019,7 @@ class FpsOverlayService : Service() {
                         return computed.coerceIn(1f, 144f)
                     } else {
                         emptyFpsTicks++
-                        if (emptyFpsTicks >= 5) {
-                            initializedStatsForPkg = null
-                        }
+                        if (emptyFpsTicks >= 5) initializedStatsForPkg = null
                         if (hasValidFpsSample) {
                             return if (emptyFpsTicks <= 2 && lastFps > 0f) lastFps else 0f
                         }

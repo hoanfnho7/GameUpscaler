@@ -85,6 +85,8 @@ class MainActivity : Activity() {
             }
         }
 
+        val isVi = Lang.isVi(this)
+
         val defaultPins = setOf(
             "com.activision.callofduty.shooter",
             "com.garena.game.codm",
@@ -105,16 +107,47 @@ class MainActivity : Activity() {
             setPadding(32, 38, 32, 16)
         }
 
+        val headerBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
         val title = TextView(this).apply {
             text = "⚡ GAME UPSCALER PRO"
-            textSize = 19f
+            textSize = 18.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#00E676"))
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        root.addView(title)
+        headerBar.addView(title)
+
+        val langBtn = TextView(this).apply {
+            text = Lang.modeBadge(this@MainActivity)
+            textSize = 11.5f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.parseColor("#64FFDA"))
+            setPadding(18, 9, 18, 9)
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#1B242B"))
+                cornerRadius = 14f
+                setStroke(1, Color.parseColor("#2E4A52"))
+            }
+            setOnClickListener {
+                val nextLang = (Lang.getMode(this@MainActivity) + 1) % 3
+                prefs.edit().putInt("app_lang", nextLang).apply()
+                notifyOverlayStyleUpdated()
+                recreate()
+            }
+        }
+        headerBar.addView(langBtn)
+        root.addView(headerBar)
 
         val subTitle = TextView(this).apply {
-            text = "Chạm tên game để chạy • Nhấn giữ tạo Shortcut • Kéo HUD vào ✕ để ẩn"
+            text = if (isVi) {
+                "Chạm game để chạy • Nhấn giữ tạo Shortcut • Kéo HUD vào ✕ để ẩn"
+            } else {
+                "Tap game to boost • Long-press for Shortcut • Drag HUD to ✕ to hide"
+            }
             textSize = 11f
             setTextColor(Color.parseColor("#9E9E9E"))
             setPadding(0, 4, 0, 12)
@@ -122,7 +155,7 @@ class MainActivity : Activity() {
         root.addView(subTitle)
 
         previewTv = TextView(this).apply {
-            text = "Đang đọc độ phân giải vật lý..."
+            text = if (isVi) "Đang đọc độ phân giải vật lý..." else "Reading physical display specs..."
             textSize = 12f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#64FFDA"))
@@ -160,7 +193,7 @@ class MainActivity : Activity() {
         root.addView(radioGroup, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         val resetBtn = Button(this).apply {
-            text = "🔄 RESET MÀN HÌNH VỀ MẶC ĐỊNH NGAY"
+            text = if (isVi) "🔄 RESET MÀN HÌNH VỀ MẶC ĐỊNH NGAY" else "🔄 RESET DISPLAY RESOLUTION NOW"
             textSize = 12.5f
             setTextColor(Color.WHITE)
             background = GradientDrawable().apply {
@@ -172,13 +205,13 @@ class MainActivity : Activity() {
                     runShizukuScript("wm size reset; wm density reset")
                     cancelActiveNotification()
                     stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
-                    Toast.makeText(context, "Đã Reset màn hình về gốc!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, if (isVi) "Đã Reset màn hình về gốc!" else "Display restored to native resolution!", Toast.LENGTH_SHORT).show()
                 }
             }
         }
         root.addView(resetBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 10 })
 
-        // Khối điều khiển HUD Overlay
+        // HUD Overlay Control Card
         val hudCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(16, 12, 16, 14)
@@ -194,7 +227,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         val fpsCheck = CheckBox(this).apply {
-            text = "📊 HUD Đo thông số"
+            text = if (isVi) "📊 HUD Đo thông số" else "📊 Telemetry HUD"
             textSize = 12.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#64FFDA"))
@@ -204,7 +237,8 @@ class MainActivity : Activity() {
                 enableFpsOverlay = isChecked
                 prefs.edit().putBoolean("enable_fps_overlay", isChecked).apply()
                 if (isChecked && !Settings.canDrawOverlays(this@MainActivity)) {
-                    Toast.makeText(this@MainActivity, "Hãy cấp quyền 'Hiển thị trên ứng dụng khác' cho app!", Toast.LENGTH_LONG).show()
+                    val msg = if (isVi) "Hãy cấp quyền 'Hiển thị trên ứng dụng khác' cho app!" else "Please grant 'Display over other apps' permission!"
+                    Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
                     startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
                 } else if (!isChecked) {
                     stopService(Intent(this@MainActivity, FpsOverlayService::class.java))
@@ -214,7 +248,7 @@ class MainActivity : Activity() {
         hudHeaderRow.addView(fpsCheck)
 
         val orientBtn = TextView(this).apply {
-            text = if (overlayVertical) "↕️ Dọc" else "↔️ Ngang"
+            text = if (overlayVertical) (if (isVi) "↕️ Dọc" else "↕️ Vertical") else (if (isVi) "↔️ Ngang" else "↔️ Horiz")
             textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#101216"))
@@ -226,14 +260,14 @@ class MainActivity : Activity() {
             setOnClickListener {
                 overlayVertical = !overlayVertical
                 prefs.edit().putBoolean("overlay_vertical", overlayVertical).apply()
-                text = if (overlayVertical) "↕️ Dọc" else "↔️ Ngang"
+                text = if (overlayVertical) (if (isVi) "↕️ Dọc" else "↕️ Vertical") else (if (isVi) "↔️ Ngang" else "↔️ Horiz")
                 notifyOverlayStyleUpdated()
             }
         }
         hudHeaderRow.addView(orientBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = 8 })
 
         val testOverlayBtn = TextView(this).apply {
-            text = "👁️ Thử"
+            text = if (isVi) "👁️ Thử" else "👁️ Test"
             textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.WHITE)
@@ -244,14 +278,15 @@ class MainActivity : Activity() {
             }
             setOnClickListener {
                 if (!Settings.canDrawOverlays(this@MainActivity)) {
-                    Toast.makeText(this@MainActivity, "Hãy cấp quyền Hiển thị trên ứng dụng khác trước!", Toast.LENGTH_SHORT).show()
+                    val msg = if (isVi) "Hãy cấp quyền Hiển thị trên ứng dụng khác trước!" else "Please grant overlay permission first!"
+                    Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
                     startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
                     return@setOnClickListener
                 }
                 if (!FpsOverlayService.isServiceRunning) {
                     val svc = Intent(this@MainActivity, FpsOverlayService::class.java).apply {
                         putExtra("target_pkg", "")
-                        putExtra("game_name", "Xem thử HUD")
+                        putExtra("game_name", "HUD Preview")
                     }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svc) else startService(svc)
                 } else {
@@ -262,13 +297,16 @@ class MainActivity : Activity() {
         hudHeaderRow.addView(testOverlayBtn)
         hudCard.addView(hudHeaderRow)
 
-        // Hàng 4 mức kích thước HUD
         val sizeRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, 6, 0, 6)
         }
         val sizeChips = mutableListOf<TextView>()
-        val sizeLabels = listOf(0 to "Siêu gọn", 1 to "Nhỏ", 2 to "Vừa", 3 to "To")
+        val sizeLabels = if (isVi) {
+            listOf(0 to "Siêu gọn", 1 to "Nhỏ", 2 to "Vừa", 3 to "To")
+        } else {
+            listOf(0 to "Tiny", 1 to "Small", 2 to "Medium", 3 to "Large")
+        }
         fun refreshSizeChips() {
             sizeChips.forEachIndexed { idx, chip ->
                 val active = (idx == overlaySizeLevel)
@@ -299,13 +337,16 @@ class MainActivity : Activity() {
         refreshSizeChips()
         hudCard.addView(sizeRow)
 
-        // Hàng chọn nhịp quét cảm biến (Auto / 300ms / 1s / 2s)
         val pollRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, 0, 0, 8)
         }
         val pollChips = mutableListOf<TextView>()
-        val pollLabels = listOf(0 to "⚡ Auto", 1 to "🚀 300ms", 2 to "Quét 1s", 3 to "Quét 2s")
+        val pollLabels = if (isVi) {
+            listOf(0 to "⚡ Auto", 1 to "🚀 300ms", 2 to "Quét 1s", 3 to "Quét 2s")
+        } else {
+            listOf(0 to "⚡ Auto", 1 to "🚀 300ms", 2 to "1s Poll", 3 to "2s Poll")
+        }
         fun refreshPollChips() {
             pollChips.forEachIndexed { idx, chip ->
                 val active = (idx == hudPollMode)
@@ -336,16 +377,15 @@ class MainActivity : Activity() {
         refreshPollChips()
         hudCard.addView(pollRow)
 
-        // 3 hàng bật/tắt 12 thông số phần cứng & toàn bộ cụm cảm biến nhiệt (chuẩn Scene)
         val metricRows = listOf(
             listOf(
                 Triple("m_fps", "⚡ FPS (xx.x)", true),
-                Triple("m_watt", "🔌 Công suất", true),
+                Triple("m_watt", if (isVi) "🔌 Công suất" else "🔌 Power (W)", true),
                 Triple("m_gpu", "🎮 VRAM", true),
-                Triple("m_cpu_freq", "⚙️ Xung CPU", false)
+                Triple("m_cpu_freq", if (isVi) "⚙️ Xung CPU" else "⚙️ CPU Freq", false)
             ),
             listOf(
-                Triple("m_bat_temp", "🔋 Pin °C", true),
+                Triple("m_bat_temp", if (isVi) "🔋 Pin °C" else "🔋 Bat °C", true),
                 Triple("m_soc_temp", "🌡️ SoC °C", true),
                 Triple("m_cpu_temp", "🔥 CPU °C", false),
                 Triple("m_gpu_temp", "📟 GPU °C", false)
@@ -353,7 +393,7 @@ class MainActivity : Activity() {
             listOf(
                 Triple("m_ddr_temp", "🧬 DDR °C", false),
                 Triple("m_cam_temp", "📷 CAM °C", false),
-                Triple("m_skin_temp", "📱 Vỏ máy °C", false),
+                Triple("m_skin_temp", if (isVi) "📱 Vỏ máy °C" else "📱 Board °C", false),
                 Triple("m_ram", "💾 RAM", false)
             )
         )
@@ -392,14 +432,13 @@ class MainActivity : Activity() {
             hudCard.addView(mRow)
         }
 
-        // Hàng tiện ích nhanh: Control Center + Đặt lại vị trí + Soi cảm biến thực tế trên máy
         val actionBottomRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, 8, 0, 0)
         }
 
         val addQsTileBtn = TextView(this).apply {
-            text = "🎛️ Control Center"
+            text = if (isVi) "🎛️ Control Center" else "🎛️ Quick Tile"
             textSize = 10.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#64FFDA"))
@@ -411,32 +450,38 @@ class MainActivity : Activity() {
                 setStroke(1, Color.parseColor("#2E4A52"))
             }
             setOnClickListener {
+                val hintMsg = if (isVi) {
+                    "Vuốt Control Center xuống -> Bấm Sửa (✏️) -> Kéo nút 'HUD Đo FPS' lên!"
+                } else {
+                    "Pull down Quick Settings -> Tap Edit (✏️) -> Drag 'FPS HUD' tile up!"
+                }
                 if (Build.VERSION.SDK_INT >= 33) {
                     try {
                         val sbm = getSystemService(StatusBarManager::class.java)
                         sbm?.requestAddTileService(
                             ComponentName(this@MainActivity, HudTileService::class.java),
-                            "HUD Đo FPS",
+                            Lang.tileLabel(this@MainActivity),
                             Icon.createWithResource(this@MainActivity, R.drawable.ic_hud_tile),
                             mainExecutor
                         ) { result ->
                             if (result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED ||
                                 result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED) {
-                                Toast.makeText(this@MainActivity, "✅ Đã thêm nút HUD Đo FPS lên Control Center!", Toast.LENGTH_SHORT).show()
+                                val okMsg = if (isVi) "✅ Đã thêm nút HUD lên Control Center!" else "✅ Added FPS HUD tile to Quick Settings!"
+                                Toast.makeText(this@MainActivity, okMsg, Toast.LENGTH_SHORT).show()
                             }
                         }
                     } catch (_: Exception) {
-                        Toast.makeText(this@MainActivity, "Vuốt Control Center xuống -> Bấm Sửa (✏️) -> Kéo nút 'HUD Đo FPS' lên!", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@MainActivity, hintMsg, Toast.LENGTH_LONG).show()
                     }
                 } else {
-                    Toast.makeText(this@MainActivity, "Vuốt Control Center xuống -> Bấm Sửa (✏️) -> Kéo nút 'HUD Đo FPS' lên!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@MainActivity, hintMsg, Toast.LENGTH_LONG).show()
                 }
             }
         }
         actionBottomRow.addView(addQsTileBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.15f).apply { rightMargin = 6 })
 
         val resetPosBtn = TextView(this).apply {
-            text = "🎯 Reset vị trí"
+            text = if (isVi) "🎯 Reset vị trí" else "🎯 Reset Pos"
             textSize = 10.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#FFD740"))
@@ -457,13 +502,14 @@ class MainActivity : Activity() {
                 if (FpsOverlayService.isServiceRunning) {
                     startService(Intent(this@MainActivity, FpsOverlayService::class.java).apply { action = "RESET_POS" })
                 }
-                Toast.makeText(this@MainActivity, "✅ Đã đặt lại tọa độ HUD về mặc định!", Toast.LENGTH_SHORT).show()
+                val msg = if (isVi) "✅ Đã đặt lại tọa độ HUD về mặc định!" else "✅ HUD position reset to default!"
+                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
             }
         }
         actionBottomRow.addView(resetPosBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 0.95f).apply { rightMargin = 6 })
 
         val inspectSensorsBtn = TextView(this).apply {
-            text = "🔍 Soi cảm biến"
+            text = if (isVi) "🔍 Soi cảm biến" else "🔍 Sensors"
             textSize = 10.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.parseColor("#CE93D8"))
@@ -482,7 +528,7 @@ class MainActivity : Activity() {
         root.addView(hudCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8 })
 
         val favCheck = CheckBox(this).apply {
-            text = "⭐ Chỉ hiện Game đã ghim (Ẩn ứng dụng khác)"
+            text = if (isVi) "⭐ Chỉ hiện Game đã ghim (Ẩn ứng dụng khác)" else "⭐ Show Pinned Games Only"
             textSize = 12.5f
             setTextColor(Color.parseColor("#FFD600"))
             isChecked = showPinnedOnly
@@ -495,7 +541,7 @@ class MainActivity : Activity() {
         root.addView(favCheck, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 6 })
 
         val searchBox = EditText(this).apply {
-            hint = "🔍 Gõ tên game hoặc package để lọc nhanh..."
+            hint = if (isVi) "🔍 Gõ tên game hoặc package để lọc nhanh..." else "🔍 Search game name or package..."
             textSize = 13f
             setHintTextColor(Color.parseColor("#757575"))
             setTextColor(Color.WHITE)
@@ -605,7 +651,8 @@ class MainActivity : Activity() {
 
     private fun showThermalInspectorDialog() {
         if (!checkShizuku()) return
-        Toast.makeText(this, "Đang quét thermal_zone trên máy...", Toast.LENGTH_SHORT).show()
+        val isVi = Lang.isVi(this)
+        Toast.makeText(this, if (isVi) "Đang quét thermal_zone trên máy..." else "Scanning device thermal zones...", Toast.LENGTH_SHORT).show()
         thread {
             try {
                 val m = Shizuku::class.java.getDeclaredMethod(
@@ -636,17 +683,22 @@ class MainActivity : Activity() {
                         }
                     }
                 }
-                val finalText = if (report.isEmpty()) "Không đọc được cảm biến nào." else report.toString()
+                val finalText = if (report.isEmpty()) {
+                    if (isVi) "Không đọc được cảm biến nào." else "No readable thermal sensors found."
+                } else report.toString()
+
+                val dlgTitle = if (isVi) "🌡️ Cảm biến nhiệt trên máy (${lines.size} zone)" else "🌡️ Device Thermal Sensors (${lines.size} zones)"
+                val btnText = if (isVi) "Đóng" else "Close"
                 runOnUiThread {
                     AlertDialog.Builder(this)
-                        .setTitle("🌡️ Cảm biến nhiệt trên máy (${lines.size} zone)")
+                        .setTitle(dlgTitle)
                         .setMessage(finalText)
-                        .setPositiveButton("Đóng", null)
+                        .setPositiveButton(btnText, null)
                         .show()
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    Toast.makeText(this, "Lỗi đọc cảm biến: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -654,28 +706,25 @@ class MainActivity : Activity() {
 
     private fun notifyOverlayStyleUpdated() {
         if (FpsOverlayService.isServiceRunning) {
-            val upd = Intent(this, FpsOverlayService::class.java).apply {
-                action = "UPDATE_STYLE"
-            }
+            val upd = Intent(this, FpsOverlayService::class.java).apply { action = "UPDATE_STYLE" }
             startService(upd)
         }
     }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        if (intent != null && handleIncomingIntent(intent)) {
-            finish()
-        }
+        if (intent != null && handleIncomingIntent(intent)) finish()
     }
 
     private fun handleIncomingIntent(intent: Intent): Boolean {
+        val isVi = Lang.isVi(this)
         val action = intent.getStringExtra("action_type") ?: return false
         if (action == "RESET_NOW") {
             if (checkShizuku()) {
                 runShizukuScript("wm size reset; wm density reset")
                 cancelActiveNotification()
                 stopService(Intent(this, FpsOverlayService::class.java))
-                Toast.makeText(this, "✅ Đã khôi phục màn hình gốc!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, if (isVi) "✅ Đã khôi phục màn hình gốc!" else "✅ Display reset to native!", Toast.LENGTH_SHORT).show()
             }
             return true
         } else if (action == "QUICK_LAUNCH") {
@@ -690,21 +739,24 @@ class MainActivity : Activity() {
     }
 
     private fun cyclePerGameScale(item: AppItem) {
+        val isVi = Lang.isVi(this)
         val cycle = listOf(0, 110, 115, 120, 125)
         val nextIdx = (cycle.indexOf(item.customScale) + 1) % cycle.size
         item.customScale = cycle[nextIdx]
         prefs.edit().putInt("scale_${item.pkg}", item.customScale).apply()
 
         val msg = if (item.customScale == 0) {
-            "Đã đặt ${item.name} dùng mức chung (${selectedFactor}%)"
+            if (isVi) "Đã đặt ${item.name} dùng mức chung (${selectedFactor}%)" else "${item.name} set to global scale (${selectedFactor}%)"
         } else {
-            "🎯 Đã khóa riêng mức ${item.customScale / 100}.${item.customScale % 100}x cho ${item.name}"
+            val sc = "${item.customScale / 100}.${item.customScale % 100}x"
+            if (isVi) "🎯 Đã khóa riêng mức $sc cho ${item.name}" else "🎯 Locked $sc scale for ${item.name}"
         }
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
         adapter.notifyDataSetChanged()
     }
 
     private fun createPinnedShortcut(item: AppItem, factor: Int) {
+        val isVi = Lang.isVi(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val sm = getSystemService(ShortcutManager::class.java)
             if (sm != null && sm.isRequestPinShortcutSupported) {
@@ -724,7 +776,8 @@ class MainActivity : Activity() {
                     .setIntent(launchIntent)
                     .build()
                 sm.requestPinShortcut(info, null)
-                Toast.makeText(this, "📌 Đã gửi yêu cầu tạo Shortcut ngoài màn hình chính!", Toast.LENGTH_SHORT).show()
+                val msg = if (isVi) "📌 Đã gửi yêu cầu tạo Shortcut ngoài màn hình chính!" else "📌 Home screen shortcut requested!"
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -765,17 +818,23 @@ class MainActivity : Activity() {
 
     private fun updatePreviewText() {
         if (!::previewTv.isInitialized) return
+        val isVi = Lang.isVi(this)
         val newW = physW * selectedFactor / 100
         val newH = physH * selectedFactor / 100
         val newDen = physDen * selectedFactor / 100
-        previewTv.text = "🖥️ Gốc: ${physW}x${physH} (${physDen} DPI)  ➔  Upscale: ${newW}x${newH} (${newDen} DPI)"
+        previewTv.text = if (isVi) {
+            "🖥️ Gốc: ${physW}x${physH} (${physDen} DPI)  ➔  Upscale: ${newW}x${newH} (${newDen} DPI)"
+        } else {
+            "🖥️ Native: ${physW}x${physH} (${physDen} DPI)  ➔  Boosted: ${newW}x${newH} (${newDen} DPI)"
+        }
     }
 
     private fun showActiveNotification(gameName: String, factor: Int) {
+        val isVi = Lang.isVi(this)
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "upscaler_active_channel"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Trạng thái Upscale", NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(channelId, "Upscale Status", NotificationManager.IMPORTANCE_LOW)
             nm.createNotificationChannel(channel)
         }
         val resetIntent = Intent(this, MainActivity::class.java).apply {
@@ -793,8 +852,8 @@ class MainActivity : Activity() {
             Notification.Builder(this)
         }
         builder.setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("⚡ Đang kích SSAA $scaleStr cho $gameName")
-            .setContentText("Chạm vào đây để Khôi phục màn hình gốc ngay lập tức")
+            .setContentTitle(if (isVi) "⚡ Đang kích SSAA $scaleStr cho $gameName" else "⚡ SSAA $scaleStr active for $gameName")
+            .setContentText(if (isVi) "Chạm vào đây để Khôi phục màn hình gốc ngay lập tức" else "Tap here to restore native resolution immediately")
             .setContentIntent(pi)
             .setOngoing(true)
         nm.notify(1001, builder.build())
@@ -836,16 +895,17 @@ class MainActivity : Activity() {
     }
 
     private fun checkShizuku(): Boolean {
+        val isVi = Lang.isVi(this)
         return try {
             if (!Shizuku.pingBinder()) {
-                Toast.makeText(this, "⚠️ Hãy bật Shizuku trước!", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, if (isVi) "⚠️ Hãy bật Shizuku trước!" else "⚠️ Please start Shizuku first!", Toast.LENGTH_LONG).show()
                 false
             } else if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
                 Shizuku.requestPermission(1001)
                 false
             } else true
         } catch (e: Exception) {
-            Toast.makeText(this, "⚠️ Chưa kết nối được Shizuku!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (isVi) "⚠️ Chưa kết nối được Shizuku!" else "⚠️ Cannot connect to Shizuku!", Toast.LENGTH_SHORT).show()
             false
         }
     }
@@ -877,8 +937,9 @@ class MainActivity : Activity() {
 
     private fun launchGameByPkg(pkg: String, gameName: String, factor: Int) {
         if (!checkShizuku()) return
+        val isVi = Lang.isVi(this)
         val scaleStr = "${factor / 100}.${factor % 100}x"
-        Toast.makeText(this, "🚀 Đang kích $scaleStr cho $gameName...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, if (isVi) "🚀 Đang kích $scaleStr cho $gameName..." else "🚀 Boosting $gameName ($scaleStr)...", Toast.LENGTH_SHORT).show()
         showActiveNotification(gameName, factor)
 
         if (enableFpsOverlay) {
@@ -890,7 +951,8 @@ class MainActivity : Activity() {
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svcIntent) else startService(svcIntent)
             } else {
-                Toast.makeText(this, "⚠️ Chưa bật quyền Hiển thị trên ứng dụng khác để đo HUD!", Toast.LENGTH_LONG).show()
+                val msg = if (isVi) "⚠️ Chưa bật quyền Hiển thị trên ứng dụng khác để đo HUD!" else "⚠️ Overlay permission required for HUD!"
+                Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
             }
         }
 
