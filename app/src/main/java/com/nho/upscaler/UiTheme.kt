@@ -7,6 +7,7 @@ import android.graphics.drawable.GradientDrawable
 
 object UiTheme {
     // Fixed Accent & Alert Colors
+    val TEXT_WHITE = Color.WHITE
     val ACCENT_GREEN = Color.parseColor("#44D62C")
     val ACCENT_RED_BRIGHT = Color.parseColor("#FF453A")
     val ACCENT_RED_ALERT = Color.parseColor("#FF1744")
