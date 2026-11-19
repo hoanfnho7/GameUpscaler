@@ -46,6 +46,7 @@ class MainActivity : Activity() {
     private lateinit var adapter: BaseAdapter
     private lateinit var prefsMgr: PrefsManager
     private lateinit var previewTv: TextView
+    private var perfLogBtn: TextView? = null
     private val pinnedPkgs = mutableSetOf<String>()
 
     private var selectedFactor = 125
@@ -214,6 +215,7 @@ class MainActivity : Activity() {
 
         setContentView(root)
         updatePreviewText()
+        refreshPerfLogBadge()
         if (ShizukuHelper.ensureReady(this)) {
             ShizukuHelper.fetchPhysicalDisplay { w, h, den ->
                 physW = w
@@ -223,6 +225,22 @@ class MainActivity : Activity() {
             }
         }
         loadInstalledApps()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshPerfLogBadge()
+    }
+
+    private fun refreshPerfLogBadge() {
+        val btn = perfLogBtn ?: return
+        val baseTitle = Lang.str(this, R.string.btn_perf_logs)
+        val count = try {
+            PerfLogManager.listSessions(this).size
+        } catch (_: Exception) {
+            0
+        }
+        btn.text = if (count > 0) "$baseTitle ($count)" else baseTitle
     }
 
     private fun buildHudControlCard(): LinearLayout {
@@ -314,7 +332,7 @@ class MainActivity : Activity() {
             notifyOverlayStyleUpdated()
         })
 
-        // Hàng 2: 4 mức độ trong suốt nền & viền (Nền đậm / Mờ vừa / Siêu trong / Chỉ chữ)
+        // Hàng 2: 4 mức độ trong suốt nền & viền
         hudCard.addView(buildChipRow(
             items = listOf(
                 0 to Lang.str(this, R.string.bg_solid),
@@ -409,7 +427,7 @@ class MainActivity : Activity() {
             hudCard.addView(mRow)
         }
 
-        // Bottom Utility Buttons (Quick Tile, Reset Pos, Sensors)
+        // Hàng tiện ích: Control Center | Reset vị trí | Soi cảm biến
         val bottomRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, 8, 0, 0)
@@ -429,8 +447,24 @@ class MainActivity : Activity() {
         bottomRow.addView(makeActionChip(Lang.str(this, R.string.btn_sensors), UiTheme.ACCENT_PURPLE, UiTheme.BTN_PURPLE_BG, UiTheme.BTN_PURPLE_STROKE) {
             showThermalInspectorDialog()
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-
         hudCard.addView(bottomRow)
+
+        // Thanh nút mở Lịch sử Log & Biểu đồ phân tích
+        val logChip = TextView(this).apply {
+            text = Lang.str(this@MainActivity, R.string.btn_perf_logs)
+            textSize = 12f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(UiTheme.ACCENT_GREEN)
+            gravity = Gravity.CENTER
+            setPadding(12, 12, 12, 12)
+            background = UiTheme.roundBox(UiTheme.BG_PILL_ACTIVE, 12f, 1, UiTheme.ACCENT_GREEN)
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, PerfChartActivity::class.java))
+            }
+        }
+        perfLogBtn = logChip
+        hudCard.addView(logChip, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 })
+
         return hudCard
     }
 
