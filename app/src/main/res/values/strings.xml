@@ -23,9 +23,9 @@
     <string name="size_large">Large</string>
 
     <string name="poll_auto">⚡ Auto</string>
-    <string name="poll_300ms">🚀 300ms</string>
-    <string name="poll_1s">1s Poll</string>
-    <string name="poll_2s">2s Poll</string>
+    <string name="poll_300ms">🚀 150ms</string>
+    <string name="poll_1s">⚡ 300ms</string>
+    <string name="poll_2s">1s Poll</string>
 
     <string name="metric_fps">⚡ FPS (xx.x)</string>
     <string name="metric_watt">🔌 Power (W)</string>

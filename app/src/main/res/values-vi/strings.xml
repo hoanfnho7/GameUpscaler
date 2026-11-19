@@ -23,9 +23,9 @@
     <string name="size_large">To</string>
 
     <string name="poll_auto">⚡ Auto</string>
-    <string name="poll_300ms">🚀 300ms</string>
-    <string name="poll_1s">Quét 1s</string>
-    <string name="poll_2s">Quét 2s</string>
+    <string name="poll_300ms">🚀 150ms</string>
+    <string name="poll_1s">⚡ 300ms</string>
+    <string name="poll_2s">Quét 1s</string>
 
     <string name="metric_fps">⚡ FPS (xx.x)</string>
     <string name="metric_watt">🔌 Công suất</string>

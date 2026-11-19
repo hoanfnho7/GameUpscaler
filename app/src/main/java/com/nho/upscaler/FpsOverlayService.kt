@@ -206,6 +206,7 @@ class FpsOverlayService : Service() {
                 if (overlayView != null) {
                     lastRenderedText = ""
                     lastRenderedColor = 0
+                    tickCounter = 0
                     startAsForeground()
                     applyOverlayStyle()
                     renderTelemetryText()
@@ -234,6 +235,7 @@ class FpsOverlayService : Service() {
             createOverlayViews()
         } else {
             lastRenderedText = ""
+            tickCounter = 0
             applyOverlayStyle()
             applyPositionForCurrentOrientation()
             try {
@@ -696,10 +698,10 @@ class FpsOverlayService : Service() {
 
     private fun computeNextIntervalMs(): Long {
         return when (pollMode) {
-            1 -> 300L
-            2 -> 1000L
-            3 -> 2000L
-            else -> if (targetPkg.isNotEmpty() || isLandscapeMode()) 450L else 1000L
+            1 -> 150L
+            2 -> 300L
+            3 -> 1000L
+            else -> if (targetPkg.isNotEmpty() || isLandscapeMode() || lastFps > 1f) 250L else 500L
         }
     }
 
@@ -716,6 +718,13 @@ class FpsOverlayService : Service() {
 
                 try {
                     tickCounter++
+                    val intervalMs = computeNextIntervalMs()
+                    // Các thông số nhiệt/xung/RAM chỉ cần đọc mỗi ~1 giây; riêng FPS & Watt chạy ở tốc độ cao 150-250ms
+                    val slowMod = (1000L / intervalMs).toInt().coerceAtLeast(1)
+                    val isSlowTick = (tickCounter % slowMod == 1)
+                    val vramMod = (3000L / intervalMs).toInt().coerceAtLeast(1)
+                    val isVramTick = (tickCounter % vramMod == 1)
+
                     val currentPkg = targetPkg
                     val showFps = prefsMgr.getMetric("m_fps", true)
                     val showSocTemp = prefsMgr.getMetric("m_soc_temp", true)
@@ -734,31 +743,31 @@ class FpsOverlayService : Service() {
                     }
 
                     sb.setLength(0)
-                    if (currentPkg.isNotEmpty() && tickCounter % 3 == 1) {
+                    if (currentPkg.isNotEmpty() && isSlowTick) {
                         sb.append("printf \"PID=\"; pidof ").append(currentPkg).append("; ")
                     }
-                    if (showGpu && (tickCounter % 9 == 1 || lastGpuVramMb < 0)) {
+                    if (showGpu && (isVramTick || lastGpuVramMb < 0)) {
                         sb.append("dumpsys gpu | head -n 45; ")
                     }
-                    if (showCpuFreq) {
+                    if (showCpuFreq && isSlowTick) {
                         sb.append("printf \"CPU_KHZ=\"; _rdz \"\$FREQ_FILES\"; ")
                     }
-                    if (showCpuTemp || showSocTemp) {
+                    if ((showCpuTemp || showSocTemp) && isSlowTick) {
                         sb.append("printf \"CPU_T=\"; _rdz \"\$CPU_ZONES\"; ")
                     }
-                    if (showGpuTemp || showSocTemp) {
+                    if ((showGpuTemp || showSocTemp) && isSlowTick) {
                         sb.append("printf \"GPU_T=\"; _rdz \"\$GPU_ZONES\"; ")
                     }
-                    if (showDdrTemp) {
+                    if (showDdrTemp && isSlowTick) {
                         sb.append("printf \"DDR_T=\"; _rdz \"\$DDR_ZONES\"; ")
                     }
-                    if (showCamTemp) {
+                    if (showCamTemp && isSlowTick) {
                         sb.append("printf \"CAM_T=\"; _rdz \"\$CAM_ZONES\"; ")
                     }
-                    if (showSkinTemp) {
+                    if (showSkinTemp && isSlowTick) {
                         sb.append("printf \"SKIN_T=\"; _rdz \"\$SKIN_ZONES\"; ")
                     }
-                    if (showRam && (tickCounter % 6 == 1 || lastRamText.isEmpty())) {
+                    if (showRam && (isVramTick || lastRamText.isEmpty())) {
                         if (currentPkg.isNotEmpty()) {
                             sb.append("printf \"APP_PSS=\"; dumpsys meminfo ").append(currentPkg).append(" 2>/dev/null | grep 'TOTAL PSS:' | awk '{print \$3}'; ")
                         }
@@ -766,7 +775,7 @@ class FpsOverlayService : Service() {
                     }
                     if (showFps) {
                         sb.append("if [ -n \"\$DRM_NODE\" ]; then read -r dv < \"\$DRM_NODE\" 2>/dev/null && printf \"DRM_FPS=%s\\n\" \"\$dv\"; fi; ")
-                        if (!drmFpsAvailable || tickCounter % 15 == 1) {
+                        if (!drmFpsAvailable || isVramTick) {
                             if (initializedStatsForPkg != currentPkg) {
                                 sb.append("dumpsys SurfaceFlinger --timestats -clear -enable >/dev/null 2>&1; ")
                                 initializedStatsForPkg = currentPkg
@@ -787,7 +796,7 @@ class FpsOverlayService : Service() {
                         if (currentPkg.isNotEmpty() && batchSection.contains("PID=")) {
                             if (activePids.isEmpty()) {
                                 graceTicks++
-                                if (graceTicks > 6) {
+                                if (graceTicks > 5) {
                                     mainHandler.post { stopSelf() }
                                     break
                                 }
@@ -978,7 +987,7 @@ class FpsOverlayService : Service() {
 
             if (lastFpsSampleNs > 0L) {
                 val dtSec = (nowNs - lastFpsSampleNs) / 1_000_000_000.0
-                if (dtSec >= 0.15) {
+                if (dtSec >= 0.12) {
                     var maxLayerDelta = 0L
                     for ((layer, frames) in currentLayerMap) {
                         val prev = prevLayerFrames[layer]
@@ -1005,7 +1014,7 @@ class FpsOverlayService : Service() {
                         return computed.coerceIn(1f, 144f)
                     } else {
                         emptyFpsTicks++
-                        if (emptyFpsTicks >= 5) initializedStatsForPkg = null
+                        if (emptyFpsTicks >= 6) initializedStatsForPkg = null
                         if (hasValidFpsSample) {
                             return if (emptyFpsTicks <= 2 && lastFps > 0f) lastFps else 0f
                         }
