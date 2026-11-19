@@ -7,15 +7,30 @@
     <string name="lang_badge_vi">🇻🇳 VI</string>
     <string name="lang_badge_en">🇺🇸 EN</string>
 
-    <string name="subtitle_hint">Chạm game để chạy • Nhấn giữ tạo Shortcut • Kéo HUD vào ✕ để ẩn</string>
-    <string name="reading_display">Đang đọc độ phân giải vật lý...</string>
-    <string name="preview_display_fmt">🖥️ Gốc: %1$dx%2$d (%3$d DPI)  ➔  Upscale: %4$dx%5$d (%6$d DPI)</string>
-    <string name="btn_reset_display">🔄 RESET MÀN HÌNH VỀ MẶC ĐỊNH NGAY</string>
+    <string name="status_shizuku_ok">● SHIZUKU SẴN SÀNG</string>
+    <string name="status_shizuku_off">● CHƯA BẬT SHIZUKU</string>
 
-    <string name="chk_telemetry_hud">📊 HUD Đo thông số</string>
-    <string name="btn_orient_vert">↕️ Dọc</string>
-    <string name="btn_orient_horiz">↔️ Ngang</string>
-    <string name="btn_test_hud">👁️ Thử</string>
+    <string name="tab_armory">🎮 KHO GAME</string>
+    <string name="tab_hud_studio">📊 TÙY CHỈNH HUD</string>
+
+    <string name="sec_ssaa_engine">TĂNG ĐỘ NÉT MÀN HÌNH (SSAA)</string>
+    <string name="sec_hud_preview">XEM TRƯỚC THANH ĐO</string>
+    <string name="sec_hud_style">BỐ CỤC &amp; ĐỘ TRONG SUỐT</string>
+    <string name="sec_hud_poll">TỐC ĐỘ QUÉT CẢM BIẾN</string>
+    <string name="sec_metrics_perf">HIỆU NĂNG &amp; ĐIỆN NĂNG</string>
+    <string name="sec_metrics_core_temp">NHIỆT ĐỘ LÕI &amp; PIN</string>
+    <string name="sec_metrics_hw_temp">LINH KIỆN &amp; BỘ NHỚ</string>
+    <string name="sec_hud_tools">TIỆN ÍCH &amp; PHÂN TÍCH</string>
+
+    <string name="subtitle_hint">Chạm game để chạy • Nhấn giữ tạo Shortcut • Chạm HUD để ghi log</string>
+    <string name="reading_display">Đang đọc độ phân giải vật lý...</string>
+    <string name="preview_display_fmt">GỐC %1$dx%2$d (%3$d DPI)  ➔  SSAA %4$dx%5$d (%6$d DPI)</string>
+    <string name="btn_reset_display">↺ RESET GỐC</string>
+
+    <string name="chk_telemetry_hud">Tự bật HUD khi vào game</string>
+    <string name="btn_orient_vert">↕️ Xếp dọc</string>
+    <string name="btn_orient_horiz">↔️ Ngang 1 dòng</string>
+    <string name="btn_test_hud">👁️ Bật/Tắt HUD</string>
 
     <string name="size_tiny">Siêu gọn</string>
     <string name="size_small">Nhỏ</string>
@@ -33,17 +48,17 @@
     <string name="poll_2s">Quét 1s</string>
 
     <string name="metric_fps">⚡ FPS (xx.x)</string>
-    <string name="metric_watt">🔌 Công suất</string>
-    <string name="metric_vram">🎮 VRAM</string>
+    <string name="metric_watt">🔌 Công suất (W)</string>
+    <string name="metric_vram">🎮 VRAM GPU</string>
     <string name="metric_cpu_freq">⚙️ Xung CPU</string>
-    <string name="metric_bat_temp">🔋 Pin °C</string>
-    <string name="metric_soc_temp">🌡️ SoC °C</string>
-    <string name="metric_cpu_temp">🔥 CPU °C</string>
-    <string name="metric_gpu_temp">📟 GPU °C</string>
-    <string name="metric_ddr_temp">🧬 DDR °C</string>
-    <string name="metric_cam_temp">📷 CAM °C</string>
-    <string name="metric_skin_temp">📱 Vỏ máy °C</string>
-    <string name="metric_ram">💾 RAM</string>
+    <string name="metric_bat_temp">🔋 Nhiệt Pin °C</string>
+    <string name="metric_soc_temp">🌡️ Nhiệt SoC °C</string>
+    <string name="metric_cpu_temp">🔥 Nhiệt CPU °C</string>
+    <string name="metric_gpu_temp">📟 Nhiệt GPU °C</string>
+    <string name="metric_ddr_temp">🧬 Nhiệt DDR °C</string>
+    <string name="metric_cam_temp">📷 Nhiệt CAM °C</string>
+    <string name="metric_skin_temp">📱 Nhiệt Vỏ °C</string>
+    <string name="metric_ram">💾 Bộ nhớ RAM</string>
 
     <string name="btn_quick_tile">🎛️ Control Center</string>
     <string name="hint_quick_tile">Vuốt Control Center xuống -&gt; Bấm Sửa (✏️) -&gt; Kéo nút \'HUD Đo FPS\' lên!</string>
@@ -51,10 +66,10 @@
     <string name="btn_reset_pos">🎯 Reset vị trí</string>
     <string name="toast_pos_reset">✅ Đã đặt lại tọa độ HUD về mặc định!</string>
     <string name="btn_sensors">🔍 Soi cảm biến</string>
-    <string name="btn_perf_logs">📈 Lịch sử Log</string>
+    <string name="btn_perf_logs">📈 Lịch sử Log &amp; Biểu đồ</string>
 
-    <string name="chk_pinned_only">⭐ Chỉ hiện Game đã ghim (Ẩn ứng dụng khác)</string>
-    <string name="hint_search">🔍 Gõ tên game hoặc package để lọc nhanh...</string>
+    <string name="chk_pinned_only">⭐ Chỉ hiện Game đã ghim</string>
+    <string name="hint_search">🔍 Tìm tên game hoặc package...</string>
 
     <string name="toast_scanning_sensors">Đang quét thermal_zone trên máy...</string>
     <string name="no_sensors_found">Không đọc được cảm biến nào.</string>

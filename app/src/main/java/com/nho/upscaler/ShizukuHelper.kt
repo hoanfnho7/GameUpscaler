@@ -10,6 +10,14 @@ import java.util.Locale
 import kotlin.concurrent.thread
 
 object ShizukuHelper {
+    fun isBinderAlive(): Boolean {
+        return try {
+            Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun newShellProcess(cmd: Array<String>): Process {
         val m = Shizuku::class.java.getDeclaredMethod(
             "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java

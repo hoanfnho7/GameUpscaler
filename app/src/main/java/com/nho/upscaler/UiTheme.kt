@@ -4,58 +4,59 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 
 object UiTheme {
-    val BG_ROOT = Color.parseColor("#101216")
-    val BG_CARD = Color.parseColor("#161920")
-    val BG_INPUT = Color.parseColor("#1E2229")
-    val BG_PREVIEW = Color.parseColor("#182026")
-    val BG_ROW = Color.parseColor("#1A1D24")
-    val BG_ROW_PINNED = Color.parseColor("#1E2822")
-    val BG_CHIP_INACTIVE = Color.parseColor("#222630")
-    val BG_PILL_ACTIVE = Color.parseColor("#1B2E24")
-    val BG_PILL_INACTIVE = Color.parseColor("#1D2028")
-    val BG_BADGE = Color.parseColor("#263238")
+    val BG_ROOT = Color.parseColor("#090B10")
+    val BG_CARD = Color.parseColor("#11151E")
+    val BG_CARD_ALT = Color.parseColor("#151A25")
+    val BG_INPUT = Color.parseColor("#131822")
+    val BG_PREVIEW = Color.parseColor("#0D1917")
+    val BG_ROW = Color.parseColor("#11151E")
+    val BG_ROW_PINNED = Color.parseColor("#11211B")
+    val BG_CHIP_INACTIVE = Color.parseColor("#181E2B")
+    val BG_PILL_ACTIVE = Color.parseColor("#102920")
+    val BG_PILL_INACTIVE = Color.parseColor("#141923")
+    val BG_BADGE = Color.parseColor("#1B2432")
 
-    val BTN_CYAN_BG = Color.parseColor("#182429")
-    val BTN_CYAN_STROKE = Color.parseColor("#2E4A52")
-    val BTN_GOLD_BG = Color.parseColor("#242118")
-    val BTN_GOLD_STROKE = Color.parseColor("#4A4228")
-    val BTN_PURPLE_BG = Color.parseColor("#231926")
-    val BTN_PURPLE_STROKE = Color.parseColor("#472D4F")
-    val BTN_LANG_BG = Color.parseColor("#1B242B")
+    val BTN_CYAN_BG = Color.parseColor("#0F2126")
+    val BTN_CYAN_STROKE = Color.parseColor("#1F4E5B")
+    val BTN_GOLD_BG = Color.parseColor("#241E11")
+    val BTN_GOLD_STROKE = Color.parseColor("#57461E")
+    val BTN_PURPLE_BG = Color.parseColor("#1F1526")
+    val BTN_PURPLE_STROKE = Color.parseColor("#4D2B63")
+    val BTN_LANG_BG = Color.parseColor("#131B26")
 
-    val ACCENT_GREEN = Color.parseColor("#00E676")
-    val ACCENT_CYAN = Color.parseColor("#64FFDA")
-    val ACCENT_GOLD = Color.parseColor("#FFD740")
+    val ACCENT_GREEN = Color.parseColor("#00F58C")
+    val ACCENT_CYAN = Color.parseColor("#00E5FF")
+    val ACCENT_GOLD = Color.parseColor("#FFC400")
     val ACCENT_STAR = Color.parseColor("#FFD600")
-    val ACCENT_PURPLE = Color.parseColor("#CE93D8")
-    val ACCENT_RED = Color.parseColor("#D32F2F")
+    val ACCENT_PURPLE = Color.parseColor("#D580FF")
+    val ACCENT_RED = Color.parseColor("#D50000")
     val ACCENT_RED_BRIGHT = Color.parseColor("#FF5252")
     val ACCENT_RED_ALERT = Color.parseColor("#FF1744")
-    val ACCENT_TEST_GREEN = Color.parseColor("#2E7D32")
+    val ACCENT_TEST_GREEN = Color.parseColor("#00BFA5")
 
-    val TEXT_WHITE = Color.WHITE
-    val TEXT_DARK = Color.parseColor("#101216")
-    val TEXT_SUB = Color.parseColor("#9E9E9E")
-    val TEXT_CHIP = Color.parseColor("#B0BEC5")
-    val TEXT_MUTED = Color.parseColor("#757575")
-    val TEXT_PKG = Color.parseColor("#888888")
-    val TEXT_STAR_OFF = Color.parseColor("#616161")
+    val TEXT_WHITE = Color.parseColor("#F5F7FA")
+    val TEXT_DARK = Color.parseColor("#090B10")
+    val TEXT_SUB = Color.parseColor("#8A94A6")
+    val TEXT_CHIP = Color.parseColor("#B0BAC9")
+    val TEXT_MUTED = Color.parseColor("#646E82")
+    val TEXT_PKG = Color.parseColor("#6E788C")
+    val TEXT_STAR_OFF = Color.parseColor("#4A5366")
     val TEXT_SHADOW = Color.parseColor("#F0000000")
 
-    val STROKE_SUBTLE = Color.parseColor("#263238")
-    val STROKE_PILL_OFF = Color.parseColor("#2C303A")
+    val STROKE_SUBTLE = Color.parseColor("#1E2636")
+    val STROKE_NEON_DIM = Color.parseColor("#1E3D34")
+    val STROKE_PILL_OFF = Color.parseColor("#222A3B")
 
-    // 4 mức độ trong suốt HUD: 0 = Đậm, 1 = Mờ vừa, 2 = Siêu trong, 3 = Trong suốt hoàn toàn (Chỉ chữ)
     val HUD_BG_OPACITY = intArrayOf(
-        Color.parseColor("#DD101216"),
-        Color.parseColor("#99101216"),
-        Color.parseColor("#38101216"),
+        Color.parseColor("#DD090B10"),
+        Color.parseColor("#99090B10"),
+        Color.parseColor("#38090B10"),
         Color.TRANSPARENT
     )
     val HUD_STROKE_OPACITY = intArrayOf(
-        Color.parseColor("#6600E676"),
-        Color.parseColor("#4400E676"),
-        Color.parseColor("#2400E676"),
+        Color.parseColor("#6600F58C"),
+        Color.parseColor("#4400F58C"),
+        Color.parseColor("#2400F58C"),
         Color.TRANSPARENT
     )
     val CLOSE_ZONE_IDLE = Color.parseColor("#CC261212")

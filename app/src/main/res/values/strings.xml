@@ -7,17 +7,32 @@
     <string name="lang_badge_vi">🇻🇳 VI</string>
     <string name="lang_badge_en">🇺🇸 EN</string>
 
-    <string name="subtitle_hint">Tap game to boost • Long-press for Shortcut • Drag HUD to ✕ to hide</string>
+    <string name="status_shizuku_ok">● SHIZUKU READY</string>
+    <string name="status_shizuku_off">● SHIZUKU OFFLINE</string>
+
+    <string name="tab_armory">🎮 GAME ARMORY</string>
+    <string name="tab_hud_studio">📊 HUD STUDIO</string>
+
+    <string name="sec_ssaa_engine">DISPLAY SUPERSAMPLING (SSAA)</string>
+    <string name="sec_hud_preview">LIVE HUD PREVIEW</string>
+    <string name="sec_hud_style">LAYOUT &amp; TRANSPARENCY</string>
+    <string name="sec_hud_poll">TELEMETRY POLLING RATE</string>
+    <string name="sec_metrics_perf">PERFORMANCE &amp; POWER</string>
+    <string name="sec_metrics_core_temp">CORE &amp; BATTERY TEMPS</string>
+    <string name="sec_metrics_hw_temp">HARDWARE &amp; MEMORY</string>
+    <string name="sec_hud_tools">DIAGNOSTICS &amp; LOGS</string>
+
+    <string name="subtitle_hint">Tap game to launch • Long-press for Shortcut • Tap HUD to record</string>
     <string name="reading_display">Reading physical display specs...</string>
-    <string name="preview_display_fmt">🖥️ Native: %1$dx%2$d (%3$d DPI)  ➔  Boosted: %4$dx%5$d (%6$d DPI)</string>
-    <string name="btn_reset_display">🔄 RESET DISPLAY RESOLUTION NOW</string>
+    <string name="preview_display_fmt">NATIVE %1$dx%2$d (%3$d DPI)  ➔  SSAA %4$dx%5$d (%6$d DPI)</string>
+    <string name="btn_reset_display">↺ RESET DISPLAY</string>
 
-    <string name="chk_telemetry_hud">📊 Telemetry HUD</string>
+    <string name="chk_telemetry_hud">Enable HUD in Game</string>
     <string name="btn_orient_vert">↕️ Vertical</string>
-    <string name="btn_orient_horiz">↔️ Horiz</string>
-    <string name="btn_test_hud">👁️ Test</string>
+    <string name="btn_orient_horiz">↔️ 1-Line Horiz</string>
+    <string name="btn_test_hud">👁️ Toggle HUD</string>
 
-    <string name="size_tiny">Tiny</string>
+    <string name="size_tiny">Micro</string>
     <string name="size_small">Small</string>
     <string name="size_medium">Medium</string>
     <string name="size_large">Large</string>
@@ -34,26 +49,26 @@
 
     <string name="metric_fps">⚡ FPS (xx.x)</string>
     <string name="metric_watt">🔌 Power (W)</string>
-    <string name="metric_vram">🎮 VRAM</string>
-    <string name="metric_cpu_freq">⚙️ CPU Freq</string>
-    <string name="metric_bat_temp">🔋 Bat °C</string>
-    <string name="metric_soc_temp">🌡️ SoC °C</string>
-    <string name="metric_cpu_temp">🔥 CPU °C</string>
-    <string name="metric_gpu_temp">📟 GPU °C</string>
-    <string name="metric_ddr_temp">🧬 DDR °C</string>
-    <string name="metric_cam_temp">📷 CAM °C</string>
-    <string name="metric_skin_temp">📱 Board °C</string>
-    <string name="metric_ram">💾 RAM</string>
+    <string name="metric_vram">🎮 GPU VRAM</string>
+    <string name="metric_cpu_freq">⚙️ CPU Clock</string>
+    <string name="metric_bat_temp">🔋 Battery °C</string>
+    <string name="metric_soc_temp">🌡️ SoC Peak °C</string>
+    <string name="metric_cpu_temp">🔥 CPU Core °C</string>
+    <string name="metric_gpu_temp">📟 GPU Core °C</string>
+    <string name="metric_ddr_temp">🧬 DDR RAM °C</string>
+    <string name="metric_cam_temp">📷 Camera °C</string>
+    <string name="metric_skin_temp">📱 Board / Skin °C</string>
+    <string name="metric_ram">💾 System RAM</string>
 
-    <string name="btn_quick_tile">🎛️ Quick Tile</string>
+    <string name="btn_quick_tile">🎛️ Add Quick Tile</string>
     <string name="hint_quick_tile">Pull down Quick Settings -&gt; Tap Edit (✏️) -&gt; Drag \'FPS HUD\' tile up!</string>
     <string name="toast_quick_tile_added">✅ Added FPS HUD tile to Quick Settings!</string>
-    <string name="btn_reset_pos">🎯 Reset Pos</string>
+    <string name="btn_reset_pos">🎯 Reset HUD Pos</string>
     <string name="toast_pos_reset">✅ HUD position reset to default!</string>
-    <string name="btn_sensors">🔍 Sensors</string>
-    <string name="btn_perf_logs">📈 Perf Logs</string>
+    <string name="btn_sensors">🔍 Thermal Zones</string>
+    <string name="btn_perf_logs">📈 Performance Logs &amp; Charts</string>
 
-    <string name="chk_pinned_only">⭐ Show Pinned Games Only</string>
+    <string name="chk_pinned_only">⭐ Pinned Games Only</string>
     <string name="hint_search">🔍 Search game name or package...</string>
 
     <string name="toast_scanning_sensors">Scanning device thermal zones...</string>
