@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -21,6 +22,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
+import android.service.quicksettings.TileService
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -37,6 +39,11 @@ import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 class FpsOverlayService : Service() {
+    companion object {
+        @Volatile
+        var isServiceRunning = false
+    }
+
     private var windowManager: WindowManager? = null
     private var overlayView: TextView? = null
     private var overlayParams: WindowManager.LayoutParams? = null
@@ -67,6 +74,14 @@ class FpsOverlayService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private fun syncQuickSettingsTile() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                TileService.requestListeningState(this, ComponentName(this, HudTileService::class.java))
+            } catch (_: Exception) {}
+        }
+    }
+
     private fun isLandscapeMode(): Boolean {
         return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     }
@@ -76,7 +91,6 @@ class FpsOverlayService : Service() {
         val isLand = isLandscapeMode()
         val dm = resources.displayMetrics
 
-        // Mặc định màn ngang luôn nằm sát mép trên (Y = 36), tách biệt hoàn toàn với tọa độ màn dọc
         val rawX = if (isLand) {
             prefs.getInt("overlay_land_x", 160)
         } else {
@@ -126,7 +140,7 @@ class FpsOverlayService : Service() {
         }
 
         targetPkg = intent?.getStringExtra("target_pkg") ?: ""
-        gameName = intent?.getStringExtra("game_name") ?: "Chế độ xem thử"
+        gameName = intent?.getStringExtra("game_name") ?: "Control Center HUD"
         scaleLabel = intent?.getStringExtra("scale_label") ?: ""
 
         startAsForeground()
@@ -147,6 +161,9 @@ class FpsOverlayService : Service() {
             } catch (_: Exception) {}
             renderTelemetryText()
         }
+
+        isServiceRunning = true
+        syncQuickSettingsTile()
 
         if (!isRunning) {
             isRunning = true
@@ -734,6 +751,8 @@ class FpsOverlayService : Service() {
 
     override fun onDestroy() {
         isRunning = false
+        isServiceRunning = false
+        syncQuickSettingsTile()
         try {
             if (overlayView != null) {
                 windowManager?.removeView(overlayView)

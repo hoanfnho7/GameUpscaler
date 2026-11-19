@@ -5,6 +5,8 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.StatusBarManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -347,6 +349,43 @@ class MainActivity : Activity() {
             }
             hudCard.addView(mRow)
         }
+        val addQsTileBtn = TextView(this).apply {
+            text = "🎛️ Thêm nút bật HUD lên Control Center"
+            textSize = 11.5f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.parseColor("#64FFDA"))
+            gravity = Gravity.CENTER
+            setPadding(16, 12, 16, 12)
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#182429"))
+                cornerRadius = 12f
+                setStroke(1, Color.parseColor("#2E4A52"))
+            }
+            setOnClickListener {
+                if (Build.VERSION.SDK_INT >= 33) {
+                    try {
+                        val sbm = getSystemService(StatusBarManager::class.java)
+                        sbm?.requestAddTileService(
+                            ComponentName(this@MainActivity, HudTileService::class.java),
+                            "HUD Đo FPS",
+                            Icon.createWithResource(this@MainActivity, R.drawable.ic_hud_tile),
+                            mainExecutor
+                        ) { result ->
+                            if (result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED ||
+                                result == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED) {
+                                Toast.makeText(this@MainActivity, "✅ Đã thêm nút HUD Đo FPS lên Control Center!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } catch (_: Exception) {
+                        Toast.makeText(this@MainActivity, "Vuốt Control Center xuống -> Bấm Sửa (✏️) -> Kéo nút 'HUD Đo FPS' lên!", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(this@MainActivity, "Vuốt Control Center xuống -> Bấm Sửa (✏️) -> Kéo nút 'HUD Đo FPS' lên!", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        hudCard.addView(addQsTileBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 })
+
         root.addView(hudCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8 })
 
         // Công tắc Chỉ hiện game đã ghim
