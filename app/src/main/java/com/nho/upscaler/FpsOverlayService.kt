@@ -540,13 +540,13 @@ class FpsOverlayService : Service() {
                 tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
                 tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 999f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
             }
-            1 -> { // Compact 2x2
+            1 -> { // Vertical Monospace Column
                 tv.isSingleLine = false
-                tv.maxLines = 4
+                tv.maxLines = 15
                 tv.gravity = Gravity.START
                 tv.setLineSpacing(2f, 1.05f)
-                tv.setPadding(padH[idx], padV[idx] + 2, padH[idx], padV[idx] + 2)
-                tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 16f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
+                tv.setPadding(padH[idx], padV[idx] + 3, padH[idx], padV[idx] + 3)
+                tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 14f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
             }
             else -> { // Horizontal Pill
                 tv.isSingleLine = true
@@ -571,43 +571,71 @@ class FpsOverlayService : Service() {
         val showFps = prefsMgr.getMetric("m_fps", true)
         val showWatt = prefsMgr.getMetric("m_watt", true)
         val showGpu = prefsMgr.getMetric("m_gpu", true)
+        val showVram = prefsMgr.getMetric("m_vram", false)
+        val showCpuFreq = prefsMgr.getMetric("m_cpu_freq", false)
         val showBatTemp = prefsMgr.getMetric("m_bat_temp", true)
         val showSocTemp = prefsMgr.getMetric("m_soc_temp", true)
         val showCpuTemp = prefsMgr.getMetric("m_cpu_temp", false)
+        val showGpuTemp = prefsMgr.getMetric("m_gpu_temp", false)
+        val showDdrTemp = prefsMgr.getMetric("m_ddr_temp", false)
+        val showCamTemp = prefsMgr.getMetric("m_cam_temp", false)
+        val showSkinTemp = prefsMgr.getMetric("m_skin_temp", false)
         val showRam = prefsMgr.getMetric("m_ram", false)
 
         val fpsVal = if (lastFps >= 0f) String.format(Locale.US, "%.1f", lastFps) else "--.-"
-        val tVal = if (cachedBatTemp > 0f) String.format(Locale.US, "%.1f°C", cachedBatTemp) else "--°C"
         val prefix = if (isChargingNow) "+" else ""
         val wVal = if (lastWatts > 0f) String.format(Locale.US, "%s%.1fW", prefix, lastWatts) else if (cachedVoltMv > 0) "${(cachedVoltMv / 1000f).toInt()}V" else "--W"
         val gpuVal = if (lastGpuVramMb >= 0) "${lastGpuVramMb}%" else "--%"
+        val vramVal = if (lastGpuVramMb >= 0) "${lastGpuVramMb}MB" else "--MB"
+        val cpuFreqVal = if (lastCpuKhz > 0) String.format(Locale.US, "%.2fGHz", lastCpuKhz / 1_000_000f) else "--GHz"
+
+        val batVal = if (cachedBatTemp > 0f) String.format(Locale.US, "%.1f°C", cachedBatTemp) else "--°C"
+        val socVal = if (lastSocTemp > 0f) String.format(Locale.US, "%.1f°C", lastSocTemp) else "--°C"
+        val cpuTempVal = if (lastCpuTemp > 0f) String.format(Locale.US, "%.1f°C", lastCpuTemp) else "--°C"
+        val gpuTempVal = if (lastGpuTemp > 0f) String.format(Locale.US, "%.1f°C", lastGpuTemp) else "--°C"
+        val ddrTempVal = if (lastDdrTemp > 0f) String.format(Locale.US, "%.1f°C", lastDdrTemp) else "--°C"
+        val camTempVal = if (lastCamTemp > 0f) String.format(Locale.US, "%.1f°C", lastCamTemp) else "--°C"
+        val skinTempVal = if (lastSkinTemp > 0f) String.format(Locale.US, "%.1f°C", lastSkinTemp) else "--°C"
         val ramVal = lastRamText.ifEmpty { "--%" }
 
         val newText = when (layoutMode) {
             2 -> { // Mini Dot
                 "● $fpsVal"
             }
-            1 -> { // Compact 2x2
-                val line1 = StringBuilder()
-                if (showFps) line1.append("● $fpsVal FPS   ")
-                if (showBatTemp || showSocTemp) line1.append("🌡️ $tVal")
-
-                val line2 = StringBuilder()
-                if (showWatt) line2.append("🔋 $wVal   ")
-                if (showGpu) line2.append("🎮 $gpuVal")
-
-                if (line1.isEmpty() && line2.isEmpty()) "● $fpsVal FPS"
-                else if (line2.isEmpty()) line1.toString().trim()
-                else "${line1.toString().trim()}\n${line2.toString().trim()}"
+            1 -> { // Vertical Column (Aligned monospace labels)
+                val lines = mutableListOf<String>()
+                if (showFps) lines.add("FPS  $fpsVal")
+                if (showBatTemp) lines.add("PIN  $batVal")
+                if (showSocTemp) lines.add("SOC  $socVal")
+                if (showCpuTemp) lines.add("CPU  $cpuTempVal")
+                if (showGpuTemp) lines.add("GPU  $gpuTempVal")
+                if (showDdrTemp) lines.add("DDR  $ddrTempVal")
+                if (showCamTemp) lines.add("CAM  $camTempVal")
+                if (showSkinTemp) lines.add("SKN  $skinTempVal")
+                if (showWatt) lines.add("PWR  $wVal")
+                if (showGpu) lines.add("GPU  $gpuVal")
+                if (showVram) lines.add("VRM  $vramVal")
+                if (showCpuFreq) lines.add("CLK  $cpuFreqVal")
+                if (showRam) lines.add("RAM  $ramVal")
+                if (lines.isEmpty()) lines.add("FPS  $fpsVal")
+                lines.joinToString("\n")
             }
             else -> { // Horizontal Pill
                 val items = mutableListOf<String>()
-                if (showFps) items.add("● $fpsVal FPS")
-                if (showBatTemp || showSocTemp) items.add("🌡️ $tVal")
-                if (showWatt) items.add("🔋 $wVal")
-                if (showGpu) items.add("🎮 $gpuVal")
-                if (showRam) items.add("💾 $ramVal")
-                if (items.isEmpty()) items.add("● $fpsVal FPS")
+                if (showFps) items.add("$fpsVal FPS")
+                if (showBatTemp) items.add("Pin $batVal")
+                if (showSocTemp) items.add("SoC $socVal")
+                if (showCpuTemp) items.add("CPU $cpuTempVal")
+                if (showGpuTemp) items.add("GPU $gpuTempVal")
+                if (showDdrTemp) items.add("DDR $ddrTempVal")
+                if (showCamTemp) items.add("CAM $camTempVal")
+                if (showSkinTemp) items.add("SKN $skinTempVal")
+                if (showWatt) items.add(wVal)
+                if (showGpu) items.add("GPU $gpuVal")
+                if (showVram) items.add("VRAM $vramVal")
+                if (showCpuFreq) items.add(cpuFreqVal)
+                if (showRam) items.add("RAM $ramVal")
+                if (items.isEmpty()) items.add("$fpsVal FPS")
                 items.joinToString("  |  ")
             }
         }

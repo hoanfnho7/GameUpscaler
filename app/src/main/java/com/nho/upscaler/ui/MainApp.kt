@@ -97,17 +97,20 @@ fun GameUpscalerApp(
                     }
                     ScreenDestination.GAMES -> {
                         GameLibraryScreen(
-                            viewModel = gameViewModel
+                            viewModel = gameViewModel,
+                            lang = homeUiState.currentLang
                         )
                     }
                     ScreenDestination.HUD -> {
                         HudSettingsScreen(
-                            viewModel = hudViewModel
+                            viewModel = hudViewModel,
+                            lang = homeUiState.currentLang
                         )
                     }
                     ScreenDestination.ANALYTICS -> {
                         PerformanceAnalyticsScreen(
                             viewModel = analyticsViewModel,
+                            lang = homeUiState.currentLang,
                             onNavigateBack = { currentDestination = ScreenDestination.HOME }
                         )
                     }
@@ -142,8 +145,8 @@ private fun BottomNavigationBar(
 ) {
     Surface(
         shape = CircleShape,
-        color = DarkSurfaceLowest.copy(alpha = 0.95f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorderSubtle),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 8.dp,
         modifier = Modifier
             .fillMaxWidth()

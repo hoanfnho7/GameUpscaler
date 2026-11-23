@@ -1,16 +1,21 @@
 package com.nho.upscaler.ui.analytics
 
 import android.content.Context
+import android.os.Environment
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nho.upscaler.PerfLogManager
 import com.nho.upscaler.PerfSample
 import com.nho.upscaler.PerfSession
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 data class AnalyticsUiState(
     val sessions: List<PerfSession> = emptyList(),
@@ -20,7 +25,8 @@ data class AnalyticsUiState(
     val selectedSession: PerfSession? = null,
     val scrubIndex: Int = -1,
     val scrubSample: PerfSample? = null,
-    val isDeleteConfirmOpen: Boolean = false
+    val isDeleteConfirmOpen: Boolean = false,
+    val exportedCsvPath: String? = null
 )
 
 class AnalyticsViewModel : ViewModel() {
@@ -33,10 +39,21 @@ class AnalyticsViewModel : ViewModel() {
 
     fun loadSessions(context: Context) {
         viewModelScope.launch {
-            var list = PerfLogManager.listSessions(context)
+            val list = PerfLogManager.listSessions(context)
+
             if (list.isEmpty()) {
-                // If no sessions recorded yet, generate a demo realistic session so UI never looks empty
-                list = listOf(generateDemoSession())
+                _uiState.update {
+                    it.copy(
+                        sessions = emptyList(),
+                        filteredSessions = emptyList(),
+                        gameFilters = emptyList(),
+                        selectedGameFilter = "all",
+                        selectedSession = null,
+                        scrubIndex = -1,
+                        scrubSample = null
+                    )
+                }
+                return@launch
             }
 
             // Extract unique games
@@ -124,47 +141,31 @@ class AnalyticsViewModel : ViewModel() {
         loadSessions(context)
     }
 
-    private fun generateDemoSession(): PerfSession {
-        val samples = mutableListOf<PerfSample>()
-        val totalSec = 920 // 15 min 20 sec
-        for (i in 0 until totalSec step 2) {
-            val fpsWave = 118.5f + (Math.sin(i / 25.0) * 2.5f).toFloat() + ((i % 17) * 0.1f)
-            val wattWave = 5.6f + (Math.cos(i / 30.0) * 1.2f).toFloat()
-            val batWave = 36.5f + (i / 920f) * 2.2f
-            val socWave = 58.0f + (Math.sin(i / 15.0) * 4.5f).toFloat() + (i / 920f) * 4.0f
-
-            samples.add(
-                PerfSample(
-                    sec = i,
-                    fps = fpsWave.coerceIn(84f, 120f),
-                    watts = wattWave.coerceIn(3.5f, 7.8f),
-                    batTemp = batWave,
-                    socTemp = socWave,
-                    vramMb = 1420,
-                    cpuMhz = 2840
-                )
-            )
+    fun exportSessionCsv(context: Context) {
+        val session = _uiState.value.selectedSession ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val dir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir
+                val safeName = session.gameName.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+                val file = File(dir, "GameUpscaler_${safeName}_${session.timestampMs}.csv")
+                file.bufferedWriter().use { writer ->
+                    writer.write("Timestamp_s,FPS,Power_W,BatteryTemp_C,SocTemp_C,Vram_MB,Cpu_MHz\n")
+                    for (s in session.samples) {
+                        writer.write("${s.sec},${s.fps},${s.watts},${s.batTemp},${s.socTemp},${s.vramMb},${s.cpuMhz}\n")
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    _uiState.update { it.copy(exportedCsvPath = file.absolutePath) }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Lỗi xuất file CSV: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
         }
+    }
 
-        return PerfSession(
-            fileName = "demo_session.json",
-            gameName = "Liên Quân Mobile",
-            pkg = "com.garena.game.kgvn",
-            scaleLabel = "1.25x SSAA",
-            timestampMs = System.currentTimeMillis() - 3600000L,
-            durationSec = totalSec,
-            avgFps = 118.4f,
-            low1Fps = 96.2f,
-            minFps = 84.0f,
-            maxFps = 120.0f,
-            avgWatts = 5.8f,
-            maxWatts = 7.4f,
-            energyMwh = 1480f,
-            peakBatTemp = 38.7f,
-            peakSocTemp = 64.5f,
-            avgVramMb = 1420,
-            avgCpuMhz = 2840,
-            samples = samples
-        )
+    fun dismissExportDialog() {
+        _uiState.update { it.copy(exportedCsvPath = null) }
     }
 }

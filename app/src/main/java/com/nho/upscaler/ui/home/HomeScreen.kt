@@ -1,5 +1,7 @@
 package com.nho.upscaler.ui.home
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
@@ -7,6 +9,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,6 +38,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Launch
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Memory
@@ -46,6 +50,7 @@ import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.TrendingFlat
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -59,6 +64,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -69,10 +77,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nho.upscaler.ui.theme.DarkBorderSubtle
-import com.nho.upscaler.ui.theme.DarkSurfaceHigh
-import com.nho.upscaler.ui.theme.DarkSurfaceLow
-import com.nho.upscaler.ui.theme.DarkSurfaceLowest
 import com.nho.upscaler.ui.theme.TechAmber
 import com.nho.upscaler.ui.theme.TechEmerald
 import com.nho.upscaler.ui.theme.TechRed
@@ -87,9 +91,17 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    var showAboutDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.init(context)
+    }
+
+    if (showAboutDialog) {
+        AboutDialog(
+            lang = uiState.currentLang,
+            onDismiss = { showAboutDialog = false }
+        )
     }
 
     Column(
@@ -103,7 +115,8 @@ fun HomeScreen(
             isDark = uiState.isDarkTheme,
             lang = uiState.currentLang,
             onToggleTheme = { viewModel.toggleTheme() },
-            onToggleLang = { viewModel.toggleLanguage() }
+            onToggleLang = { viewModel.toggleLanguage() },
+            onOpenAbout = { showAboutDialog = true }
         )
 
         // SCROLLABLE CONTENT
@@ -240,11 +253,143 @@ fun HomeScreen(
 }
 
 @Composable
+private fun AboutDialog(
+    lang: String,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(VoltLime.copy(alpha = 0.2f))
+                        .border(1.dp, VoltLime.copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = null,
+                        tint = VoltLime,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        text = "GameUpscaler Pro",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Phiên bản v1.0.53",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = VoltLime,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = if (lang == "VI")
+                        "Công cụ tối ưu hóa độ phân giải hiển thị (SSAA) và hiển thị thanh đo thông số phần cứng thời gian thực qua Shizuku."
+                    else
+                        "Display resolution optimizer (SSAA) and real-time hardware telemetry overlay via Shizuku.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = if (lang == "VI") "Tác giả: hoanfnho7" else "Author: hoanfnho7",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (lang == "VI") "Giấy phép: GNU General Public License v3.0" else "License: GNU GPL v3.0",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = if (lang == "VI") "Mã nguồn: 100% Open Source" else "Source: 100% Open Source",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TechEmerald,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                Button(
+                    onClick = {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/hoanfnho7/GameUpscaler")).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "https://github.com/hoanfnho7/GameUpscaler", Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = VoltLime,
+                        contentColor = Color(0xFF171E00)
+                    ),
+                    modifier = Modifier.fillMaxWidth().height(42.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Launch,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "GitHub Repository",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Text(if (lang == "VI") "Đóng" else "Close", fontWeight = FontWeight.Bold)
+            }
+        }
+    )
+}
+
+@Composable
 private fun TopAppBarHeader(
     isDark: Boolean,
     lang: String,
     onToggleTheme: () -> Unit,
-    onToggleLang: () -> Unit
+    onToggleLang: () -> Unit,
+    onOpenAbout: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -254,9 +399,13 @@ private fun TopAppBarHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left: Logo & Pro badge
+        // Left: Logo & Pro badge (Clickable to open About dialog)
         Row(
-            modifier = Modifier.weight(1f, fill = false).padding(end = 6.dp),
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .padding(end = 6.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .clickable { onOpenAbout() },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -270,7 +419,7 @@ private fun TopAppBarHeader(
             ) {
                 Icon(
                     imageVector = Icons.Default.Tune,
-                    contentDescription = null,
+                    contentDescription = "About",
                     tint = VoltLime,
                     modifier = Modifier.size(18.dp)
                 )
@@ -378,8 +527,8 @@ private fun HeroStatusCard(
 ) {
     Card(
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceLow),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorderSubtle),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Box(
@@ -521,8 +670,8 @@ private fun HeroStatusCard(
 private fun RamStorageCard(uiState: HomeUiState) {
     Card(
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceLow),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorderSubtle),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -615,8 +764,8 @@ private fun RamStorageCard(uiState: HomeUiState) {
 private fun BatteryTempCard(uiState: HomeUiState) {
     Card(
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceLow),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorderSubtle),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -694,8 +843,8 @@ private fun BatteryTempCard(uiState: HomeUiState) {
 private fun DisplaySocCard(uiState: HomeUiState) {
     Card(
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceLow),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorderSubtle),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -763,7 +912,7 @@ private fun DisplaySocCard(uiState: HomeUiState) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(DarkSurfaceLowest.copy(alpha = 0.6f))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(12.dp)
             ) {
                 Row(
@@ -829,7 +978,7 @@ private fun HistoryLogsCard(
 ) {
     Card(
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceLow),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = androidx.compose.foundation.BorderStroke(1.dp, TechAmber.copy(alpha = 0.3f)),
         modifier = Modifier
             .fillMaxWidth()
@@ -998,8 +1147,8 @@ private fun SetupStepItem(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceLow),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorderSubtle),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))

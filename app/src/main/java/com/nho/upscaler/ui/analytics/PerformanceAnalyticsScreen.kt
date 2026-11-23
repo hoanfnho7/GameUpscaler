@@ -1,5 +1,6 @@
 package com.nho.upscaler.ui.analytics
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,7 +28,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.TouchApp
@@ -63,10 +66,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nho.upscaler.PerfSample
 import com.nho.upscaler.PerfSession
-import com.nho.upscaler.ui.theme.DarkBorderSubtle
-import com.nho.upscaler.ui.theme.DarkSurfaceHigh
-import com.nho.upscaler.ui.theme.DarkSurfaceLow
-import com.nho.upscaler.ui.theme.DarkSurfaceLowest
 import com.nho.upscaler.ui.theme.TechAmber
 import com.nho.upscaler.ui.theme.TechEmerald
 import com.nho.upscaler.ui.theme.TechRed
@@ -78,6 +77,7 @@ import java.util.Locale
 @Composable
 fun PerformanceAnalyticsScreen(
     viewModel: AnalyticsViewModel,
+    lang: String = "VI",
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -95,7 +95,7 @@ fun PerformanceAnalyticsScreen(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        // Top App Bar (Back + Title + Delete)
+        // Top App Bar (Back + Title + Export CSV + Delete)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -113,18 +113,32 @@ fun PerformanceAnalyticsScreen(
             }
 
             Text(
-                text = "Phân Tích Hiệu Năng",
+                text = if (lang == "VI") "Phân Tích Hiệu Năng" else "Performance Analytics",
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Bold
             )
 
-            IconButton(onClick = { viewModel.openDeleteDialog() }) {
-                Icon(
-                    imageVector = Icons.Default.DeleteOutline,
-                    contentDescription = null,
-                    tint = TechRed
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (session != null) {
+                    IconButton(onClick = { viewModel.exportSessionCsv(context) }) {
+                        Icon(
+                            imageVector = Icons.Default.FileDownload,
+                            contentDescription = "Export CSV",
+                            tint = VoltLime
+                        )
+                    }
+
+                    IconButton(onClick = { viewModel.openDeleteDialog() }) {
+                        Icon(
+                            imageVector = Icons.Default.DeleteOutline,
+                            contentDescription = "Delete Session",
+                            tint = TechRed
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(48.dp))
+                }
             }
         }
 
@@ -136,103 +150,156 @@ fun PerformanceAnalyticsScreen(
             contentPadding = PaddingValues(top = 8.dp, bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Row 1: Game Filter Chips (Horizontal Scroll)
-            item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(uiState.gameFilters) { (id, name) ->
-                        val isSelected = uiState.selectedGameFilter == id
-                        Surface(
-                            shape = CircleShape,
-                            color = if (isSelected) VoltLime else DarkSurfaceLow,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (isSelected) VoltLime else DarkBorderSubtle
-                            ),
+            if (session == null) {
+                // Empty state when no sessions recorded yet
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 40.dp)
+                    ) {
+                        Column(
                             modifier = Modifier
-                                .clip(CircleShape)
-                                .clickable { viewModel.selectGameFilter(id) }
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(VoltLime.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ShowChart,
+                                    contentDescription = null,
+                                    tint = VoltLime,
+                                    modifier = Modifier.size(30.dp)
+                                )
+                            }
                             Text(
-                                text = name,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (isSelected) Color(0xFF171E00) else MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                                text = if (lang == "VI") "Chưa có dữ liệu phiên đo" else "No Session Data",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = if (lang == "VI")
+                                    "Hãy bật thanh đo HUD và mở game từ app để tự động ghi lại dữ liệu FPS, nhiệt độ và công suất thời gian thực."
+                                else
+                                    "Enable the floating HUD and launch a game to start recording real-time performance telemetry.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
                     }
                 }
-            }
-
-            // Row 2: Session List Chips (Horizontal Scroll)
-            item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(uiState.filteredSessions) { s ->
-                        val isSelected = s.fileName == session?.fileName
-                        val dateStr = SimpleDateFormat("dd/MM HH:mm", Locale.US).format(Date(s.timestampMs))
-                        val durationMin = s.durationSec / 60
-                        val durationSec = s.durationSec % 60
-                        val durStr = String.format(Locale.US, "%02d:%02d", durationMin, durationSec)
-
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = if (isSelected) DarkSurfaceHigh else DarkSurfaceLow,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (isSelected) VoltLime.copy(alpha = 0.5f) else DarkBorderSubtle
-                            ),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(14.dp))
-                                .clickable { viewModel.selectSession(s) }
+            } else {
+                // Row 1: Game Filter Chips (Horizontal Scroll)
+                if (uiState.gameFilters.size > 1) {
+                    item {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            items(uiState.gameFilters) { (id, name) ->
+                                val isSelected = uiState.selectedGameFilter == id
+                                val filterLabel = if (id == "all") (if (lang == "VI") "Tất cả" else "All") else name
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isSelected) VoltLime else MaterialTheme.colorScheme.surface,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (isSelected) VoltLime else MaterialTheme.colorScheme.outlineVariant
+                                    ),
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .clickable { viewModel.selectGameFilter(id) }
                                 ) {
                                     Text(
-                                        text = s.scaleLabel,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = if (isSelected) VoltLime else TechAmber,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = String.format(Locale.US, "%.1f FPS", s.avgFps),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(
-                                        text = durStr,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = dateStr,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = filterLabel,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (isSelected) Color(0xFF171E00) else MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                                     )
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            // 3 KPI Cards Row
-            if (session != null) {
+                // Row 2: Session List Chips (Horizontal Scroll)
+                item {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(uiState.filteredSessions) { s ->
+                            val isSelected = s.fileName == session.fileName
+                            val dateStr = SimpleDateFormat("dd/MM HH:mm", Locale.US).format(Date(s.timestampMs))
+                            val durationMin = s.durationSec / 60
+                            val durationSec = s.durationSec % 60
+                            val durStr = String.format(Locale.US, "%02d:%02d", durationMin, durationSec)
+
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isSelected) VoltLime.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant
+                                ),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .clickable { viewModel.selectSession(s) }
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = s.scaleLabel,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (isSelected) VoltLime else TechAmber,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = String.format(Locale.US, "%.1f FPS", s.avgFps),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = durStr,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = dateStr,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3 KPI Cards Row
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -241,7 +308,7 @@ fun PerformanceAnalyticsScreen(
                         // KPI 1: FPS
                         KpiCard(
                             modifier = Modifier.weight(1f),
-                            label = "ĐỘ MƯỢT FPS",
+                            label = if (lang == "VI") "ĐỘ MƯỢT FPS" else "AVG FPS",
                             primaryVal = String.format(Locale.US, "%.1f", session.avgFps),
                             secondaryVal = String.format(Locale.US, "1%% Low: %.1f", session.low1Fps),
                             accentColor = VoltLime
@@ -250,16 +317,16 @@ fun PerformanceAnalyticsScreen(
                         // KPI 2: Power
                         KpiCard(
                             modifier = Modifier.weight(1f),
-                            label = "CÔNG SUẤT",
+                            label = if (lang == "VI") "CÔNG SUẤT" else "POWER",
                             primaryVal = String.format(Locale.US, "%.1fW", session.avgWatts),
-                            secondaryVal = String.format(Locale.US, "Đỉnh: %.1fW", session.maxWatts),
+                            secondaryVal = String.format(Locale.US, if (lang == "VI") "Đỉnh: %.1fW" else "Peak: %.1fW", session.maxWatts),
                             accentColor = TechAmber
                         )
 
                         // KPI 3: Peak Temp
                         KpiCard(
                             modifier = Modifier.weight(1f),
-                            label = "ĐỈNH NHIỆT",
+                            label = if (lang == "VI") "ĐỈNH NHIỆT" else "PEAK TEMP",
                             primaryVal = String.format(Locale.US, "%.0f°C", session.peakSocTemp),
                             secondaryVal = String.format(Locale.US, "Pin: %.1f°C", session.peakBatTemp),
                             accentColor = TechRed
@@ -277,8 +344,8 @@ fun PerformanceAnalyticsScreen(
 
                         Card(
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = DarkSurfaceLowest),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, VoltLime.copy(alpha = 0.3f)),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            border = BorderStroke(1.dp, VoltLime.copy(alpha = 0.3f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -343,7 +410,7 @@ fun PerformanceAnalyticsScreen(
                 // Chart 1: FPS Curve
                 item {
                     TimeseriesChartCard(
-                        title = "TỐC ĐỘ KHUNG HÌNH (FPS)",
+                        title = if (lang == "VI") "TỐC ĐỘ KHUNG HÌNH (FPS)" else "FRAME RATE (FPS)",
                         badgeText = String.format(Locale.US, "%.1f FPS", uiState.scrubSample?.fps ?: session.avgFps),
                         samples = session.samples,
                         valueExtractor = { it.fps },
@@ -359,7 +426,7 @@ fun PerformanceAnalyticsScreen(
                 item {
                     val peakW = session.maxWatts.coerceAtLeast(8f)
                     TimeseriesChartCard(
-                        title = "CÔNG SUẤT TIÊU THỤ (WATT)",
+                        title = if (lang == "VI") "CÔNG SUẤT TIÊU THỤ (WATT)" else "POWER CONSUMPTION (WATT)",
                         badgeText = String.format(Locale.US, "%.1f W", uiState.scrubSample?.watts ?: session.avgWatts),
                         samples = session.samples,
                         valueExtractor = { it.watts },
@@ -374,7 +441,7 @@ fun PerformanceAnalyticsScreen(
                 // Chart 3: Temperature Dual-Series Curve (SoC & Battery)
                 item {
                     DualSeriesTempChartCard(
-                        title = "BIẾN THIÊN NHIỆT ĐỘ (°C)",
+                        title = if (lang == "VI") "BIẾN THIÊN NHIỆT ĐỘ (°C)" else "TEMPERATURE CURVES (°C)",
                         samples = session.samples,
                         socTemp = uiState.scrubSample?.socTemp ?: session.peakSocTemp,
                         batTemp = uiState.scrubSample?.batTemp ?: session.peakBatTemp,
@@ -398,7 +465,10 @@ fun PerformanceAnalyticsScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Chạm hoặc kéo trên biểu đồ để soi chi tiết từng giây của phiên chơi",
+                            text = if (lang == "VI")
+                                "Chạm hoặc kéo trên biểu đồ để soi chi tiết từng giây của phiên chơi"
+                            else
+                                "Touch or drag across graphs to inspect second-by-second telemetry",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -414,7 +484,7 @@ fun PerformanceAnalyticsScreen(
             onDismissRequest = { viewModel.closeDeleteDialog() },
             title = {
                 Text(
-                    text = "XÓA PHIÊN LOG",
+                    text = if (lang == "VI") "XÓA PHIÊN LOG" else "DELETE SESSION LOG",
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
@@ -422,7 +492,10 @@ fun PerformanceAnalyticsScreen(
             },
             text = {
                 Text(
-                    text = "Bạn có chắc chắn muốn xóa dữ liệu phân tích của phiên chơi này không? Dữ liệu đã xóa không thể khôi phục.",
+                    text = if (lang == "VI")
+                        "Bạn có chắc chắn muốn xóa dữ liệu phân tích của phiên chơi này không? Dữ liệu đã xóa không thể khôi phục."
+                    else
+                        "Are you sure you want to delete this recorded session? Deleted data cannot be recovered.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -436,16 +509,64 @@ fun PerformanceAnalyticsScreen(
                         contentColor = Color.White
                     )
                 ) {
-                    Text("Xóa vĩnh viễn", fontWeight = FontWeight.Bold)
+                    Text(if (lang == "VI") "Xóa vĩnh viễn" else "Delete Permanently", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.closeDeleteDialog() }) {
-                    Text("Hủy", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(if (lang == "VI") "Hủy" else "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = DarkSurfaceLow,
+            containerColor = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // CSV Export Successful Dialog
+    if (uiState.exportedCsvPath != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissExportDialog() },
+            title = {
+                Text(
+                    text = if (lang == "VI") "XUẤT CSV THÀNH CÔNG" else "CSV EXPORT SUCCESS",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = VoltLime,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = if (lang == "VI") "Dữ liệu phiên chơi đã được xuất ra tệp CSV:" else "Session telemetry exported to CSV:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = uiState.exportedCsvPath ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.dismissExportDialog() },
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = VoltLime, contentColor = Color(0xFF171E00))
+                ) {
+                    Text(if (lang == "VI") "Đóng" else "Close", fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(22.dp)
         )
     }
 }
@@ -460,8 +581,8 @@ private fun KpiCard(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceLow),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorderSubtle),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier
     ) {
         Column(
@@ -510,8 +631,8 @@ private fun TimeseriesChartCard(
 ) {
     Card(
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceLow),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorderSubtle),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -549,7 +670,7 @@ private fun TimeseriesChartCard(
                     .fillMaxWidth()
                     .height(130.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(DarkSurfaceLowest)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .pointerInput(samples) {
                         detectTapGestures { offset ->
                             val frac = (offset.x / size.width).coerceIn(0f, 1f)
@@ -652,8 +773,8 @@ private fun DualSeriesTempChartCard(
 ) {
     Card(
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceLow),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorderSubtle),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -693,7 +814,7 @@ private fun DualSeriesTempChartCard(
                     .fillMaxWidth()
                     .height(130.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(DarkSurfaceLowest)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .pointerInput(samples) {
                         detectTapGestures { offset ->
                             val frac = (offset.x / size.width).coerceIn(0f, 1f)

@@ -14,6 +14,7 @@ import com.nho.upscaler.FpsOverlayService
 import com.nho.upscaler.PrefsManager
 import com.nho.upscaler.ShizukuHelper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -227,21 +228,25 @@ class HudSettingsViewModel : ViewModel() {
         }
     }
 
+    private var thermalPollJob: Job? = null
+
     fun openThermalDialog(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val sensors = readThermalSensors(context)
-            withContext(Dispatchers.Main) {
-                _uiState.update {
-                    it.copy(
-                        thermalSensors = sensors,
-                        isThermalDialogOpen = true
-                    )
+        _uiState.update { it.copy(isThermalDialogOpen = true) }
+        thermalPollJob?.cancel()
+        thermalPollJob = viewModelScope.launch(Dispatchers.IO) {
+            while (isActive && _uiState.value.isThermalDialogOpen) {
+                val sensors = readThermalSensors(context)
+                withContext(Dispatchers.Main) {
+                    _uiState.update { it.copy(thermalSensors = sensors) }
                 }
+                delay(1000)
             }
         }
     }
 
     fun closeThermalDialog() {
+        thermalPollJob?.cancel()
+        thermalPollJob = null
         _uiState.update { it.copy(isThermalDialogOpen = false) }
     }
 

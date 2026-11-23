@@ -5,9 +5,11 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.provider.Settings
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nho.upscaler.FpsOverlayService
 import com.nho.upscaler.PrefsManager
 import com.nho.upscaler.ShizukuHelper
 import kotlinx.coroutines.Dispatchers
@@ -95,7 +97,8 @@ class GameLibraryViewModel : ViewModel() {
                 val item = GameProfileItem(label, pkg, icon, customScale, isPinned, isEnabled)
                 allApps.add(item)
 
-                if (isCustom || isGame) {
+                // Only show games manually added by user via "+ Thêm Game"
+                if (isCustom) {
                     gameItems.add(item)
                 }
             }
@@ -240,5 +243,20 @@ class GameLibraryViewModel : ViewModel() {
         val custom = prefsMgr?.getAppCustomScale(game.pkg) ?: 0
         val effectiveFactor = if (custom > 0) custom else (prefsMgr?.targetScaleFactor ?: 115)
         ShizukuHelper.launchGameWithUpscale(game.pkg, effectiveFactor)
+
+        // Auto launch HUD if enabled
+        if (prefsMgr?.enableFpsOverlay == true && Settings.canDrawOverlays(context)) {
+            if (!FpsOverlayService.isServiceRunning) {
+                val intent = Intent(context, FpsOverlayService::class.java).apply {
+                    putExtra("target_pkg", game.pkg)
+                    putExtra("game_name", game.name)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            }
+        }
     }
 }
