@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html class="dark" lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<meta content="mobile_tab" name="shell-type"/>
+<link href="material-symbols.css" rel="stylesheet"/>
+<link href="google-fonts.css" rel="stylesheet"/>
+<style>
+@layer base {
+  html, body {
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+    background-color: #111316;
+    color: #e2e2e6;
+  }
+  body {
+    overscroll-behavior: none;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  main > :first-child {
+    margin-top: 0 !important;
+  }
+  main > :last-child {
+    margin-bottom: 0 !important;
+  }
+}
+::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</style>
+<script src="tailwind.js"></script>
+<script id="tailwind-config">
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+        "surface-dim": "#111316",
+        "on-secondary-container": "#362800",
+        "secondary-fixed-dim": "#eec14a",
+        "error-container": "#93000a",
+        "primary-fixed": "#d0ef65",
+        "secondary": "#eec14a",
+        "inverse-primary": "#526600",
+        "surface-container-low": "#1a1c1f",
+        "surface-tint": "#b4d34c",
+        "outline-variant": "#454837",
+        "tertiary": "#ffffff",
+        "on-background": "#e2e2e6",
+        "background": "#111316",
+        "on-tertiary-container": "#007439",
+        "inverse-surface": "#e2e2e6",
+        "surface-variant": "#333538",
+        "on-secondary": "#3e2e00",
+        "on-primary-container": "#576c00",
+        "on-primary-fixed": "#171e00",
+        "on-surface": "#e2e2e6",
+        "on-error": "#690005",
+        "secondary-fixed": "#ffdf97",
+        "surface-container-high": "#282a2d",
+        "on-primary-fixed-variant": "#3d4d00",
+        "secondary-container": "#b38b12",
+        "tertiary-container": "#6dfe9c",
+        "on-tertiary-fixed": "#00210c",
+        "on-error-container": "#ffdad6",
+        "primary-container": "#d0ef65",
+        "primary-fixed-dim": "#b4d34c",
+        "surface-container": "#1e2023",
+        "on-primary": "#293500",
+        "surface": "#111316",
+        "inverse-on-surface": "#2f3034",
+        "on-secondary-fixed": "#251a00",
+        "surface-container-lowest": "#0c0e11",
+        "surface-bright": "#37393d",
+        "on-secondary-fixed-variant": "#5a4400",
+        "tertiary-fixed": "#6dfe9c",
+        "outline": "#8f937e",
+        "surface-container-highest": "#333538",
+        "on-tertiary": "#003919",
+        "primary": "#ffffff",
+        "on-tertiary-fixed-variant": "#005227",
+        "error": "#ffb4ab",
+        "tertiary-fixed-dim": "#4de082",
+        "on-surface-variant": "#c6c8b2"
+      },
+      "borderRadius": {
+        "DEFAULT": "1rem",
+        "lg": "2rem",
+        "xl": "3rem",
+        "full": "9999px"
+      },
+      "spacing": {
+        "space-lg": "1.25rem",
+        "space-xl": "1.75rem",
+        "space-2xs": "0.25rem",
+        "space-2xl": "2.25rem",
+        "space-xs": "0.5rem",
+        "gutter": "0.75rem",
+        "margin": "1rem",
+        "space-sm": "0.75rem",
+        "space-md": "1rem"
+      },
+      "fontFamily": {
+        "label-caps": ["Space Grotesk", "sans-serif"],
+        "label-badge": ["Space Grotesk", "sans-serif"],
+        "body-md": ["Plus Jakarta Sans", "sans-serif"],
+        "body-lg": ["Plus Jakarta Sans", "sans-serif"],
+        "headline-lg": ["Plus Jakarta Sans", "sans-serif"],
+        "headline-md": ["Plus Jakarta Sans", "sans-serif"],
+        "display": ["Plus Jakarta Sans", "sans-serif"],
+        "label-mono": ["Space Grotesk", "monospace"],
+        "headline-sm": ["Plus Jakarta Sans", "sans-serif"],
+        "body-sm": ["Plus Jakarta Sans", "sans-serif"]
+      },
+      "fontSize": {
+        "label-caps": ["10px", { "lineHeight": "14px", "letterSpacing": "0.12em", "fontWeight": "700" }],
+        "label-badge": ["11px", { "lineHeight": "14px", "fontWeight": "600" }],
+        "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+        "body-lg": ["15px", { "lineHeight": "22px", "fontWeight": "400" }],
+        "headline-lg": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+        "headline-md": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+        "display": ["34px", { "lineHeight": "42px", "letterSpacing": "-0.03em", "fontWeight": "800" }],
+        "label-mono": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+        "headline-sm": ["16px", { "lineHeight": "22px", "fontWeight": "600" }],
+        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }]
+      }
+    }
+  }
+};
+</script>
+</head>
+<body class="bg-surface text-on-surface antialiased flex flex-col min-h-screen selection:bg-primary-container selection:text-on-primary-container">
+
+<!-- TOP APP HEADER -->
+<header class="fixed top-0 w-full z-40 bg-surface-container-lowest/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.4)] pt-safe">
+  <div class="flex items-center justify-between px-margin pt-space-xs text-on-surface-variant font-label-mono text-label-mono">
+    <span class="tracking-tight font-bold text-on-surface" id="clock-display">19:22</span>
+    <div class="flex items-center gap-space-xs">
+      <span class="material-symbols-outlined text-[15px]">wifi</span>
+      <span class="font-label-caps text-label-caps tracking-widest text-primary-fixed">5G</span>
+      <div class="flex items-center gap-1 pl-1">
+        <span class="font-label-caps text-label-caps" id="top-bat-pct">94%</span>
+        <span class="material-symbols-outlined text-[16px] text-tertiary-fixed" id="top-bat-icon">battery_charging_full</span>
+      </div>
+    </div>
+  </div>
+  <div class="h-16 px-margin flex items-center justify-between">
+    <div class="flex items-center gap-space-sm min-w-0">
+      <div class="w-9 h-9 rounded-xl bg-primary-container/20 flex items-center justify-center text-primary-fixed shrink-0">
+        <span class="material-symbols-outlined text-[22px]">sports_esports</span>
+      </div>
+      <div class="flex flex-col min-w-0">
+        <div class="flex items-center gap-space-2xs">
+          <span class="font-headline-sm text-headline-sm font-bold tracking-tight text-on-surface truncate">SSAA TOOL</span>
+          <span class="px-1.5 py-0.5 rounded-full bg-primary-container/20 text-primary-fixed font-label-caps text-label-caps">PRO</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-on-surface-variant">
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-tertiary-container animate-pulse"></span>
+          <span class="font-label-mono text-label-mono text-surface-tint truncate" id="top-soc-model">Snapdragon 8 Gen 3</span>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-space-xs">
+      <div class="px-space-xs py-1 rounded-full bg-surface-container-high/60 flex items-center gap-1">
+        <span class="material-symbols-outlined text-[14px] text-secondary">speed</span>
+        <span class="font-label-mono text-label-mono text-secondary-fixed-dim" id="top-fps-display">120 FPS</span>
+      </div>
+      <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+        <span class="material-symbols-outlined text-on-primary text-[18px]">bolt</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT VIEWS (3 TABS) -->
+<main class="flex-1 flex flex-col relative w-full px-margin pt-24 pb-28 bg-surface">
+  <!-- TAB 0: TRANG CHỦ -->
+  <div id="tab-home" class="tab-page">
+    <div class="flex flex-col w-full pb-8 space-y-space-md">
+<!-- Screen Header -->
+<div class="flex items-end justify-between pt-space-xs pb-space-2xs">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Thông tin hệ thống &amp; Trạng thái</span>
+<h1 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight mt-0.5">Trang chủ</h1>
+</div>
+<div class="px-space-xs py-1 rounded-full bg-surface-container-high flex items-center gap-1.5 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed animate-pulse"></span>
+<span class="font-label-mono text-label-mono text-on-surface-variant">Vivo / iQOO • SD 8 Gen 3</span>
+</div>
+</div>
+<!-- Hero Status Card (Inspired by reference layout) -->
+<div class="relative overflow-hidden rounded-lg bg-surface-container-low p-space-md shadow-lg transition-all" id="heroCard">
+<!-- Subtle luminous ambient accent layer -->
+<div class="absolute inset-0 bg-gradient-to-br from-secondary/10 via-transparent to-primary-container/5 pointer-events-none"></div>
+<div class="relative z-10 flex flex-col space-y-space-sm">
+<!-- Step Badge / Status Eyebrow -->
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary shadow-sm"></span>
+<span class="font-label-caps text-label-caps text-secondary uppercase tracking-widest">
+          TRẠNG THÁI DỊCH VỤ · SSAA ENGINE (SẴN SÀNG)
+        </span>
+</div>
+<!-- Hero Heading -->
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface leading-tight">
+          Khử răng cưa đang sẵn sàng · Đã kết nối Shizuku
+        </h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1.5">
+          Hệ thống đã nhận diện độ phân giải gốc 1080x2400. Sẵn sàng ép xung độ phân giải khử răng cưa và kích hoạt thanh đo FPS.
+        </p>
+</div>
+<!-- Primary Action CTA Button -->
+<div class="pt-1">
+<button class="w-full py-3.5 px-space-md rounded-full bg-primary-container text-on-primary-fixed font-label-mono text-headline-sm font-bold flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all" id="btnOptimize">
+<span>Bật tối ưu SSAA ngay</span>
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</div>
+<!-- Triple Telemetry Grid Footer -->
+<div class="grid grid-cols-3 gap-space-2xs pt-space-xs mt-space-xs bg-surface-container-lowest/60 rounded-DEFAULT p-space-xs">
+<div class="flex flex-col items-center justify-center py-1 text-center">
+<span class="font-display text-headline-sm font-bold text-on-surface">6 lượt</span>
+<span class="font-label-badge text-label-badge text-on-surface-variant mt-0.5">Hôm nay</span>
+</div>
+<div class="flex flex-col items-center justify-center py-1 text-center">
+<span class="font-display text-headline-sm font-bold text-tertiary-fixed">100%</span>
+<span class="font-label-badge text-label-badge text-on-surface-variant mt-0.5">Ổn định</span>
+</div>
+<div class="flex flex-col items-center justify-center py-1 text-center">
+<span class="font-display text-headline-sm font-bold text-secondary">48°C</span>
+<span class="font-label-badge text-label-badge text-on-surface-variant mt-0.5">Pin mát</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Realtime Hardware Telemetry Group -->
+<div class="flex flex-col space-y-space-xs">
+<div class="flex items-center justify-between px-space-2xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Thông số phần cứng thời gian thực</span>
+<div class="flex items-center gap-1 text-tertiary-fixed">
+<span class="material-symbols-outlined text-[14px]">sensors</span>
+<span class="font-label-badge text-label-badge">LIVE POLLING</span>
+</div>
+</div>
+<!-- Card 1: RAM & Storage -->
+<div class="rounded-lg bg-surface-container-low p-space-md shadow-sm flex flex-col space-y-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-primary-fixed">
+<span class="material-symbols-outlined text-[20px]">memory</span>
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm font-semibold text-on-surface">RAM &amp; Bộ nhớ</div>
+<div class="font-label-mono text-label-mono text-on-surface-variant">LPDDR5X + UFS 4.0</div>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-primary-fixed font-label-badge text-label-badge">
+          47% ĐÃ DÙNG
+        </span>
+</div>
+<!-- RAM Gauge Bar -->
+<div class="space-y-1 pt-1">
+<div class="flex justify-between font-label-mono text-label-mono">
+<span class="text-on-surface">RAM Khả dụng: <strong class="text-primary-fixed">8.4 GB</strong> / 16 GB</span>
+<span class="text-on-surface-variant">7.6 GB trống</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-primary-container rounded-full w-[47%] transition-all duration-500"></div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1 font-body-sm text-body-sm text-on-surface-variant">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant">sd_card</span>
+          Bộ nhớ trong
+        </span>
+<span class="font-label-mono text-label-mono text-on-surface">Còn trống <strong class="text-on-surface">142 GB</strong> / 256 GB</span>
+</div>
+</div>
+<!-- Card 2: Temperature & Power -->
+<div class="rounded-lg bg-surface-container-low p-space-md shadow-sm flex flex-col space-y-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[20px]">thermostat</span>
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm font-semibold text-on-surface">Nhiệt độ &amp; Nguồn pin</div>
+<div class="font-label-mono text-label-mono text-on-surface-variant">Kiểm soát dòng tải</div>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-tertiary-fixed font-label-badge text-label-badge">
+          BÌNH THƯỜNG
+        </span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs pt-1">
+<div class="rounded-DEFAULT bg-surface-container-high/70 p-2 flex flex-col">
+<span class="font-label-badge text-label-badge text-on-surface-variant">Pin</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">88%</span>
+<span class="font-label-mono text-label-mono text-tertiary-fixed">41.5°C</span>
+</div>
+</div>
+<div class="rounded-DEFAULT bg-surface-container-high/70 p-2 flex flex-col">
+<span class="font-label-badge text-label-badge text-on-surface-variant">CPU Core</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-headline-sm text-headline-sm font-bold text-secondary">44°C</span>
+<span class="font-label-badge text-label-badge text-on-surface-variant">Tối ưu</span>
+</div>
+</div>
+<div class="rounded-DEFAULT bg-surface-container-high/70 p-2 flex flex-col">
+<span class="font-label-badge text-label-badge text-on-surface-variant">Chế độ</span>
+<div class="mt-0.5 truncate font-label-mono text-label-mono font-semibold text-on-surface">
+            Pin xả
+          </div>
+</div>
+</div>
+</div>
+<!-- Card 3: Display & GPU Tuning -->
+<div class="rounded-lg bg-surface-container-low p-space-md shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-primary-fixed">
+<span class="material-symbols-outlined text-[20px]">screenshot_monitor</span>
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm font-semibold text-on-surface">Màn hình &amp; GPU</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">1080 x 2400 (FHD+) • 120Hz</div>
+</div>
+</div>
+<div class="text-right">
+<span class="font-label-mono text-label-mono font-bold text-primary-fixed block">Adreno 750</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Vulkan 1.3</span>
+</div>
+</div>
+</div>
+<!-- System Setup Stepper (3 Steps List Layout) -->
+<div class="flex flex-col space-y-space-xs pt-space-xs">
+<div class="flex items-center justify-between px-space-2xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">
+        Quy trình thiết lập hệ thống (3 bước)
+      </span>
+<span class="font-label-mono text-label-mono text-primary-fixed">3/3 Sẵn sàng</span>
+</div>
+<!-- Step 1 -->
+<div class="rounded-lg bg-surface-container-low p-space-md shadow-sm flex items-center justify-between active:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary-fixed flex-shrink-0">
+<span class="material-symbols-outlined text-[22px]">check</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface truncate">Cấp quyền Shizuku / ADB</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Đã kích hoạt daemon Shizuku không dây</span>
+</div>
+</div>
+<div class="flex items-center gap-2 flex-shrink-0">
+<span class="px-2 py-1 rounded-full bg-primary-container/20 text-primary-fixed font-label-badge text-label-badge font-bold">
+          Đã kích hoạt
+        </span>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">chevron_right</span>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="rounded-lg bg-surface-container-low p-space-md shadow-sm flex items-center justify-between active:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary-fixed flex-shrink-0">
+<span class="material-symbols-outlined text-[22px]">check</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface truncate">Quyền vẽ trên ứng dụng khác</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Hiển thị HUD FPS và biểu đồ realtime</span>
+</div>
+</div>
+<div class="flex items-center gap-2 flex-shrink-0">
+<span class="px-2 py-1 rounded-full bg-primary-container/20 text-primary-fixed font-label-badge text-label-badge font-bold">
+          Đã cấp
+        </span>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">chevron_right</span>
+</div>
+</div>
+<!-- Step 3 (Expandable / Detailed) -->
+<div class="rounded-lg bg-surface-container-low p-space-md shadow-sm flex flex-col space-y-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center text-secondary font-headline-sm font-bold flex-shrink-0">
+            3
+          </div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface truncate">Tắt tối ưu hóa pin</span>
+<span class="font-body-sm text-body-sm text-secondary truncate">Không bị dừng tiến trình nền khi chơi game</span>
+</div>
+</div>
+<div class="flex items-center gap-2 flex-shrink-0">
+<span class="px-2 py-1 rounded-full bg-secondary/15 text-secondary font-label-badge text-label-badge font-bold">
+            Hoàn tất
+          </span>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant pt-1 leading-relaxed bg-surface-container-lowest/50 p-space-xs rounded-DEFAULT">
+        Chế độ bảo vệ dịch vụ ngầm đã được thiết lập thành công. SSAA Tool sẽ duy trì tần số quét 120Hz và ổn định bộ đệm dựng hình ngay cả khi máy sinh nhiệt.
+      </p>
+</div>
+</div>
+</div>
+  </div>
+
+  <!-- TAB 1: KHỬ RĂNG CƯA -->
+  <div id="tab-ssaa" class="tab-page hidden">
+    <div class="flex flex-col w-full pb-6 space-y-space-lg">
+<!-- Screen Header (Styled following the inspiration pattern) -->
+<div class="flex flex-col gap-1 pt-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">
+      ĐỘ PHÂN GIẢI &amp; ĐỒ HỌA GAME
+    </span>
+<h1 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">
+      Khử răng cưa
+    </h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5 leading-relaxed">
+      Chọn tỷ lệ SSAA để tăng độ sắc nét, khử răng cưa các góc cạnh hình ảnh trong game.
+    </p>
+</div>
+<!-- Global Master Toggle Card -->
+<div class="relative overflow-hidden rounded-lg bg-surface-container p-space-md shadow-md transition-all">
+<div class="absolute -right-12 -top-12 w-32 h-32 bg-primary-container/10 rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex items-center justify-between gap-space-sm relative z-10">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-11 h-11 rounded-full bg-surface-container-high flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary-fixed text-[24px]">auto_fix_high</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface truncate">
+              Kích hoạt toàn cục
+            </span>
+<span class="px-1.5 py-0.5 rounded-full bg-primary-container/20 text-primary-fixed font-label-caps text-label-caps">
+              DAEMON
+            </span>
+</div>
+<span class="font-label-mono text-label-mono text-tertiary-fixed flex items-center gap-1 mt-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-fixed animate-ping"></span>
+            Đang hoạt động trên GPU
+          </span>
+</div>
+</div>
+<!-- Tactical Neon Toggle Switch -->
+<label class="relative inline-flex items-center cursor-pointer shrink-0">
+<input checked="" class="sr-only peer" id="global-ssaa-toggle" type="checkbox"/>
+<div class="w-13 h-7 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-dim after:content-[''] after:absolute after:top-[3px] after:start-[3px] after:bg-on-primary-fixed after:border-surface-container after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container shadow-inner"></div>
+</label>
+</div>
+<div class="mt-space-sm pt-space-xs border-t-0 bg-surface-container-low/70 -mx-space-md -mb-space-md p-space-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-surface-tint">info</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-snug">
+        Tự động áp dụng khi khởi chạy các tựa game được kích hoạt bên dưới.
+      </p>
+</div>
+</div>
+<!-- Resolution Scale Selection Group -->
+<div class="flex flex-col space-y-space-xs">
+<div class="flex items-center justify-between px-1">
+<span class="font-label-caps text-label-caps uppercase tracking-wider text-on-surface-variant">
+        TỶ LỆ TĂNG PHÂN GIẢI (SSAA RESOLUTION SCALE)
+      </span>
+<span class="font-label-mono text-label-mono text-primary-fixed font-semibold">
+        Mặc định: Native 1.0x
+      </span>
+</div>
+<!-- Scaler Radio Cards Container -->
+<div class="flex flex-col space-y-space-xs" id="ssaa-options-group">
+<!-- Option 1: 1.10x -->
+<div class="ssaa-card cursor-pointer rounded-lg bg-surface-container p-space-md transition-all active:scale-[0.99] hover:bg-surface-container-high/80" data-ratio="1.10">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-start gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">photo_size_select_small</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">1.10x</span>
+<span class="font-label-mono text-label-mono text-on-surface-variant scale-res-text" data-ratio="1.10">1188 × 2640</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-badge text-label-badge">
+Mặc định
+</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+Khử răng cưa nhẹ nhàng, mượt mà, hao pin ít (+2%), nhiệt độ mát mẻ.
+</p>
+</div>
+</div>
+<div class="w-6 h-6 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 ssaa-radio mt-0.5">
+<div class="w-2 h-2 rounded-full bg-transparent ssaa-dot"></div>
+</div>
+</div>
+</div>
+<!-- Option 2: 1.15x (Active by Default) -->
+<div class="ssaa-card active-card cursor-pointer rounded-lg bg-surface-container-high p-space-md transition-all active:scale-[0.99] relative overflow-hidden" data-ratio="1.15">
+<div class="absolute top-0 right-0 w-24 h-24 bg-primary-container/10 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-start justify-between gap-space-sm relative z-10">
+<div class="flex items-start gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px] text-primary-fixed">tune</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-headline-sm text-headline-sm font-bold text-primary-fixed">1.15x</span>
+<span class="font-label-mono text-label-mono text-on-surface scale-res-text" data-ratio="1.15">1242 × 2760</span>
+<span class="px-2 py-0.5 rounded-full bg-primary-container text-on-primary-fixed font-label-badge text-label-badge font-bold">
+Cân bằng
+</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+Cân bằng nhiệt độ và độ nét tối ưu (+4% pin).
+</p>
+</div>
+</div>
+<!-- Active Neon Radio -->
+<div class="w-6 h-6 rounded-full bg-primary-container flex items-center justify-center shrink-0 ssaa-radio mt-0.5">
+<div class="w-2.5 h-2.5 rounded-full bg-on-primary-container ssaa-dot"></div>
+</div>
+</div>
+</div>
+<!-- Option 3: 1.20x -->
+<div class="ssaa-card cursor-pointer rounded-lg bg-surface-container p-space-md transition-all active:scale-[0.99] hover:bg-surface-container-high/80" data-ratio="1.20">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-start gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">high_quality</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">1.20x</span>
+<span class="font-label-mono text-label-mono text-on-surface-variant scale-res-text" data-ratio="1.20">1296 × 2880</span>
+<span class="px-2 py-0.5 rounded-full bg-tertiary-container/20 text-tertiary-fixed font-label-badge text-label-badge">
+Sắc nét
+</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+Hình ảnh rõ nét, phù hợp game MOBA / Chiến thuật (+6% pin).
+</p>
+</div>
+</div>
+<div class="w-6 h-6 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 ssaa-radio mt-0.5">
+<div class="w-2 h-2 rounded-full bg-transparent ssaa-dot"></div>
+</div>
+</div>
+</div>
+<!-- Option 4: 1.25x -->
+<div class="ssaa-card cursor-pointer rounded-lg bg-surface-container p-space-md transition-all active:scale-[0.99] hover:bg-surface-container-high/80" data-ratio="1.25">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-start gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px] text-secondary">speed</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">1.25x</span>
+<span class="font-label-mono text-label-mono text-on-surface-variant scale-res-text" data-ratio="1.25">1350 × 3000</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container/30 text-secondary-fixed font-label-badge text-label-badge flex items-center gap-1">
+Khuyên dùng
+</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+Triệt tiêu hoàn toàn góc răng cưa, hình ảnh cực nét chuẩn Esports (+8% pin).
+</p>
+</div>
+</div>
+<div class="w-6 h-6 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 ssaa-radio mt-0.5">
+<div class="w-2 h-2 rounded-full bg-transparent ssaa-dot"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Option 2: 1.25x (Active by Default) -->
+<div class="ssaa-card active-card cursor-pointer rounded-lg bg-surface-container-high p-space-md transition-all active:scale-[0.99] relative overflow-hidden" data-ratio="1.25">
+<div class="absolute top-0 right-0 w-24 h-24 bg-primary-container/10 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-start justify-between gap-space-sm relative z-10">
+<div class="flex items-start gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px] text-primary-fixed">tune</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-headline-sm text-headline-sm font-bold text-primary-fixed">1.25x</span>
+<span class="font-label-mono text-label-mono text-on-surface">1350 × 3000</span>
+<span class="px-2 py-0.5 rounded-full bg-primary-container text-on-primary-fixed font-label-badge text-label-badge font-bold">
+                  Khuyên dùng
+                </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+                Hình ảnh rõ nét, phù hợp game MOBA / Chiến thuật (+6% pin).
+              </p>
+</div>
+</div>
+<!-- Active Neon Radio -->
+<div class="w-6 h-6 rounded-full bg-primary-container flex items-center justify-center shrink-0 ssaa-radio mt-0.5">
+<div class="w-2.5 h-2.5 rounded-full bg-on-primary-container ssaa-dot"></div>
+</div>
+</div>
+</div>
+<!-- Option 3: 1.50x -->
+<div class="ssaa-card cursor-pointer rounded-lg bg-surface-container p-space-md transition-all active:scale-[0.99] hover:bg-surface-container-high/80" data-ratio="1.50">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-start gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">high_quality</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">1.50x</span>
+<span class="font-label-mono text-label-mono text-on-surface-variant">1620 × 3600</span>
+<span class="px-2 py-0.5 rounded-full bg-tertiary-container/20 text-tertiary-fixed font-label-badge text-label-badge">
+                  GPU Mạnh
+                </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+                Triệt tiêu hoàn toàn răng cưa, hình ảnh mịn màng, cần cấu hình cao (+12% pin).
+              </p>
+</div>
+</div>
+<div class="w-6 h-6 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 ssaa-radio mt-0.5">
+<div class="w-2 h-2 rounded-full bg-transparent ssaa-dot"></div>
+</div>
+</div>
+</div>
+<!-- Option 4: 2.00x -->
+<div class="ssaa-card cursor-pointer rounded-lg bg-surface-container p-space-md transition-all active:scale-[0.99] hover:bg-surface-container-high/80" data-ratio="2.00">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-start gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px] text-secondary">local_fire_department</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">2.00x</span>
+<span class="font-label-mono text-label-mono text-on-surface-variant">2160 × 4800</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container/30 text-secondary-fixed font-label-badge text-label-badge flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">warning</span>
+                  Nhiệt độ cao
+                </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+                Chất lượng 4K Ultra, cực kỳ chi tiết, sinh nhiệt cao (+20% pin).
+              </p>
+</div>
+</div>
+<div class="w-6 h-6 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 ssaa-radio mt-0.5">
+<div class="w-2 h-2 rounded-full bg-transparent ssaa-dot"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Technical Action Buttons (Pair layout inspired by original buttons) -->
+<button id="btn-reset-display" class="w-full py-3 px-space-md rounded-lg bg-surface-container hover:bg-surface-container-high active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-on-surface" type="button" onclick="handleResetDisplay()">
+<span class="material-symbols-outlined text-[18px] text-primary-fixed">restart_alt</span>
+<span class="font-label-mono text-label-mono">Khôi phục màn hình gốc (Native 1.0x)</span>
+</button>
+<!-- Games Whitelist Section -->
+<div class="flex flex-col space-y-space-xs pt-1">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-1.5">
+<span class="font-label-caps text-label-caps uppercase tracking-wider text-on-surface-variant">
+          DANH SÁCH GAME ÁP DỤNG
+        </span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-highest text-primary-fixed font-label-mono text-[10px]">
+          3 Sẵn sàng
+        </span>
+</div>
+<button class="font-label-mono text-label-mono text-primary-fixed hover:underline" type="button">
+        Quản lý tất cả
+      </button>
+</div>
+<!-- Game List Container -->
+<div class="flex flex-col rounded-lg bg-surface-container overflow-hidden">
+<!-- Game Row 1: Genshin Impact -->
+<div class="flex items-center justify-between p-space-md hover:bg-surface-container-high/50 transition-colors">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-11 h-11 rounded-lg bg-surface-container-highest flex items-center justify-center overflow-hidden shrink-0 relative">
+<span class="material-symbols-outlined text-[24px] text-primary-fixed">sports_esports</span>
+<div class="absolute inset-0 bg-primary-container/10"></div>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface truncate">
+              Genshin Impact
+            </span>
+<div class="flex items-center gap-2 text-on-surface-variant mt-0.5">
+<span class="font-label-mono text-label-mono text-surface-tint">1.50x SSAA</span>
+<span class="text-[10px]">•</span>
+<span class="font-label-mono text-label-mono text-on-surface-variant truncate">60 FPS Khóa</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<button class="px-2.5 py-1 rounded-full bg-surface-container-highest hover:bg-surface-bright text-primary-fixed font-label-mono text-label-mono" type="button">
+            Đổi
+          </button>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-dim after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-on-primary-fixed after:border-surface-container after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+<div class="h-[1px] bg-surface-container-highest/60 mx-space-md"></div>
+<!-- Game Row 2: Liên Quân Mobile -->
+<div class="flex items-center justify-between p-space-md hover:bg-surface-container-high/50 transition-colors">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-11 h-11 rounded-lg bg-surface-container-highest flex items-center justify-center overflow-hidden shrink-0 relative">
+<span class="material-symbols-outlined text-[24px] text-secondary">swords</span>
+<div class="absolute inset-0 bg-secondary-container/10"></div>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface truncate">
+              Liên Quân Mobile
+            </span>
+<div class="flex items-center gap-2 text-on-surface-variant mt-0.5">
+<span class="font-label-mono text-label-mono text-surface-tint">1.25x SSAA</span>
+<span class="text-[10px]">•</span>
+<span class="font-label-mono text-label-mono text-on-surface-variant truncate">120 FPS Siêu mượt</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<button class="px-2.5 py-1 rounded-full bg-surface-container-highest hover:bg-surface-bright text-primary-fixed font-label-mono text-label-mono" type="button">
+            Đổi
+          </button>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-dim after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-on-primary-fixed after:border-surface-container after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+<div class="h-[1px] bg-surface-container-highest/60 mx-space-md"></div>
+<!-- Game Row 3: PUBG Mobile -->
+<div class="flex items-center justify-between p-space-md hover:bg-surface-container-high/50 transition-colors">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-11 h-11 rounded-lg bg-surface-container-highest flex items-center justify-center overflow-hidden shrink-0 relative">
+<span class="material-symbols-outlined text-[24px] text-tertiary-fixed">file_download_done</span>
+<div class="absolute inset-0 bg-tertiary-container/10"></div>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface truncate">
+              PUBG Mobile
+            </span>
+<div class="flex items-center gap-2 text-on-surface-variant mt-0.5">
+<span class="font-label-mono text-label-mono text-surface-tint">1.15x SSAA</span>
+<span class="text-[10px]">•</span>
+<span class="font-label-mono text-label-mono text-on-surface-variant truncate">90 FPS Cân bằng</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<button class="px-2.5 py-1 rounded-full bg-surface-container-highest hover:bg-surface-bright text-primary-fixed font-label-mono text-label-mono" type="button">
+            Đổi
+          </button>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-dim after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-on-primary-fixed after:border-surface-container after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+</div>
+<!-- Add Game Action Row Button -->
+<button class="w-full py-space-sm px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-on-surface-variant hover:text-primary-fixed" type="button">
+<span class="material-symbols-outlined text-[20px]">add_circle</span>
+<span class="font-label-mono text-label-mono">Thêm game mới hoặc ứng dụng đồ họa</span>
+</button>
+</div>
+<!-- Hardware Telemetry Bottom Capsule (Feedback on thermals) -->
+<div class="rounded-lg bg-surface-container-lowest p-space-sm flex items-center justify-between">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-[18px] text-tertiary-fixed">memory</span>
+<span class="font-label-mono text-label-mono text-on-surface-variant truncate">Adreno 750 • 42°C</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed"></span>
+<span class="font-label-mono text-label-mono text-surface-tint">Vulkan API v1.3</span>
+</div>
+</div>
+</div>
+  </div>
+
+  <!-- TAB 2: THANH ĐO -->
+  <div id="tab-hud" class="tab-page hidden">
+    <div class="flex flex-col w-full pb-8 select-none">
+<!-- Top Section Title -->
+<div class="flex flex-col gap-1 mb-space-md">
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps text-primary-fixed tracking-widest uppercase">HUD OVERLAY &amp; HARDWARE TELEMETRY</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary-fixed animate-ping"></span>
+</div>
+<div class="flex items-baseline justify-between">
+<h1 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">Thanh đo</h1>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-mono text-label-mono">v3.42-hotfix</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Tùy biến hiển thị thông số hiệu năng phần cứng thời gian thực khi chiến game.</p>
+</div>
+<!-- Live Preview Canvas -->
+<div class="flex flex-col mb-space-lg">
+<div class="flex items-center justify-between mb-space-xs px-1">
+<span class="font-label-mono text-label-mono text-on-surface-variant uppercase flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-primary-fixed">visibility</span>
+        Khung mô phỏng thời gian thực
+      </span>
+<span class="font-label-badge text-label-badge text-primary-fixed bg-surface-container-high px-2 py-0.5 rounded-full">
+        Tỷ lệ 20:9
+      </span>
+</div>
+<!-- Simulated Game Screen -->
+<div class="relative w-full h-48 rounded-2xl bg-surface-container-lowest overflow-hidden flex flex-col justify-between p-3.5 shadow-2xl" id="preview-viewport">
+<!-- Faux Game Graphic Layer -->
+<div class="absolute inset-0 bg-gradient-to-tr from-surface-container-lowest via-surface-container-low/70 to-surface-container-highest/20 pointer-events-none"></div>
+<!-- Tech Grid Pattern Background -->
+<div class="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#d0ef65_1px,transparent_1px)] [background-size:16px_16px]"></div>
+<!-- Live Draggable HUD Overlay Simulation -->
+<div class="relative z-10 self-center cursor-grab active:cursor-grabbing transition-transform duration-75" id="hud-pill">
+<div class="px-3 py-1.5 rounded-full bg-surface-container-lowest/85 backdrop-blur-md shadow-lg flex items-center gap-2.5 max-w-full overflow-x-auto no-scrollbar" id="hud-inner">
+<!-- FPS Item -->
+<div class="flex items-center gap-1 shrink-0" id="hud-item-fps">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-fixed animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">FPS</span>
+<span class="font-label-mono text-label-mono text-primary-fixed font-bold tracking-tight">59.8</span>
+</div>
+<div class="w-[1px] h-3 bg-surface-variant" id="hud-sep-1"></div>
+<!-- Temp Item -->
+<div class="flex items-center gap-1 shrink-0" id="hud-item-temp">
+<span class="material-symbols-outlined text-[12px] text-secondary">thermostat</span>
+<span class="font-label-mono text-label-mono text-secondary-fixed-dim font-bold">41.2°C</span>
+</div>
+<div class="w-[1px] h-3 bg-surface-variant" id="hud-sep-2"></div>
+<!-- Battery Item -->
+<div class="flex items-center gap-1 shrink-0" id="hud-item-battery">
+<span class="material-symbols-outlined text-[13px] text-primary-fixed">sim_card_download</span>
+<span class="font-label-mono text-label-mono text-on-surface font-semibold">88%</span>
+</div>
+<div class="w-[1px] h-3 bg-surface-variant" id="hud-sep-3"></div>
+<!-- CPU/GPU Item -->
+<div class="flex items-center gap-1 shrink-0" id="hud-item-gpu">
+<span class="font-label-caps text-label-caps text-on-surface-variant">GPU</span>
+<span class="font-label-mono text-label-mono text-primary-fixed font-bold">68%</span>
+</div>
+<!-- RAM Item (Default hidden in preview) -->
+<div class="hidden items-center gap-1 shrink-0" id="hud-item-ram">
+<div class="w-[1px] h-3 bg-surface-variant mr-1"></div>
+<span class="font-label-caps text-label-caps text-on-surface-variant">RAM</span>
+<span class="font-label-mono text-label-mono text-on-surface font-semibold">52%</span>
+</div>
+<!-- Net Ping Item (Default hidden in preview) -->
+<div class="hidden items-center gap-1 shrink-0" id="hud-item-ping">
+<div class="w-[1px] h-3 bg-surface-variant mr-1"></div>
+<span class="material-symbols-outlined text-[12px] text-tertiary-fixed">network_ping</span>
+<span class="font-label-mono text-label-mono text-tertiary-fixed font-bold">24ms</span>
+</div>
+</div>
+</div>
+<!-- Preview Helper Bar -->
+<div class="relative z-10 flex items-center justify-between w-full pt-2">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high/80 text-[10px] font-label-mono text-on-surface-variant backdrop-blur-sm">
+          Genshin Impact • 3120x1440
+        </span>
+<button class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-highest/90 text-primary-fixed hover:bg-surface-bright transition-all backdrop-blur-sm shadow-sm active:scale-95" id="drag-hint-btn">
+<span class="material-symbols-outlined text-[13px]">drag_indicator</span>
+<span class="font-label-badge text-label-badge">Chạm để kéo thử vị trí</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Telemetry Parameters Selector -->
+<div class="flex flex-col gap-2 mb-space-xl">
+<div class="flex items-center justify-between px-1 mb-0.5">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">
+        Các thông số hiển thị trên thanh đo
+      </span>
+<span class="font-label-badge text-label-badge text-primary-fixed">4/6 Kích hoạt</span>
+</div>
+<!-- Parameter Cards Container -->
+<div class="flex flex-col gap-1.5 bg-surface-container-low p-2 rounded-2xl">
+<!-- Option 1: FPS -->
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-3 min-w-0 pr-2">
+<div class="w-9 h-9 rounded-xl bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary-fixed text-[20px]">speed</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface truncate">Khung hình trên giây (FPS)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Real-time FPS, 1% Low &amp; cảnh báo sụt khung</span>
+</div>
+</div>
+<button class="toggle-btn w-12 h-6 rounded-full bg-primary-container p-0.5 transition-colors relative shrink-0" data-enabled="true" onclick="toggleSwitch(this, 'hud-item-fps')">
+<span class="toggle-dot block w-5 h-5 rounded-full bg-on-primary-container transition-transform transform translate-x-6"></span>
+</button>
+</div>
+<!-- Option 2: Temp -->
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-3 min-w-0 pr-2">
+<div class="w-9 h-9 rounded-xl bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary text-[20px]">thermostat</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface truncate">Nhiệt độ Pin &amp; CPU (°C)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Đổi màu cam/đỏ khi quá nhiệt chạm ngưỡng &gt;45°C</span>
+</div>
+</div>
+<button class="toggle-btn w-12 h-6 rounded-full bg-primary-container p-0.5 transition-colors relative shrink-0" data-enabled="true" onclick="toggleSwitch(this, 'hud-item-temp')">
+<span class="toggle-dot block w-5 h-5 rounded-full bg-on-primary-container transition-transform transform translate-x-6"></span>
+</button>
+</div>
+<!-- Option 3: Battery -->
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-3 min-w-0 pr-2">
+<div class="w-9 h-9 rounded-xl bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary-fixed text-[20px]">battery_charging_90</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface truncate">Lượng pin &amp; Trạng thái sạc (%)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Dòng xả mA, công suất W và ước tính thời gian</span>
+</div>
+</div>
+<button class="toggle-btn w-12 h-6 rounded-full bg-primary-container p-0.5 transition-colors relative shrink-0" data-enabled="true" onclick="toggleSwitch(this, 'hud-item-battery')">
+<span class="toggle-dot block w-5 h-5 rounded-full bg-on-primary-container transition-transform transform translate-x-6"></span>
+</button>
+</div>
+<!-- Option 4: CPU / GPU Load -->
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-3 min-w-0 pr-2">
+<div class="w-9 h-9 rounded-xl bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary-fixed text-[20px]">developer_board</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface truncate">Xung nhịp &amp; Tải CPU / GPU (%)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Phần trăm điều tiết Adreno 750 &amp; Cortex X4</span>
+</div>
+</div>
+<button class="toggle-btn w-12 h-6 rounded-full bg-primary-container p-0.5 transition-colors relative shrink-0" data-enabled="true" onclick="toggleSwitch(this, 'hud-item-gpu')">
+<span class="toggle-dot block w-5 h-5 rounded-full bg-on-primary-container transition-transform transform translate-x-6"></span>
+</button>
+</div>
+<!-- Option 5: RAM Usage (Inactive) -->
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-3 min-w-0 pr-2">
+<div class="w-9 h-9 rounded-xl bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">memory</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface truncate">Mức tiêu thụ RAM (GB / %)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Bộ nhớ LPDDR5X khả dụng &amp; zRAM swap</span>
+</div>
+</div>
+<button class="toggle-btn w-12 h-6 rounded-full bg-surface-container-highest p-0.5 transition-colors relative shrink-0" data-enabled="false" onclick="toggleSwitch(this, 'hud-item-ram')">
+<span class="toggle-dot block w-5 h-5 rounded-full bg-on-surface-variant transition-transform transform translate-x-0"></span>
+</button>
+</div>
+<!-- Option 6: Network Ping (Inactive) -->
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-3 min-w-0 pr-2">
+<div class="w-9 h-9 rounded-xl bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">cell_tower</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface truncate">Tốc độ mạng &amp; Ping (ms)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Độ trễ gói tin trò chơi &amp; băng thông Wi-Fi 7 / 5G</span>
+</div>
+</div>
+<button class="toggle-btn w-12 h-6 rounded-full bg-surface-container-highest p-0.5 transition-colors relative shrink-0" data-enabled="false" onclick="toggleSwitch(this, 'hud-item-ping')">
+<span class="toggle-dot block w-5 h-5 rounded-full bg-on-surface-variant transition-transform transform translate-x-0"></span>
+</button>
+</div>
+</div>
+</div>
+<!-- HUD Styling & Dimensions Group -->
+<div class="flex flex-col gap-2 mb-space-xl">
+<div class="flex items-center justify-between px-1 mb-0.5">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">
+        Điều chỉnh kích thước &amp; giao diện thanh đo
+      </span>
+<span class="font-label-mono text-label-mono text-on-surface-variant">Profile #1</span>
+</div>
+<div class="bg-surface-container-low p-4 rounded-2xl flex flex-col gap-5">
+<!-- Slider 1: Scale -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Kích thước thanh đo (Scale)</span>
+<span class="font-label-mono text-label-mono text-primary-fixed bg-surface-container-high px-2 py-0.5 rounded-full" id="scale-val">
+            100% (Chuẩn)
+          </span>
+</div>
+<div class="relative flex items-center w-full">
+<input class="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary-container" id="scale-slider" max="150" min="70" oninput="updateScale(this.value)" type="range" value="100"/>
+</div>
+<div class="flex justify-between font-label-caps text-label-caps text-on-surface-variant px-0.5">
+<span>70% (Nhỏ)</span>
+<span>100%</span>
+<span>150% (Rộng)</span>
+</div>
+</div>
+<div class="h-[1px] bg-surface-variant/40 w-full"></div>
+<!-- Slider 2: Opacity -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Độ trong suốt nền (Opacity)</span>
+<span class="font-label-mono text-label-mono text-primary-fixed bg-surface-container-high px-2 py-0.5 rounded-full" id="opacity-val">
+            85%
+          </span>
+</div>
+<div class="relative flex items-center w-full">
+<input class="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary-container" id="opacity-slider" max="100" min="20" oninput="updateOpacity(this.value)" type="range" value="85"/>
+</div>
+<div class="flex justify-between font-label-caps text-label-caps text-on-surface-variant px-0.5">
+<span>20% (Kính mờ)</span>
+<span>85%</span>
+<span>100% (Đen tuyệt đối)</span>
+</div>
+</div>
+<div class="h-[1px] bg-surface-variant/40 w-full"></div>
+<!-- Layout Mode Selector -->
+<div class="flex flex-col gap-2.5">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Kiểu bố cục hiển thị</span>
+<div class="grid grid-cols-3 gap-2">
+<button class="layout-btn flex flex-col items-center justify-center p-3 rounded-xl bg-surface-container-high text-primary-fixed transition-all shadow-sm" onclick="selectLayout(this, 'horizontal')">
+<span class="material-symbols-outlined text-[20px] mb-1">view_stream</span>
+<span class="font-label-mono text-label-mono font-bold text-center">Thanh ngang</span>
+<span class="font-label-caps text-label-caps opacity-80 mt-0.5 text-[9px]">Horizontal</span>
+</button>
+<button class="layout-btn flex flex-col items-center justify-center p-3 rounded-xl bg-surface-container text-on-surface-variant hover:text-on-surface transition-all" onclick="selectLayout(this, 'compact')">
+<span class="material-symbols-outlined text-[20px] mb-1">dashboard</span>
+<span class="font-label-mono text-label-mono font-bold text-center">Khối gọn</span>
+<span class="font-label-caps text-label-caps opacity-80 mt-0.5 text-[9px]">Compact 2x2</span>
+</button>
+<button class="layout-btn flex flex-col items-center justify-center p-3 rounded-xl bg-surface-container text-on-surface-variant hover:text-on-surface transition-all" onclick="selectLayout(this, 'dot')">
+<span class="material-symbols-outlined text-[20px] mb-1">bubble_chart</span>
+<span class="font-label-mono text-label-mono font-bold text-center">Tối giản</span>
+<span class="font-label-caps text-label-caps opacity-80 mt-0.5 text-[9px]">Mini Dot</span>
+</button>
+</div>
+</div>
+<div class="h-[1px] bg-surface-variant/40 w-full"></div>
+<!-- Color Accent Selection -->
+<div class="flex items-center justify-between pt-1">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Màu sắc chủ đạo</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Đồng bộ chỉ số &amp; điểm nhấn</span>
+</div>
+<div class="flex items-center gap-2.5">
+<!-- Neon Lime -->
+<button class="color-dot w-7 h-7 rounded-full bg-primary-fixed shadow-md transition-transform scale-110 flex items-center justify-center" onclick="changeThemeColor('#d0ef65', this)">
+<span class="w-2 h-2 rounded-full bg-on-primary"></span>
+</button>
+<!-- Cyber Cyan -->
+<button class="color-dot w-7 h-7 rounded-full bg-tertiary-fixed hover:scale-105 transition-transform flex items-center justify-center" onclick="changeThemeColor('#6dfe9c', this)"></button>
+<!-- Amber Orange -->
+<button class="color-dot w-7 h-7 rounded-full bg-secondary hover:scale-105 transition-transform flex items-center justify-center" onclick="changeThemeColor('#eec14a', this)"></button>
+<!-- Pure White -->
+<button class="color-dot w-7 h-7 rounded-full bg-surface-bright hover:scale-105 transition-transform flex items-center justify-center" onclick="changeThemeColor('#ffffff', this)"></button>
+</div>
+</div>
+</div>
+</div>
+<!-- Operational Mode Notification Banner -->
+<div class="flex items-start gap-3 p-3.5 rounded-2xl bg-surface-container-high/60 backdrop-blur-md mb-space-lg">
+<span class="material-symbols-outlined text-secondary text-[20px] shrink-0 mt-0.5">verified_user</span>
+<div class="flex flex-col gap-0.5">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Quyền Vẽ trên ứng dụng khác (Overlay)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">
+        Đã kích hoạt cấp phép hệ thống. Dịch vụ nổi độc lập, không bị hệ điều hành tắt ngầm hoặc dính rào cản ứng dụng ngân hàng.
+      </span>
+</div>
+</div>
+<!-- Main Bottom Action CTA Button -->
+<div class="w-full flex flex-col gap-2 mt-auto">
+<button class="w-full py-4 px-6 rounded-full bg-primary-container hover:bg-primary-fixed-dim active:scale-[0.98] transition-all flex items-center justify-between shadow-xl" id="main-cta-btn" onclick="triggerOverlayLaunch(this)">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container text-[22px]">play_arrow</span>
+<span class="font-label-mono text-label-mono font-bold text-on-primary-container uppercase tracking-wide">
+          Khởi động thanh đo nổi ngay (Test Overlay)
+        </span>
+</div>
+<span class="material-symbols-outlined text-on-primary-container text-[20px]">arrow_forward</span>
+</button>
+<div class="flex items-center justify-center gap-1.5 py-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[13px] text-tertiary-fixed">info</span>
+<span class="font-label-mono text-label-mono">Nhấn đúp vào thanh nổi ngoài màn hình để mở nhanh Menu này</span>
+</div>
+</div>
+</div>
+  </div>
+</main>
+
+<!-- BOTTOM NAVIGATION -->
+<nav class="fixed bottom-0 w-full z-40 pb-safe bg-surface-container-lowest/85 backdrop-blur-xl shadow-[0_-1px_12px_rgba(0,0,0,0.5)]">
+  <div class="flex items-center justify-around h-16 px-gutter">
+    <button class="nav-btn flex-1 max-w-[104px] py-1.5 px-space-xs rounded-full flex flex-col items-center justify-center gap-0.5 bg-primary-container/20 text-primary-fixed ring-1 ring-primary-container/40 transition-all duration-200 min-h-[44px]" onclick="switchTab(0)">
+      <span class="material-symbols-outlined text-[22px]">grid_view</span>
+      <span class="font-label-mono text-label-mono truncate">Trang chủ</span>
+    </button>
+    <button class="nav-btn flex-1 max-w-[104px] py-1.5 px-space-xs rounded-full flex flex-col items-center justify-center gap-0.5 text-on-surface-variant hover:text-on-surface transition-all duration-200 min-h-[44px]" onclick="switchTab(1)">
+      <span class="material-symbols-outlined text-[22px]">tune</span>
+      <span class="font-label-mono text-label-mono truncate">Khử răng cưa</span>
+    </button>
+    <button class="nav-btn flex-1 max-w-[104px] py-1.5 px-space-xs rounded-full flex flex-col items-center justify-center gap-0.5 text-on-surface-variant hover:text-on-surface transition-all duration-200 min-h-[44px]" onclick="switchTab(2)">
+      <span class="material-symbols-outlined text-[22px]">speed</span>
+      <span class="font-label-mono text-label-mono truncate">Thanh đo</span>
+    </button>
+  </div>
+</nav>
+
+<!-- MODAL: KHÓA TỶ LỆ CHO GAME -->
+<div id="game-scale-modal" class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm hidden" onclick="if(event.target===this) closeGameScaleModal()">
+  <div class="w-full max-w-lg bg-surface-container-low rounded-t-3xl p-space-md border-t border-surface-variant flex flex-col gap-3 shadow-2xl">
+    <div class="flex items-center justify-between pb-1">
+      <div class="flex flex-col">
+        <span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">KHÓA TỶ LỆ RIÊNG CHO GAME</span>
+        <h3 id="modal-game-name" class="font-headline-sm text-headline-sm font-bold text-on-surface">Game Name</h3>
+      </div>
+      <button onclick="closeGameScaleModal()" class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined text-[18px]">close</span>
+      </button>
+    </div>
+    
+    <div class="flex flex-col gap-2" id="modal-options-list">
+      <!-- Options injected by JS -->
+    </div>
+
+    <button onclick="saveGameScaleModal()" class="w-full py-3.5 rounded-full bg-primary-container text-on-primary-fixed font-headline-sm font-bold flex items-center justify-center gap-2 mt-2 shadow-lg active:scale-[0.98] transition-all">
+      <span>Xác nhận lưu</span>
+      <span class="material-symbols-outlined text-[18px]">check</span>
+    </button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
