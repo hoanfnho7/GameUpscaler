@@ -484,7 +484,7 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun setAppLang(lang: Int) {
-            prefsMgr.appLanguage = lang
+            prefsMgr.appLang = lang
         }
 
         @JavascriptInterface

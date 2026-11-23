@@ -60,6 +60,10 @@ class PrefsManager(context: Context) {
         get() = prefs.getInt("app_lang", 0)
         set(value) = prefs.edit().putInt("app_lang", value).apply()
 
+    var appLanguage: Int
+        get() = appLang
+        set(value) { appLang = value }
+
     var themeMode: Int
         get() = prefs.getInt("theme_mode", 0)
         set(value) = prefs.edit().putInt("theme_mode", value).apply()
