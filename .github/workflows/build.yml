@@ -1,5 +1,18 @@
 name: Build APK
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish as GitHub Release'
+        type: boolean
+        default: true
+      release_tag:
+        description: 'Release Tag (leave empty for auto v1.0.<run_number>)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -17,23 +30,14 @@ jobs:
           distribution: 'temurin'
 
       - name: Cache Gradle dependencies
-
         uses: actions/cache@v4
-
         with:
-
           path: |
-
             ~/.gradle/caches
-
             ~/.gradle/wrapper
-
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-
           restore-keys: |
-
             ${{ runner.os }}-gradle-
-
 
       - name: Generate Persistent Signing Key (If not exists in repo)
         run: |
@@ -60,12 +64,36 @@ jobs:
           RUN_NUM: ${{ github.run_number }}
         run: gradle assembleRelease -PversionCode=$RUN_NUM --no-daemon --stacktrace
 
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GameUpscaler-v1.0.${{ github.run_number }}
+          path: app/build/outputs/apk/release/app-release.apk
+
+      - name: Determine Release Eligibility
+        id: check_release
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.publish_release }}" == "true" ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            TAG="${{ inputs.release_tag }}"
+            if [ -z "$TAG" ]; then
+              TAG="v1.0.${{ github.run_number }}"
+            fi
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish APK to Releases
         uses: softprops/action-gh-release@v2
-        if: success()
+        if: steps.check_release.outputs.should_release == 'true'
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: "GameUpscaler v1.0.${{ github.run_number }}"
+          tag_name: ${{ steps.check_release.outputs.tag }}
+          name: "GameUpscaler ${{ steps.check_release.outputs.tag }}"
           files: app/build/outputs/apk/release/app-release.apk
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

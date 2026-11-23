@@ -1,59 +1,110 @@
 # ⚡ GameUpscaler Pro
 
-[🇺🇸 English](#-english) • [🇻🇳 Tiếng Việt](#-tiếng-việt)
+<p align="center">
+  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="96" alt="GameUpscaler Pro Logo" />
+</p>
 
-| Main UI / Giao diện chính | In-Game HUD / Thanh đo trong Game | Quick Tile / Control Center |
-| :---: | :---: | :---: |
-| <img src="screenshots/main_ui.png" width="240" alt="Main UI" /> | <img src="screenshots/hud_ingame.png" width="320" alt="In-Game HUD" /> | <img src="screenshots/control_center.png" width="240" alt="Quick Tile" /> |
+<p align="center">
+  <b>Tăng độ nét game (SSAA 1.10x – 1.25x) & Thanh đo thông số phần cứng thời gian thực (FPS, Watt, Nhiệt độ) qua Shizuku</b><br />
+  <i>Hoàn toàn miễn phí • Mã nguồn mở 100% • Không cần Root • Không quảng cáo</i>
+</p>
 
----
-
-## 🇺🇸 English
-
-**100% Free & Open-Source (No ads, no paywalls, no root required)** Android utility to sharpen game graphics (**1.10x – 1.25x**) and display a lightweight real-time **Hardware Telemetry HUD** (FPS, Wattage, Temperatures, VRAM) via **Shizuku**. Works on **Android 8.0 – 17** across all devices.
-
-### ✨ Features
-- **100% Free Forever:** Zero ads, zero subscriptions, completely open-source.
-- **Game Resolution Upscaler (1.10x – 1.25x):** Sharpens 3D rendering and reduces jagged edges while preserving touch accuracy. Automatically restores native resolution when you exit the game.
-- **Per-Game Profiles & Shortcuts:** Pin favorite games (`⭐`), set custom scale factors per game, and long-press any game to create a one-tap Home Screen shortcut.
-- **Real-Time Hardware HUD (12 Metrics):** Live **FPS (`xx.x`)**, **Power Draw (W)**, **GPU VRAM**, **CPU Clock**, and **Temperatures** (Battery, SoC, CPU, GPU, DDR, Camera, Board).
-- **Flexible Customization & Quick Tile:** Toggle individual metrics, switch 4 HUD sizes, horizontal/vertical layout, drag to `✕` to hide, or toggle anytime from Quick Settings (`FPS HUD`).
-
-### 🛠️ Setup & Download
-1. Install and activate **[Shizuku](https://github.com/RikkaApps/Shizuku)** on your Android device.
-2. Download the latest `app-release.apk` for free from **Releases** (or fork this repo ➔ open **Actions** ➔ run **Build APK**).
-3. Open **GameUpscaler Pro** and grant **Display over other apps** permission.
-
-### 🌍 Translate to Your Language (For Contributors)
-All UI texts are isolated in XML resource files—no Kotlin code edits needed:
-1. Copy `app/src/main/res/values/strings.xml` to `app/src/main/res/values-<lang>/strings.xml` (e.g., `values-ru`, `values-zh-rCN`, `values-es`).
-2. Translate the strings inside `<string name="...">...</string>` and build the APK.
+<p align="center">
+  <img src="https://img.shields.io/badge/Android-8.0%20%E2%80%93%2017-blue.svg?style=flat-square" alt="Android" />
+  <img src="https://img.shields.io/badge/Root-Not%20Required-success.svg?style=flat-square" alt="No Root" />
+  <img src="https://img.shields.io/badge/Powered%20By-Shizuku-green.svg?style=flat-square" alt="Shizuku" />
+  <img src="https://img.shields.io/badge/License-MIT-orange.svg?style=flat-square" alt="MIT License" />
+</p>
 
 ---
 
 ## 🇻🇳 Tiếng Việt
 
-Ứng dụng **miễn phí 100% (không tốn tiền, không quảng cáo, không cần Root)** giúp tăng độ nét game (**1.10x – 1.25x**) và hiển thị thanh đo thông số phần cứng thời gian thực (**FPS, công suất điện, nhiệt độ, VRAM**) qua **Shizuku**. Hỗ trợ **Android 8.0 – 17** trên mọi dòng máy.
+**GameUpscaler Pro** là công cụ tối ưu trải nghiệm chơi game trên Android, ứng dụng kỹ thuật **Super-Sampling Anti-Aliasing (SSAA)** qua **Shizuku** để nâng độ phân giải render ảo (1.10x – 1.25x). Nhờ đó, hình ảnh trong game trở nên sắc nét hơn rõ rệt, triệt tiêu răng cưa viền 3D mà vẫn giữ nguyên tỉ lệ cảm ứng chính xác. Ngoài ra, ứng dụng tích hợp thanh đo phần cứng nổi (HUD Telemetry) giúp bạn theo dõi FPS thực tế, công suất xả pin (Watt) và nhiệt độ từng linh kiện trong lúc combat.
 
-### ✨ Tính năng chính
-- **Miễn phí trọn đời:** Không thu phí, không quảng cáo, mã nguồn mở hoàn toàn.
-- **Tăng độ nét game (1.10x – 1.25x):** Làm nét hình ảnh và giảm răng cưa mà vẫn giữ nguyên tỷ lệ cảm ứng. Tự động trả màn hình về gốc ngay khi thoát game.
-- **Quản lý game tiện lợi:** Ghim game hay chơi (`⭐`), đặt riêng mức độ nét cho từng game, nhấn giữ để tạo lối tắt mở nhanh ngoài màn hình chính.
-- **Thanh đo phần cứng (12 thông số):** Theo dõi trực tiếp **FPS (`xx.x`)**, **công suất điện (W)**, **VRAM**, **xung CPU** và **nhiệt độ** (Pin, SoC, CPU, GPU, DDR, Camera, vỏ máy).
-- **Tùy chỉnh linh hoạt & Control Center:** Bật/tắt từng thông số, đổi 4 cỡ chữ, xếp ngang hoặc dọc, kéo vào dấu `✕` để ẩn, hoặc bật nhanh qua nút **HUD Đo FPS** trên thanh trạng thái.
+### 📱 Giao diện 3 Tab Hiện đại
 
-### 🛠️ Cài đặt & Tải APK
-1. Cài đặt và kích hoạt **[Shizuku](https://github.com/RikkaApps/Shizuku)** trên điện thoại.
-2. Tải file `app-release.apk` miễn phí ở mục **Releases** (hoặc Fork repo ➔ vào tab **Actions** ➔ chạy **Build APK**).
-3. Mở app và cấp quyền **Hiển thị trên ứng dụng khác** *(trên máy iQOO / Vivo nên cho phép Shizuku chạy nền không giới hạn để tránh bị ngắt giữa trận)*.
+1. **📊 Tab 1: Giám sát hệ thống (System Monitor)**
+   - Theo dõi nhanh trạng thái kết nối Shizuku (có nút mở nhanh Shizuku nếu chưa bật).
+   - Thanh hiển thị dung lượng RAM đang dùng / còn trống trực quan.
+   - Theo dõi nhiệt độ Pin, mức % pin, công suất sạc/xả tức thời (Watt).
+   - Kiểm tra nhiệt độ SoC đỉnh và xung nhịp CPU.
+   - Nút **Khôi phục màn hình gốc (Reset)** tức thì bất cứ lúc nào.
+   - Dải game yêu thích mở nhanh (Pinned Games).
 
-### 🌍 Hướng dẫn dịch sang ngôn ngữ khác
-Toàn bộ chữ giao diện đã tách riêng ra file XML, ai muốn dịch thêm tiếng nước khác chỉ cần làm 2 bước:
-1. Nhân bản file `app/src/main/res/values/strings.xml` sang thư mục `app/src/main/res/values-<mã-ngôn-ngữ>/strings.xml` (ví dụ: `values-ja`, `values-ko`, `values-ru`...).
-2. Dịch nội dung bên trong các thẻ `<string>` rồi build lại APK là xong.
+2. **⚡ Tab 2: Chọn độ phân giải (SSAA Upscaler & Kho Game)**
+   - Hướng dẫn trực quan cơ chế SSAA cho người mới.
+   - Thẻ so sánh độ phân giải thực tế: Gốc ➔ Sau khi kích hoạt.
+   - 4 mức chọn độ nét định sẵn:
+     - **1.10x**: Nhẹ nhàng, rất mát máy, siêu tiết kiệm pin.
+     - **1.15x (Khuyên dùng)**: Cân bằng hoàn hảo giữa độ nét đồ họa và FPS mượt mà.
+     - **1.20x**: Sắc nét cao cho máy tầm trung khá trở lên.
+     - **1.25x**: Khử răng cưa tối đa cho máy flagship.
+   - Tự động hoàn tác về độ phân giải gốc ngay khi bạn thoát game.
+   - Tìm kiếm, quản lý game, ghim game yêu thích (`⭐`), đặt mức nét riêng cho từng game, và nhấn giữ để tạo lối tắt mở nhanh ngoài màn hình chính.
+
+3. **🎛️ Tab 3: Tinh chỉnh thanh đo HUD (HUD Overlay Tuning)**
+   - Khung giả lập xem trước thanh đo thực tế (Live Preview).
+   - Nút bật thử nghiệm trực tiếp thanh đo nổi trên màn hình.
+   - Tùy chỉnh hướng hiển thị: **Ngang 1 dòng** hoặc **Cột dọc**.
+   - 4 kích cỡ chữ: **Siêu gọn**, **Nhỏ**, **Vừa**, **To**.
+   - 4 độ trong suốt: **Nền đậm**, **Kính mờ**, **Siêu trong**, **Chỉ chữ**.
+   - Tùy chỉnh nhịp quét cảm biến (150ms, 300ms, 1s, Auto).
+   - 12 thông số phần cứng tùy chọn bật/tắt (FPS 0.1, Công suất Watt, VRAM đồ họa, Nhiệt độ Pin, SoC, CPU, GPU, RAM, Vỏ máy...).
+
+---
+
+### 🚀 Hướng dẫn cài đặt & Sử dụng (Dành cho người mới)
+
+Chỉ cần 3 bước cực kỳ đơn giản:
+
+#### Bước 1: Kích hoạt Shizuku
+1. Cài đặt app **[Shizuku](https://shizuku.rikka.app)** từ Google Play hoặc GitHub.
+2. Mở Shizuku và kích hoạt qua **Ghép nối không dây (Wireless Debugging)** hoặc cắm máy tính gõ 1 lệnh ADB (không cần Root).
+> 💡 *Mẹo cho máy Xiaomi / Vivo / iQOO / Oppo:* Trong Tùy chọn nhà phát triển, nhớ bật thêm mục **Gỡ lỗi không dây (Cài đặt bảo mật)** để Shizuku có quyền điều chỉnh màn hình.
+
+#### Bước 2: Cấp quyền cửa sổ nổi (Overlay)
+- Mở **GameUpscaler Pro**, nếu bạn muốn dùng thanh đo FPS thì cấp quyền **Hiển thị trên ứng dụng khác** khi được hỏi.
+
+#### Bước 3: Vào game và tận hưởng
+- Chuyển sang Tab **⚡ Độ phân giải**, chọn mức nét mong muốn (khuyên dùng `1.15x`).
+- Chạm vào game muốn chơi trong danh sách để khởi chạy!
+- Khi vào game, thanh đo HUD sẽ tự động xuất hiện. Khi chơi xong thoát game, màn hình sẽ **tự động trở về độ phân giải gốc**.
+
+---
+
+## 🇺🇸 English
+
+**GameUpscaler Pro** is a modern, lightweight Android utility designed to sharpen 3D game visuals (**SSAA 1.10x – 1.25x**) and display an in-game **Hardware Telemetry HUD** (FPS, Power Draw, Temperatures, VRAM) via **Shizuku**. Works seamlessly on **Android 8.0 – 17** across all device brands without requiring Root.
+
+### ✨ Highlights & Architecture
+
+- **100% Free Forever:** Zero ads, zero background tracking, no subscriptions.
+- **SSAA Resolution Upscaler:** Smooths jagged edges and elevates rendering sharpness while maintaining touch calibration. Automatically restores native resolution upon exit.
+- **3-Tab Modern Material UI:**
+  - **📊 System Monitor:** At-a-glance telemetry (RAM usage, battery discharge Wattage, cell temperature, SoC peaks, quick reset).
+  - **⚡ Upscaler & Library:** 4 resolution presets (1.10x – 1.25x), per-game custom scales, favorite pinning, and Home Screen shortcuts.
+  - **🎛️ HUD Setup:** Live in-app preview, customizable horizontal/vertical layouts, 4 sizing scales, 4 transparency styles, and 12 hardware sensors.
+- **Performance Logging:** Tap the floating HUD during gameplay to record real-time FPS and Wattage curves, then view interactive graphs in **Perf Insights**.
+- **Control Center Quick Tile:** Toggle the telemetry HUD anytime directly from Quick Settings (`FPS HUD`).
+
+---
+
+### 🛠️ Quick Setup Guide
+
+1. Install and activate **[Shizuku](https://shizuku.rikka.app)** on your phone.
+2. Download the latest `app-release.apk` from the **Releases** tab.
+3. Open **GameUpscaler Pro**, choose your SSAA factor (`1.15x` recommended), tap your game to launch, and enjoy!
+
+---
+
+### 🧹 Repo Maintenance (For Maintainer)
+
+- **Clean Old Releases:** If GitHub Actions generated redundant release tags, go to the **Actions** tab ➔ select **Clean Old Releases** ➔ click **Run workflow** to automatically wipe old tags and keep only the latest release.
+- **Normal Commits:** Regular code pushes now build APK artifacts for testing without flooding GitHub Releases. Official releases are generated on version tags (`v*`) or manual trigger.
 
 ---
 
 ## 📜 License
 
-MIT License
+Distributed under the [MIT License](LICENSE).

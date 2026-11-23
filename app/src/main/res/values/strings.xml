@@ -14,55 +14,106 @@
     <string name="status_shizuku_ok">SHIZUKU READY</string>
     <string name="status_shizuku_off">SHIZUKU OFFLINE</string>
 
+    <!-- 3 Modern Tabs -->
+    <string name="tab_system">📊 System</string>
+    <string name="tab_resolution">⚡ Upscaler</string>
+    <string name="tab_hud">🎛️ HUD Setup</string>
+
+    <!-- Legacy Tab identifiers -->
     <string name="tab_dashboard">DASHBOARD</string>
     <string name="tab_hud_cfg">HUD CONFIG</string>
     <string name="tab_games">ALL GAMES</string>
 
-    <string name="dash_insights">GAME INSIGHTS</string>
-    <string name="dash_reset">RESET DISPLAY</string>
-    <string name="dash_my_games">MY GAMES</string>
-    <string name="dash_manage">MANAGE</string>
-    <string name="dash_add_game">Add</string>
-    <string name="dash_live_monitor">LIVE MONITOR</string>
-    <string name="dash_free_ram">FREE %1$s GB</string>
+    <!-- Shizuku Banner -->
+    <string name="shizuku_banner_ok">🟢 Shizuku connected and operating</string>
+    <string name="shizuku_banner_off_title">⚠️ Shizuku is not running</string>
+    <string name="shizuku_banner_off_desc">GameUpscaler requires Shizuku permission to sharpen resolution and read telemetry without root.</string>
+    <string name="btn_launch_shizuku">Open Shizuku</string>
 
+    <!-- System Telemetry Tab -->
+    <string name="card_ram_title">SYSTEM MEMORY</string>
+    <string name="card_battery_title">BATTERY &amp; POWER</string>
+    <string name="card_soc_title">PROCESSOR (SoC)</string>
+    <string name="card_display_title">DISPLAY RESOLUTION</string>
+    <string name="dash_insights">PERF INSIGHTS</string>
+    <string name="dash_reset">RESET DISPLAY</string>
+    <string name="dash_my_games">FAVORITE GAMES</string>
+    <string name="dash_manage">Browse All</string>
+    <string name="dash_add_game">Add</string>
+    <string name="dash_live_monitor">LIVE TELEMETRY</string>
+    <string name="dash_free_ram">Free %1$s GB</string>
+    <string name="ram_usage_fmt">%1$d%% Used (%2$s GB / %3$s GB)</string>
+    <string name="soc_temp_fmt">%1$s°C Peak</string>
+    <string name="cpu_clock_fmt">%1$s GHz Peak</string>
+
+    <!-- Tool Quick Actions -->
     <string name="tool_ssaa">SSAA SCALE</string>
     <string name="tool_auto_hud">AUTO HUD</string>
-    <string name="tool_live_hud">GAME HUD</string>
+    <string name="tool_live_hud">PREVIEW HUD</string>
     <string name="tool_tile">QUICK TILE</string>
     <string name="tool_sensors">THERMALS</string>
     <string name="tool_logs">PERF LOGS</string>
 
+    <!-- Resolution / SSAA Tab -->
+    <string name="ssaa_guide_title">How SSAA Upscaling Works</string>
+    <string name="ssaa_guide_desc">SSAA increases your virtual screen resolution via Shizuku, drastically improving 3D rendering clarity and smoothing out jagged edges. Native resolution is automatically restored when you exit the game.</string>
+    <string name="ssaa_native_label">Native Screen</string>
+    <string name="ssaa_target_label">Upscaled Target</string>
+    <string name="ssaa_scale_select_title">SELECT UPSCALE FACTOR</string>
+    <string name="ssaa_preset_110_title">1.10x Gentle</string>
+    <string name="ssaa_preset_110_desc">Light sharpening, low thermal impact, highly battery-efficient</string>
+    <string name="ssaa_preset_115_title">1.15x Balanced (Recommended)</string>
+    <string name="ssaa_preset_115_desc">Optimal balance between razor-sharp graphics and smooth FPS</string>
+    <string name="ssaa_preset_120_title">1.20x High Clarity</string>
+    <string name="ssaa_preset_120_desc">Greatly enhanced texture sharpness for mid-to-high end devices</string>
+    <string name="ssaa_preset_125_title">1.25x Maximum Clarity</string>
+    <string name="ssaa_preset_125_desc">Maximum anti-aliasing quality, best suited for flagship chipsets</string>
+    <string name="opt_auto_hud_title">Launch HUD overlay automatically with game</string>
+    <string name="opt_auto_hud_desc">Pops up the floating FPS and hardware meter upon entering game</string>
+    <string name="sec_game_list">GAME &amp; APPLICATION LIBRARY</string>
+
+    <!-- HUD Configuration Tab -->
     <string name="sec_hud_preview">LIVE HUD PREVIEW</string>
-    <string name="sec_hud_style">HUD APPEARANCE</string>
+    <string name="btn_test_hud_on">👁️ Test HUD on Screen</string>
+    <string name="btn_test_hud_off">⏹️ Stop HUD Preview</string>
+    <string name="sec_hud_style">HUD APPEARANCE &amp; LAYOUT</string>
+    <string name="lbl_layout_orientation">Layout Orientation</string>
+    <string name="lbl_font_size">Text Size</string>
+    <string name="lbl_bg_style">Background Opacity</string>
     <string name="sec_hud_poll">POLLING INTERVAL</string>
     <string name="sec_hud_metrics">TELEMETRY METRICS</string>
+    <string name="hud_guide_tips">💡 Tips: Tap floating HUD while gaming to record FPS &amp; Wattage logs • Drag anywhere freely • Drag into bottom-center corner to dismiss.</string>
 
-    <string name="subtitle_hint">Tap game to launch • Long-press for Shortcut • Tap HUD to record</string>
-    <string name="reading_display">Reading display...</string>
+    <!-- App / List Controls -->
+    <string name="subtitle_hint">Tap game to launch • Long-press for Home shortcut • Tap badge for custom scale</string>
+    <string name="reading_display">Reading display resolution...</string>
     <string name="preview_display_fmt">%1$dx%2$d ➔ %4$dx%5$d (%6$d DPI)</string>
-    <string name="btn_reset_display">RESET</string>
+    <string name="btn_reset_display">RESET NATIVE</string>
 
     <string name="chk_telemetry_hud">Enable HUD in Game</string>
-    <string name="btn_orient_vert">Vertical</string>
-    <string name="btn_orient_horiz">1-Line Horiz</string>
+    <string name="btn_orient_vert">Vertical Column</string>
+    <string name="btn_orient_horiz">Horizontal 1-Line</string>
     <string name="btn_test_hud">Toggle HUD</string>
 
+    <!-- Sizes -->
     <string name="size_tiny">Micro</string>
     <string name="size_small">Small</string>
     <string name="size_medium">Medium</string>
     <string name="size_large">Large</string>
 
+    <!-- Backgrounds -->
     <string name="bg_solid">Solid</string>
     <string name="bg_glass">Glass</string>
     <string name="bg_sheer">Sheer</string>
     <string name="bg_clear">Text Only</string>
 
+    <!-- Polling -->
     <string name="poll_auto">Auto</string>
     <string name="poll_300ms">150ms</string>
     <string name="poll_1s">300ms</string>
     <string name="poll_2s">1s</string>
 
+    <!-- Metric details -->
     <string name="metric_fps">Frame Rate (FPS)</string>
     <string name="desc_fps">Real-time frame rate with 0.1 decimal precision</string>
     <string name="metric_watt">Power Draw (W)</string>
@@ -88,6 +139,7 @@
     <string name="metric_ram">Memory Usage (RAM)</string>
     <string name="desc_ram">Game PSS memory or system RAM utilization</string>
 
+    <!-- Quick Tile & Actions -->
     <string name="btn_quick_tile">Quick Tile</string>
     <string name="hint_quick_tile">Pull down Quick Settings -&gt; Tap Edit (✏️) -&gt; Drag \'FPS HUD\' tile up!</string>
     <string name="toast_quick_tile_added">✅ Added FPS HUD tile to Quick Settings!</string>
@@ -96,8 +148,8 @@
     <string name="btn_sensors">Sensors</string>
     <string name="btn_perf_logs">Perf Logs</string>
 
-    <string name="chk_pinned_only">Pinned Only</string>
-    <string name="hint_search">Search game name or package...</string>
+    <string name="chk_pinned_only">Favorites</string>
+    <string name="hint_search">Search game or app name...</string>
 
     <string name="toast_scanning_sensors">Scanning device thermal zones...</string>
     <string name="no_sensors_found">No readable thermal sensors found.</string>
@@ -114,7 +166,7 @@
     <string name="toast_shortcut_req">📌 Home screen shortcut requested!</string>
     <string name="toast_start_shizuku">⚠️ Please start Shizuku first!</string>
     <string name="toast_shizuku_error">⚠️ Cannot connect to Shizuku!</string>
-    <string name="toast_boosting">🚀 Boosting %1$s (%2$s)...</string>
+    <string name="toast_boosting">🚀 Launching %1$s with SSAA %2$s...</string>
     <string name="toast_hud_closed">HUD overlay closed</string>
     <string name="toast_overlay_error">Overlay error: %1$s</string>
 
