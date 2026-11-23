@@ -175,3 +175,46 @@ class ModernRadioIndicator @JvmOverloads constructor(
         }
     }
 }
+
+/**
+ * Modern color accent selector dot matching Stitch design.
+ */
+class ModernColorDot @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : View(context, attrs, defStyleAttr) {
+    var dotColor: Int = Color.parseColor("#D0EF65")
+        set(value) { field = value; invalidate() }
+    var isDotSelected: Boolean = false
+        set(value) { field = value; invalidate() }
+
+    private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    private val centerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val size = (28 * resources.displayMetrics.density + 0.5f).toInt()
+        setMeasuredDimension(size, size)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val cx = width / 2f
+        val cy = height / 2f
+        val r = minOf(cx, cy) - 2f
+        if (r <= 0f) return
+
+        fillPaint.color = dotColor
+        canvas.drawCircle(cx, cy, r, fillPaint)
+
+        if (isDotSelected) {
+            strokePaint.color = Color.WHITE
+            strokePaint.strokeWidth = (2f * resources.displayMetrics.density).coerceAtLeast(1f)
+            canvas.drawCircle(cx, cy, r - 1f, strokePaint)
+
+            centerPaint.color = Color.parseColor("#171E00")
+            canvas.drawCircle(cx, cy, r * 0.3f, centerPaint)
+        }
+    }
+}

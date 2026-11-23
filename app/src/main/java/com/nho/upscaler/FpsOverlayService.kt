@@ -12,6 +12,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.os.BatteryManager
@@ -660,10 +661,16 @@ class FpsOverlayService : Service() {
         }
 
         val maxChipTemp = maxOf(lastCpuTemp, lastGpuTemp, lastSocTemp)
+        val baseAccent = when (prefsMgr.hudColorAccent) {
+            0 -> Color.parseColor("#D0EF65")
+            1 -> Color.parseColor("#00E5FF")
+            2 -> Color.parseColor("#FFB300")
+            else -> Color.WHITE
+        }
         val color = when {
             cachedBatTemp >= 43.0f || maxChipTemp >= 85.0f -> UiTheme.ACCENT_RED_BRIGHT
             cachedBatTemp >= 40.0f || maxChipTemp >= 75.0f -> UiTheme.ACCENT_GOLD
-            else -> UiTheme.ACCENT_GREEN
+            else -> baseAccent
         }
         if (color != lastRenderedColor) {
             lastRenderedColor = color

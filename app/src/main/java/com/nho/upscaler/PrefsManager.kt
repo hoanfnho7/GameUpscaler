@@ -40,6 +40,14 @@ class PrefsManager(context: Context) {
         get() = prefs.getInt("hud_poll_mode", 0)
         set(value) = prefs.edit().putInt("hud_poll_mode", value).apply()
 
+    var hudLayoutMode: Int
+        get() = prefs.getInt("hud_layout_mode", 0)
+        set(value) = prefs.edit().putInt("hud_layout_mode", value).apply()
+
+    var hudColorAccent: Int
+        get() = prefs.getInt("hud_color_accent", 0)
+        set(value) = prefs.edit().putInt("hud_color_accent", value).apply()
+
     var overlayVertical: Boolean
         get() = prefs.getBoolean("overlay_vertical", false)
         set(value) = prefs.edit().putBoolean("overlay_vertical", value).apply()
@@ -51,6 +59,12 @@ class PrefsManager(context: Context) {
     var themeMode: Int
         get() = prefs.getInt("theme_mode", 0)
         set(value) = prefs.edit().putInt("theme_mode", value).apply()
+
+    fun isGameEnabled(pkg: String): Boolean = prefs.getBoolean("enabled_$pkg", true)
+
+    fun setGameEnabled(pkg: String, enabled: Boolean) {
+        prefs.edit().putBoolean("enabled_$pkg", enabled).apply()
+    }
 
     fun getPinnedPackages(): MutableSet<String> {
         val saved = prefs.getStringSet("pinned_pkgs", null)
