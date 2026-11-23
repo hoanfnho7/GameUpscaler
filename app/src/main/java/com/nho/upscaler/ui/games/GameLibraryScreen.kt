@@ -211,46 +211,56 @@ fun GameLibraryScreen(
                         )
                     }
 
-                    // 4 Options Grid/Column
-                    SsaaOptionCard(
-                        scale = 1.10f,
-                        label = "1.10x",
-                        tag = "Nhẹ",
-                        desc = "Tiết kiệm pin nhất, nhiệt độ mát mẻ (+2% pin).",
-                        icon = Icons.Default.PhotoSizeSelectSmall,
-                        isSelected = Math.abs(uiState.globalScale - 1.10f) < 0.01f,
-                        onClick = { viewModel.setGlobalScale(1.10f, context) }
-                    )
+                    // 4 Options 2x2 Grid
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        SsaaOptionCard(
+                            modifier = Modifier.weight(1f),
+                            scale = 1.10f,
+                            label = "1.10x",
+                            tag = "Nhẹ",
+                            desc = "Tiết kiệm pin nhất, nhiệt độ mát mẻ (+2% pin).",
+                            isSelected = Math.abs(uiState.globalScale - 1.10f) < 0.01f,
+                            onClick = { viewModel.setGlobalScale(1.10f, context) }
+                        )
 
-                    SsaaOptionCard(
-                        scale = 1.15f,
-                        label = "1.15x",
-                        tag = "Cân bằng (Khuyên dùng)",
-                        desc = "Cân bằng giữa hiệu năng đồ họa và độ nét (+4% pin).",
-                        icon = Icons.Default.Tune,
-                        isSelected = Math.abs(uiState.globalScale - 1.15f) < 0.01f,
-                        onClick = { viewModel.setGlobalScale(1.15f, context) }
-                    )
+                        SsaaOptionCard(
+                            modifier = Modifier.weight(1f),
+                            scale = 1.15f,
+                            label = "1.15x",
+                            tag = "Cân bằng",
+                            desc = "Khử răng cưa mịn, cân bằng nhiệt độ và đồ họa.",
+                            isSelected = Math.abs(uiState.globalScale - 1.15f) < 0.01f,
+                            onClick = { viewModel.setGlobalScale(1.15f, context) }
+                        )
+                    }
 
-                    SsaaOptionCard(
-                        scale = 1.20f,
-                        label = "1.20x",
-                        tag = "Sắc nét",
-                        desc = "Hình ảnh rõ nét, khử răng cưa góc cạnh chi tiết (+6% pin).",
-                        icon = Icons.Default.HighQuality,
-                        isSelected = Math.abs(uiState.globalScale - 1.20f) < 0.01f,
-                        onClick = { viewModel.setGlobalScale(1.20f, context) }
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        SsaaOptionCard(
+                            modifier = Modifier.weight(1f),
+                            scale = 1.20f,
+                            label = "1.20x",
+                            tag = "Sắc nét",
+                            desc = "Hình ảnh rõ nét, khử răng cưa chi tiết (+6% pin).",
+                            isSelected = Math.abs(uiState.globalScale - 1.20f) < 0.01f,
+                            onClick = { viewModel.setGlobalScale(1.20f, context) }
+                        )
 
-                    SsaaOptionCard(
-                        scale = 1.25f,
-                        label = "1.25x",
-                        tag = "Tối đa an toàn",
-                        desc = "Chuẩn Esports, góc cạnh mượt mà tuyệt đối (+8% pin).",
-                        icon = Icons.Default.Speed,
-                        isSelected = Math.abs(uiState.globalScale - 1.25f) < 0.01f,
-                        onClick = { viewModel.setGlobalScale(1.25f, context) }
-                    )
+                        SsaaOptionCard(
+                            modifier = Modifier.weight(1f),
+                            scale = 1.25f,
+                            label = "1.25x",
+                            tag = "Tối đa",
+                            desc = "Chuẩn Esports, mượt mà góc cạnh (+8% pin).",
+                            isSelected = Math.abs(uiState.globalScale - 1.25f) < 0.01f,
+                            onClick = { viewModel.setGlobalScale(1.25f, context) }
+                        )
+                    }
                 }
             }
 
@@ -422,11 +432,11 @@ fun GameLibraryScreen(
 
 @Composable
 private fun SsaaOptionCard(
+    modifier: Modifier = Modifier,
     scale: Float,
     label: String,
     tag: String,
     desc: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -439,92 +449,71 @@ private fun SsaaOptionCard(
             1.dp,
             if (isSelected) VoltLime.copy(alpha = 0.5f) else DarkBorderSubtle
         ),
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .clickable { onClick() }
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
+                Column {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = if (isSelected) VoltLime else MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = tag,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isSelected) VoltLime else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
+                }
+
+                // Radio Indicator
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(18.dp)
                         .clip(CircleShape)
-                        .background(if (isSelected) VoltLime.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant),
+                        .background(if (isSelected) VoltLime else MaterialTheme.colorScheme.surfaceVariant)
+                        .border(
+                            1.dp,
+                            if (isSelected) VoltLime else MaterialTheme.colorScheme.outlineVariant,
+                            CircleShape
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = if (isSelected) VoltLime else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = if (isSelected) VoltLime else MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Bold
-                        )
+                    if (isSelected) {
                         Box(
                             modifier = Modifier
+                                .size(7.dp)
                                 .clip(CircleShape)
-                                .background(if (isSelected) VoltLime else MaterialTheme.colorScheme.surfaceVariant)
-                                .padding(horizontal = 7.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = tag,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (isSelected) Color(0xFF171E00) else MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                                .background(Color(0xFF171E00))
+                        )
                     }
-
-                    Text(
-                        text = desc,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
 
-            // Radio Indicator
-            Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .background(if (isSelected) VoltLime else MaterialTheme.colorScheme.surfaceVariant)
-                    .border(
-                        1.dp,
-                        if (isSelected) VoltLime else MaterialTheme.colorScheme.outlineVariant,
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isSelected) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF171E00))
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = desc,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+                maxLines = 2,
+                minLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -569,77 +558,76 @@ private fun GameListItem(
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
 
-                Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f).padding(end = 4.dp)) {
                     Text(
                         text = game.name,
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = if (game.customScale > 0f) {
-                                String.format(Locale.US, "%.2fx SSAA (Khóa)", game.customScale)
-                            } else {
-                                String.format(Locale.US, "%.2fx SSAA (Mặc định)", globalScale)
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (game.customScale > 0f) TechAmber else VoltLime,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(if (game.customScale > 0f) TechAmber.copy(alpha = 0.2f) else VoltLime.copy(alpha = 0.2f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = if (game.customScale > 0f) {
+                                    String.format(Locale.US, "%.2fx (Khóa)", game.customScale)
+                                } else {
+                                    String.format(Locale.US, "%.2fx (Mặc định)", globalScale)
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (game.customScale > 0f) TechAmber else VoltLime,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }
 
-            // Actions: Pin star, Change Scale, Enable Switch
+            // Actions: Pin star & Sửa button
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Pin star icon
-                IconButton(onClick = onTogglePin, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = onTogglePin, modifier = Modifier.size(36.dp)) {
                     Icon(
                         imageVector = if (game.isPinned) Icons.Default.Star else Icons.Default.StarBorder,
                         contentDescription = null,
                         tint = if (game.isPinned) TechAmber else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
-                // Change Scale Button
+                // Change Scale Button ("Sửa")
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier
                         .clip(CircleShape)
                         .clickable { onOpenScaleDialog() }
                 ) {
                     Text(
-                        text = "Đổi",
-                        style = MaterialTheme.typography.labelSmall,
+                        text = "Sửa",
+                        style = MaterialTheme.typography.labelMedium,
                         color = VoltLime,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        fontWeight = FontWeight.Bold
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
                     )
                 }
-
-                // Switch toggle
-                Switch(
-                    checked = game.isEnabled,
-                    onCheckedChange = onToggleEnabled,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color(0xFF171E00),
-                        checkedTrackColor = VoltLime,
-                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    modifier = Modifier.padding(start = 4.dp)
-                )
             }
         }
     }

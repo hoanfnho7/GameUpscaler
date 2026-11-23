@@ -465,27 +465,32 @@ private fun KpiCard(
         modifier = modifier
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 9.sp
+                fontSize = 9.sp,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Text(
                 text = primaryVal,
                 style = MaterialTheme.typography.headlineMedium,
                 color = accentColor,
                 fontWeight = FontWeight.Bold,
-                fontSize = 17.sp
+                fontSize = 17.sp,
+                maxLines = 1
             )
             Text(
                 text = secondaryVal,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 11.sp
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
         }
     }

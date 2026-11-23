@@ -76,6 +76,7 @@ import com.nho.upscaler.ui.theme.TechBlue
 import com.nho.upscaler.ui.theme.TechEmerald
 import com.nho.upscaler.ui.theme.TechRed
 import com.nho.upscaler.ui.theme.VoltLime
+import androidx.compose.ui.graphics.graphicsLayer
 import java.util.Locale
 
 @Composable
@@ -191,7 +192,7 @@ fun HudSettingsScreen(
             item {
                 HudUtilityActionsRow(
                     onResetCoords = { viewModel.resetHudCoordinates(context) },
-                    onInspectSensors = { viewModel.openThermalDialog() },
+                    onInspectSensors = { viewModel.openThermalDialog(context) },
                     onAddQsTile = { viewModel.openQsTileDialog() }
                 )
             }
@@ -298,6 +299,10 @@ private fun LiveHudPreviewCanvas(
                 Box(
                     modifier = Modifier
                         .padding(top = 10.dp)
+                        .graphicsLayer(
+                            scaleX = uiState.scaleLevel.coerceIn(0.5f, 1.3f),
+                            scaleY = uiState.scaleLevel.coerceIn(0.5f, 1.3f)
+                        )
                         .clip(if (uiState.layoutPreset == HudLayoutPreset.VERTICAL) RoundedCornerShape(14.dp) else CircleShape)
                         .background(pillBg)
                         .border(
@@ -491,7 +496,7 @@ private fun HudAppearanceCard(
                 Slider(
                     value = uiState.scaleLevel,
                     onValueChange = onScaleChange,
-                    valueRange = 0.7f..1.5f,
+                    valueRange = 0.5f..1.5f,
                     colors = SliderDefaults.colors(
                         thumbColor = VoltLime,
                         activeTrackColor = VoltLime,
@@ -502,6 +507,7 @@ private fun HudAppearanceCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    Text("0.5x (Siêu nhỏ)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("0.7x (Nhỏ)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("1.0x (Chuẩn)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("1.5x (Rộng)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -724,17 +730,21 @@ private fun HudMetricsListCard(
                                 modifier = Modifier.size(16.dp)
                             )
                         }
-                        Column {
+                        Column(modifier = Modifier.weight(1f).padding(end = 4.dp)) {
                             Text(
                                 text = item.title,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                             Text(
                                 text = item.desc,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                         }
                     }

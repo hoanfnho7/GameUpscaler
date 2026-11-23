@@ -2,7 +2,9 @@ package com.nho.upscaler.ui.hud
 
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
+import android.os.BatteryManager
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
@@ -10,6 +12,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nho.upscaler.FpsOverlayService
 import com.nho.upscaler.PrefsManager
+import com.nho.upscaler.ShizukuHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 enum class HudLayoutPreset { HORIZONTAL, VERTICAL }
@@ -73,9 +78,10 @@ class HudSettingsViewModel : ViewModel() {
         val p = prefsMgr ?: return
         val layout = if (p.hudLayoutMode == 1 || p.overlayVertical) HudLayoutPreset.VERTICAL else HudLayoutPreset.HORIZONTAL
         val scaleVal = when (p.overlaySizeLevel) {
-            0 -> 0.7f
-            1 -> 1.0f
-            2 -> 1.25f
+            0 -> 0.5f
+            1 -> 0.7f
+            2 -> 1.0f
+            3 -> 1.25f
             else -> 1.5f
         }
         val opacityVal = when (p.overlayBgMode) {
@@ -162,10 +168,11 @@ class HudSettingsViewModel : ViewModel() {
 
     fun setScale(scale: Float, context: Context) {
         val level = when {
-            scale <= 0.85f -> 0
-            scale <= 1.15f -> 1
-            scale <= 1.35f -> 2
-            else -> 3
+            scale <= 0.6f -> 0
+            scale <= 0.85f -> 1
+            scale <= 1.15f -> 2
+            scale <= 1.35f -> 3
+            else -> 4
         }
         prefsMgr?.overlaySizeLevel = level
         _uiState.update { it.copy(scaleLevel = scale) }
@@ -209,23 +216,28 @@ class HudSettingsViewModel : ViewModel() {
     }
 
     fun resetHudCoordinates(context: Context) {
+        prefsMgr?.resetHudPosition()
         if (FpsOverlayService.isServiceRunning) {
             context.startService(Intent(context, FpsOverlayService::class.java).apply {
                 action = "RESET_POS"
             })
             Toast.makeText(context, "Đã khôi phục vị trí HUD về mặc định", Toast.LENGTH_SHORT).show()
         } else {
-            Toast.makeText(context, "HUD chưa chạy", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Đã đặt lại tọa độ HUD về mặc định", Toast.LENGTH_SHORT).show()
         }
     }
 
-    fun openThermalDialog() {
-        val sensors = readThermalSensors()
-        _uiState.update {
-            it.copy(
-                thermalSensors = sensors,
-                isThermalDialogOpen = true
-            )
+    fun openThermalDialog(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val sensors = readThermalSensors(context)
+            withContext(Dispatchers.Main) {
+                _uiState.update {
+                    it.copy(
+                        thermalSensors = sensors,
+                        isThermalDialogOpen = true
+                    )
+                }
+            }
         }
     }
 
@@ -249,27 +261,74 @@ class HudSettingsViewModel : ViewModel() {
         }
     }
 
-    private fun readThermalSensors(): List<Pair<String, Float>> {
+    private fun readThermalSensors(context: Context): List<Pair<String, Float>> {
         val list = mutableListOf<Pair<String, Float>>()
-        for (i in 0..40) {
+        val seen = mutableSetOf<String>()
+
+        // 1. Shizuku shell thermal zones query
+        if (ShizukuHelper.isBinderAlive()) {
             try {
-                val typeFile = File("/sys/class/thermal/thermal_zone$i/type")
-                val tempFile = File("/sys/class/thermal/thermal_zone$i/temp")
-                if (typeFile.exists() && tempFile.exists()) {
-                    val name = typeFile.readText().trim()
-                    val raw = tempFile.readText().trim().toFloatOrNull() ?: continue
-                    val deg = if (raw > 1000f) raw / 1000f else if (raw > 150f) raw / 10f else raw
-                    if (deg in 15f..120f) {
-                        list.add(Pair(name, deg))
+                val cmd = "for z in /sys/class/thermal/thermal_zone*; do [ -r \"\$z/temp\" ] && [ -r \"\$z/type\" ] && echo \"\$(cat \$z/type 2>/dev/null): \$(cat \$z/temp 2>/dev/null)\"; done"
+                val out = ShizukuHelper.runSync(cmd)
+                for (line in out.splitlines()) {
+                    val parts = line.split(":")
+                    if (parts.size == 2) {
+                        val name = parts[0].trim()
+                        val raw = parts[1].trim().toFloatOrNull() ?: continue
+                        val deg = if (raw > 1000f) raw / 1000f else if (raw > 150f) raw / 10f else raw
+                        if (deg in 15f..125f && name.isNotEmpty() && seen.add(name)) {
+                            list.add(Pair(name, deg))
+                        }
                     }
                 }
             } catch (_: Exception) {}
+
+            // 2. Fallback via dumpsys thermalservice
+            if (list.isEmpty()) {
+                try {
+                    val dump = ShizukuHelper.runSync("dumpsys thermalservice")
+                    val regex = Regex("""Temperature\{mValue=([0-9.]+)[^}]*mName=([^,}]+)""")
+                    for (m in regex.findAll(dump)) {
+                        val deg = m.groupValues[1].toFloatOrNull() ?: continue
+                        val name = m.groupValues[2].trim()
+                        if (deg in 15f..125f && name.isNotEmpty() && seen.add(name)) {
+                            list.add(Pair(name, deg))
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
         }
-        return if (list.isNotEmpty()) list else listOf(
-            Pair("cpu-1-0-usr", 41.2f),
-            Pair("gpu-usr", 39.5f),
-            Pair("battery", 36.8f),
-            Pair("chassis-usr", 34.2f)
-        )
+
+        // 3. Direct filesystem read
+        if (list.isEmpty()) {
+            for (i in 0..60) {
+                try {
+                    val typeFile = File("/sys/class/thermal/thermal_zone$i/type")
+                    val tempFile = File("/sys/class/thermal/thermal_zone$i/temp")
+                    if (typeFile.exists() && tempFile.exists()) {
+                        val name = typeFile.readText().trim()
+                        val raw = tempFile.readText().trim().toFloatOrNull() ?: continue
+                        val deg = if (raw > 1000f) raw / 1000f else if (raw > 150f) raw / 10f else raw
+                        if (deg in 15f..125f && name.isNotEmpty() && seen.add(name)) {
+                            list.add(Pair(name, deg))
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+
+        // 4. Battery sensor fallback from BatteryManager
+        try {
+            val bmIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val rawBat = bmIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
+            if (rawBat > 0) {
+                val batDeg = rawBat / 10f
+                if (seen.add("battery_internal")) {
+                    list.add(0, Pair("battery_internal", batDeg))
+                }
+            }
+        } catch (_: Exception) {}
+
+        return list.sortedByDescending { it.second }
     }
 }

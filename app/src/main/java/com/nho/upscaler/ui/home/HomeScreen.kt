@@ -119,19 +119,22 @@ fun HomeScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                         Text(
                             text = if (uiState.currentLang == "VI") "THÔNG TIN HỆ THỐNG & TRẠNG THÁI" else "SYSTEM TELEMETRY & STATUS",
                             style = MaterialTheme.typography.labelSmall,
-                            color = TechAmber
+                            color = TechAmber,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = if (uiState.currentLang == "VI") "Trang chủ" else "Home",
                             style = MaterialTheme.typography.headlineLarge,
-                            color = MaterialTheme.colorScheme.onBackground
+                            color = MaterialTheme.colorScheme.onBackground,
+                            maxLines = 1
                         )
                     }
 
@@ -153,7 +156,8 @@ fun HomeScreen(
                                 if (uiState.currentLang == "VI") "Chưa cấp Shizuku" else "No Shizuku"
                             },
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1
                         )
                     }
                 }
@@ -252,12 +256,13 @@ private fun TopAppBarHeader(
     ) {
         // Left: Logo & Pro badge
         Row(
+            modifier = Modifier.weight(1f, fill = false).padding(end = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(34.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(VoltLime.copy(alpha = 0.2f))
                     .border(1.dp, VoltLime.copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
@@ -267,7 +272,7 @@ private fun TopAppBarHeader(
                     imageVector = Icons.Default.Tune,
                     contentDescription = null,
                     tint = VoltLime,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
             Row(
@@ -278,7 +283,9 @@ private fun TopAppBarHeader(
                     text = "GameUpscaler",
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onBackground,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Box(
                     modifier = Modifier
@@ -448,30 +455,33 @@ private fun HeroStatusCard(
                 // Actions: Reset & Open Game Library
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Reset Button
                     Button(
                         onClick = onResetRes,
                         shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = MaterialTheme.colorScheme.onSurface
                         ),
                         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        modifier = Modifier.weight(1f).height(46.dp)
+                        modifier = Modifier.weight(1f).height(44.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.RestartAlt,
                             contentDescription = null,
                             tint = TechAmber,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = if (uiState.currentLang == "VI") "Reset gốc" else "Reset Native",
                             style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
 
@@ -479,23 +489,26 @@ private fun HeroStatusCard(
                     Button(
                         onClick = onOpenGames,
                         shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = VoltLime,
                             contentColor = Color(0xFF171E00)
                         ),
-                        modifier = Modifier.weight(1.1f).height(46.dp)
+                        modifier = Modifier.weight(1.1f).height(44.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.SportsEsports,
                             contentDescription = null,
                             tint = Color(0xFF171E00),
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = if (uiState.currentLang == "VI") "Mở Kho Game" else "Game Library",
                             style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -614,6 +627,7 @@ private fun BatteryTempCard(uiState: HomeUiState) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
+                modifier = Modifier.weight(1f).padding(end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -635,12 +649,15 @@ private fun BatteryTempCard(uiState: HomeUiState) {
                     Text(
                         text = if (uiState.currentLang == "VI") "Pin & Nhiệt độ" else "Battery & Thermal",
                         style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
                     )
                     Text(
                         text = if (uiState.currentLang == "VI") "Cảm biến nhiệt độ pin thực tế" else "Real-time battery sensor",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
             }
@@ -691,6 +708,7 @@ private fun DisplaySocCard(uiState: HomeUiState) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -712,12 +730,15 @@ private fun DisplaySocCard(uiState: HomeUiState) {
                         Text(
                             text = if (uiState.currentLang == "VI") "Màn hình & SoC" else "Display & SoC",
                             style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1
                         )
                         Text(
                             text = "${uiState.socName} • ${uiState.refreshRate}Hz",
                             style = MaterialTheme.typography.labelMedium,
-                            color = VoltLime
+                            color = VoltLime,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -731,7 +752,8 @@ private fun DisplaySocCard(uiState: HomeUiState) {
                         text = "Vulkan API",
                         style = MaterialTheme.typography.labelSmall,
                         color = TechEmerald,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
                     )
                 }
             }
@@ -749,17 +771,20 @@ private fun DisplaySocCard(uiState: HomeUiState) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = if (uiState.currentLang == "VI") "GỐC" else "NATIVE",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
                         )
                         Text(
                             text = "${uiState.nativeW}x${uiState.nativeH} (${uiState.nativeDen} DPI)",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
 
@@ -767,21 +792,27 @@ private fun DisplaySocCard(uiState: HomeUiState) {
                         imageVector = Icons.Default.TrendingFlat,
                         contentDescription = null,
                         tint = VoltLime,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp).padding(horizontal = 4.dp)
                     )
 
-                    Column(horizontalAlignment = Alignment.End) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.End
+                    ) {
                         Text(
                             text = if (uiState.currentLang == "VI") "SSAA TỐI ƯU" else "SSAA UPSCALE",
                             style = MaterialTheme.typography.labelSmall,
                             color = VoltLime,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
                         )
                         Text(
                             text = "${uiState.targetW}x${uiState.targetH} (${uiState.targetDen} DPI)",
                             style = MaterialTheme.typography.labelMedium,
                             color = VoltLime,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -813,6 +844,7 @@ private fun HistoryLogsCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
+                modifier = Modifier.weight(1f).padding(end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -839,7 +871,9 @@ private fun HistoryLogsCard(
                             text = if (lang == "VI") "Lịch sử Log & Biểu đồ" else "Performance Logs & Charts",
                             style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                         Box(
                             modifier = Modifier
@@ -850,14 +884,17 @@ private fun HistoryLogsCard(
                             Text(
                                 text = "$sessionCount " + (if (lang == "VI") "phiên" else "sessions"),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = TechAmber
+                                color = TechAmber,
+                                maxLines = 1
                             )
                         }
                     }
                     Text(
                         text = if (lang == "VI") "Xem biểu đồ FPS, dao động khung hình và nhiệt độ" else "Inspect FPS stability, power and thermal analytics",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
             }
@@ -994,17 +1031,21 @@ private fun SetupStepItem(
                         modifier = Modifier.size(17.dp)
                     )
                 }
-                Column {
+                Column(modifier = Modifier.weight(1f).padding(end = 4.dp)) {
                     Text(
                         text = title,
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 14.sp
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
             }

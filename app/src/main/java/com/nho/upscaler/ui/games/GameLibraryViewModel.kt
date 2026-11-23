@@ -86,14 +86,16 @@ class GameLibraryViewModel : ViewModel() {
 
                 val appInfo = ri.activityInfo.applicationInfo
                 val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                val isGame = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val isGameCategory = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     appInfo.category == ApplicationInfo.CATEGORY_GAME
                 } else false
+                val isGameFlag = (appInfo.flags and ApplicationInfo.FLAG_IS_GAME) != 0
+                val isGame = (isGameCategory || isGameFlag || isKnownGamePackage(pkg)) && !isExcludedApp(pkg)
 
                 val item = GameProfileItem(label, pkg, icon, customScale, isPinned, isEnabled)
                 allApps.add(item)
 
-                if (isCustom || isGame || (!isSystem && isCommonGame(pkg))) {
+                if (isCustom || isGame) {
                     gameItems.add(item)
                 }
             }
@@ -114,13 +116,39 @@ class GameLibraryViewModel : ViewModel() {
         }
     }
 
-    private fun isCommonGame(pkg: String): Boolean {
+    private val EXCLUDED_PACKAGES = setOf(
+        "com.google.android.play.games",
+        "com.valvesoftware.android.steam.community",
+        "com.discord",
+        "com.microsoft.xboxone.smartglass",
+        "com.playstation.mobile",
+        "com.nvidia.geforcenow",
+        "com.vng.zalo",
+        "com.viber.voip",
+        "com.facebook.katana",
+        "com.instagram.android",
+        "com.tiktok.android",
+        "com.zhiliaoapp.musically",
+        "com.whatsapp"
+    )
+
+    private fun isExcludedApp(pkg: String): Boolean {
         val p = pkg.lowercase(Locale.ROOT)
-        return p.contains("game") || p.contains("genshin") || p.contains("pubg") ||
-               p.contains("arena") || p.contains("moba") || p.contains("mobile") ||
-               p.contains("mihoyo") || p.contains("tencent") || p.contains("garena") ||
-               p.contains("riot") || p.contains("unity") || p.contains("epic") ||
-               p.contains("kgvn") || p.contains("speed") || p.contains("vng")
+        if (EXCLUDED_PACKAGES.contains(p)) return true
+        if (p.startsWith("com.google.") || p.startsWith("com.android.") || p.startsWith("com.sec.android.")) return true
+        if (p.contains("bank") || p.contains("mbmobile") || p.contains("smartotp") || p.contains("wallet") || p.contains("pay") || p.contains("fintech") || p.contains("zalo")) return true
+        return false
+    }
+
+    private fun isKnownGamePackage(pkg: String): Boolean {
+        val p = pkg.lowercase(Locale.ROOT)
+        return p.contains("garena.game") || p.contains("dts.freefire") ||
+               p.contains("pubgmobile") || p.contains("tencent.ig") ||
+               p.contains("mihoyo") || p.contains("hoyoverse") ||
+               p.contains("riotgames") || p.contains("kurogame") ||
+               p.contains("epicgames") || p.contains("gameloft") ||
+               p.contains("supercell") || p.contains("ea.game") ||
+               p.contains("krafton") || p.contains("nintendo")
     }
 
     fun onSearchQueryChange(query: String) {
@@ -144,15 +172,6 @@ class GameLibraryViewModel : ViewModel() {
         val scaleInt = (scale * 100).toInt()
         prefsMgr?.targetScaleFactor = scaleInt
         _uiState.update { it.copy(globalScale = scale) }
-
-        if (prefsMgr?.enableFpsOverlay == true && ShizukuHelper.isBinderAlive()) {
-            ShizukuHelper.fetchPhysicalDisplay { w, h, den ->
-                val tw = (w.toFloat() * scale).toInt()
-                val th = (h.toFloat() * scale).toInt()
-                val tden = (den.toFloat() * scale).toInt()
-                ShizukuHelper.runAsync("wm size ${tw}x${th}; wm density $tden")
-            }
-        }
     }
 
     fun toggleAutoLaunchHud(enabled: Boolean) {

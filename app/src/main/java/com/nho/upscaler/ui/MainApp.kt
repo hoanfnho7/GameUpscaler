@@ -146,17 +146,18 @@ private fun BottomNavigationBar(
         shadowElevation = 8.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .height(60.dp)
             .clip(CircleShape)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             BottomNavItem(
+                modifier = Modifier.weight(1f),
                 icon = Icons.Default.Home,
                 label = if (lang == "VI") "Trang chủ" else "Home",
                 isSelected = currentDestination == ScreenDestination.HOME,
@@ -164,6 +165,7 @@ private fun BottomNavigationBar(
             )
 
             BottomNavItem(
+                modifier = Modifier.weight(1f),
                 icon = Icons.Default.SportsEsports,
                 label = if (lang == "VI") "Kho Game" else "Games",
                 isSelected = currentDestination == ScreenDestination.GAMES,
@@ -171,6 +173,7 @@ private fun BottomNavigationBar(
             )
 
             BottomNavItem(
+                modifier = Modifier.weight(1f),
                 icon = Icons.Default.Speed,
                 label = if (lang == "VI") "Thanh đo HUD" else "HUD",
                 isSelected = currentDestination == ScreenDestination.HUD,
@@ -182,40 +185,46 @@ private fun BottomNavigationBar(
 
 @Composable
 private fun BottomNavItem(
+    modifier: Modifier = Modifier,
     icon: ImageVector,
     label: String,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val pillBg = if (isSelected) VoltLime.copy(alpha = 0.2f) else Color.Transparent
-    val borderCol = if (isSelected) VoltLime.copy(alpha = 0.4f) else Color.Transparent
+    val pillBg = if (isSelected) VoltLime.copy(alpha = 0.15f) else Color.Transparent
+    val borderCol = if (isSelected) VoltLime.copy(alpha = 0.35f) else Color.Transparent
     val contentCol = if (isSelected) VoltLime else MaterialTheme.colorScheme.onSurfaceVariant
 
     Surface(
         shape = CircleShape,
         color = pillBg,
         border = androidx.compose.foundation.BorderStroke(1.dp, borderCol),
-        modifier = Modifier
-            .height(46.dp)
+        modifier = modifier
+            .height(50.dp)
             .clip(CircleShape)
             .clickable { onClick() }
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 4.dp, horizontal = 2.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = contentCol,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(18.dp)
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
                 color = contentCol,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
         }
     }

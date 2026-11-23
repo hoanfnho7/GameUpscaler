@@ -205,6 +205,7 @@ class FpsOverlayService : Service() {
                 return START_NOT_STICKY
             }
             "RESET_POS" -> {
+                prefsMgr.resetHudPosition()
                 if (overlayView != null && overlayParams != null) {
                     applyPositionForCurrentOrientation()
                     try {
@@ -515,19 +516,19 @@ class FpsOverlayService : Service() {
     private fun applyOverlayStyle() {
         val tv = overlayView ?: return
         val isLand = isLandscapeMode()
-        val idx = sizeLevel.coerceIn(0, 3)
+        val idx = sizeLevel.coerceIn(0, 4)
         val bIdx = bgMode.coerceIn(0, 3)
         val layoutMode = prefsMgr.hudLayoutMode // 0: Horizontal, 1: Compact 2x2, 2: Mini Dot
 
         tv.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
 
         val textSizes = if (isLand) {
-            floatArrayOf(9.0f, 10.5f, 12.0f, 14.0f)
+            floatArrayOf(7.5f, 9.0f, 10.5f, 12.0f, 14.0f)
         } else {
-            floatArrayOf(10.0f, 11.5f, 13.0f, 15.0f)
+            floatArrayOf(8.0f, 10.0f, 11.5f, 13.0f, 15.0f)
         }
-        val padH = if (isLand) intArrayOf(10, 14, 18, 22) else intArrayOf(12, 16, 20, 24)
-        val padV = if (isLand) intArrayOf(3, 5, 7, 9) else intArrayOf(5, 7, 9, 11)
+        val padH = if (isLand) intArrayOf(8, 10, 14, 18, 22) else intArrayOf(10, 12, 16, 20, 24)
+        val padV = if (isLand) intArrayOf(2, 3, 5, 7, 9) else intArrayOf(3, 5, 7, 9, 11)
 
         tv.textSize = textSizes[idx]
 
