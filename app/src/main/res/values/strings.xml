@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">GameUpscaler Pro</string>
+    <string name="app_name">SSAA Tool Pro</string>
     <string name="tile_label">FPS HUD</string>
 
     <string name="lang_badge_auto">🌐 Auto</string>
@@ -14,143 +14,156 @@
     <string name="status_shizuku_ok">SHIZUKU READY</string>
     <string name="status_shizuku_off">SHIZUKU OFFLINE</string>
 
-    <!-- 3 Modern Tabs -->
-    <string name="tab_system">📊 System</string>
-    <string name="tab_resolution">⚡ Upscaler</string>
-    <string name="tab_hud">🎛️ HUD Setup</string>
+    <!-- Bottom Navigation Bar -->
+    <string name="tab_home">Home</string>
+    <string name="tab_ssaa">Anti-Aliasing</string>
+    <string name="tab_hud">HUD Meter</string>
 
-    <!-- Legacy Tab identifiers -->
+    <!-- Legacy compatibility -->
+    <string name="tab_system">📊 System</string>
+    <string name="tab_resolution">⚡ Resolution</string>
     <string name="tab_dashboard">DASHBOARD</string>
     <string name="tab_hud_cfg">HUD CONFIG</string>
-    <string name="tab_games">ALL GAMES</string>
+    <string name="tab_games">GAMES</string>
 
-    <!-- Shizuku Banner -->
-    <string name="shizuku_banner_ok">🟢 Shizuku connected and operating</string>
-    <string name="shizuku_banner_off_title">⚠️ Shizuku is not running</string>
-    <string name="shizuku_banner_off_desc">GameUpscaler requires Shizuku permission to sharpen resolution and read telemetry without root.</string>
-    <string name="btn_launch_shizuku">Open Shizuku</string>
+    <!-- Screen 1: Home (System Info & Telemetry) -->
+    <string name="home_header_tag">SYSTEM INFO &amp; TELEMETRY</string>
+    <string name="home_title">Home</string>
+    <string name="hero_status_ready_tag">SERVICE STATUS · SSAA ENGINE (READY)</string>
+    <string name="hero_status_ready_title">Anti-Aliasing Ready · Shizuku Connected</string>
+    <string name="hero_status_off_tag">SERVICE STATUS · SHIZUKU OFFLINE</string>
+    <string name="hero_status_off_title">Shizuku Activation Required</string>
+    <string name="hero_status_ready_desc">Detected physical display %1$dx%2$d. Ready to upscale resolution and activate hardware telemetry HUD.</string>
+    <string name="hero_status_off_desc">GameUpscaler requires Shizuku permission to upscale game rendering without root. Tap button below to launch Shizuku.</string>
+    <string name="hero_btn_optimize">Boost with SSAA Now ➔</string>
+    <string name="hero_btn_launch_shizuku">Open Shizuku App ➔</string>
+    <string name="hero_metric_daily">Optimized</string>
+    <string name="hero_metric_stability">Stable</string>
+    <string name="hero_metric_battery">Battery</string>
 
-    <!-- System Telemetry Tab -->
-    <string name="card_ram_title">SYSTEM MEMORY</string>
-    <string name="card_battery_title">BATTERY &amp; POWER</string>
-    <string name="card_soc_title">PROCESSOR (SoC)</string>
-    <string name="card_display_title">DISPLAY RESOLUTION</string>
-    <string name="dash_insights">PERF INSIGHTS</string>
-    <string name="dash_reset">RESET DISPLAY</string>
+    <!-- Hardware Telemetry Cards -->
+    <string name="sec_telemetry">REALTIME HARDWARE TELEMETRY</string>
+    <string name="card_ram_title">RAM &amp; Storage</string>
+    <string name="card_ram_sub">LPDDR5X + Flash Storage</string>
+    <string name="ram_usage_fmt">Available RAM: %1$s GB / %2$s GB (%3$s GB Free)</string>
+    <string name="storage_fmt">Internal Storage: %1$s GB Free / %2$s GB</string>
+
+    <string name="card_temp_title">Thermals &amp; Battery</string>
+    <string name="card_temp_sub">Power Draw Monitoring</string>
+    <string name="temp_status_normal">OPTIMAL</string>
+    <string name="temp_status_warm">WARM</string>
+    <string name="temp_status_hot">HOT</string>
+
+    <string name="card_display_gpu_title">Display &amp; GPU</string>
+    <string name="card_display_gpu_sub">%1$d × %2$d (%3$d DPI) • %4$dHz</string>
+
+    <!-- 3-Step Setup Stepper -->
+    <string name="sec_setup_steps">SYSTEM SETUP WORKFLOW (3 STEPS)</string>
+    <string name="step_1_title">Grant Shizuku / ADB</string>
+    <string name="step_1_desc">Wireless Shizuku daemon activated</string>
+    <string name="step_2_title">Display Over Other Apps</string>
+    <string name="step_2_desc">Render floating FPS meter and realtime graphs</string>
+    <string name="step_3_title">Disable Battery Optimization</string>
+    <string name="step_3_desc">Keep background services alive during gameplay</string>
+    <string name="step_status_active">Active</string>
+    <string name="step_status_granted">Granted</string>
+    <string name="step_status_done">Done</string>
+    <string name="step_status_pending">Tap to Grant</string>
+
+    <string name="dash_insights">PERF LOGS</string>
+    <string name="dash_reset">RESET NATIVE</string>
     <string name="dash_my_games">FAVORITE GAMES</string>
-    <string name="dash_manage">Browse All</string>
+    <string name="dash_manage">View All</string>
     <string name="dash_add_game">Add</string>
-    <string name="dash_live_monitor">LIVE TELEMETRY</string>
-    <string name="dash_free_ram">Free %1$s GB</string>
-    <string name="ram_usage_fmt">%1$d%% Used (%2$s GB / %3$s GB)</string>
-    <string name="soc_temp_fmt">%1$s°C Peak</string>
-    <string name="cpu_clock_fmt">%1$s GHz Peak</string>
 
-    <!-- Tool Quick Actions -->
-    <string name="tool_ssaa">SSAA SCALE</string>
-    <string name="tool_auto_hud">AUTO HUD</string>
-    <string name="tool_live_hud">PREVIEW HUD</string>
-    <string name="tool_tile">QUICK TILE</string>
-    <string name="tool_sensors">THERMALS</string>
-    <string name="tool_logs">PERF LOGS</string>
+    <!-- Screen 2: Anti-Aliasing (SSAA Resolution & Game Library) -->
+    <string name="ssaa_header_tag">RESOLUTION &amp; GRAPHICS</string>
+    <string name="ssaa_title">Anti-Aliasing</string>
+    <string name="ssaa_subtitle">Select SSAA scaling factor to sharpen visuals and eliminate 3D jagged edges in games.</string>
+    <string name="ssaa_global_title">Global Daemon Mode</string>
+    <string name="ssaa_global_desc">Operating on GPU Renderer</string>
+    <string name="ssaa_global_hint">Automatically applied when launching supported games below.</string>
+    <string name="ssaa_scale_group_title">SSAA RESOLUTION SCALE</string>
 
-    <!-- Resolution / SSAA Tab -->
-    <string name="ssaa_guide_title">How SSAA Upscaling Works</string>
-    <string name="ssaa_guide_desc">SSAA increases your virtual screen resolution via Shizuku, drastically improving 3D rendering clarity and smoothing out jagged edges. Native resolution is automatically restored when you exit the game.</string>
-    <string name="ssaa_native_label">Native Screen</string>
-    <string name="ssaa_target_label">Upscaled Target</string>
-    <string name="ssaa_scale_select_title">SELECT UPSCALE FACTOR</string>
-    <string name="ssaa_preset_110_title">1.10x Gentle</string>
-    <string name="ssaa_preset_110_desc">Light sharpening, low thermal impact, highly battery-efficient</string>
-    <string name="ssaa_preset_115_title">1.15x Balanced (Recommended)</string>
-    <string name="ssaa_preset_115_desc">Optimal balance between razor-sharp graphics and smooth FPS</string>
-    <string name="ssaa_preset_120_title">1.20x High Clarity</string>
-    <string name="ssaa_preset_120_desc">Greatly enhanced texture sharpness for mid-to-high end devices</string>
-    <string name="ssaa_preset_125_title">1.25x Maximum Clarity</string>
-    <string name="ssaa_preset_125_desc">Maximum anti-aliasing quality, best suited for flagship chipsets</string>
-    <string name="opt_auto_hud_title">Launch HUD overlay automatically with game</string>
-    <string name="opt_auto_hud_desc">Pops up the floating FPS and hardware meter upon entering game</string>
-    <string name="sec_game_list">GAME &amp; APPLICATION LIBRARY</string>
+    <string name="ssaa_preset_115_title">1.15x</string>
+    <string name="ssaa_preset_115_tag">Default</string>
+    <string name="ssaa_preset_115_desc">Light anti-aliasing, smooth, low battery impact (+3%), stable thermals.</string>
 
-    <!-- HUD Configuration Tab -->
-    <string name="sec_hud_preview">LIVE HUD PREVIEW</string>
+    <string name="ssaa_preset_125_title">1.25x</string>
+    <string name="ssaa_preset_125_tag">Recommended</string>
+    <string name="ssaa_preset_125_desc">Crisp texture clarity, ideal for MOBA and Strategy games (+6% battery).</string>
+
+    <string name="ssaa_preset_150_title">1.50x</string>
+    <string name="ssaa_preset_150_tag">High GPU</string>
+    <string name="ssaa_preset_150_desc">Completely eliminates jagged edges, smooth graphics, requires powerful GPU (+12%).</string>
+
+    <string name="ssaa_preset_200_title">2.00x</string>
+    <string name="ssaa_preset_200_tag">High Heat</string>
+    <string name="ssaa_preset_200_desc">4K Ultra rendering fidelity, maximum texture detail, high thermal draw (+20%).</string>
+
+    <string name="btn_render_test">Test Render</string>
+    <string name="sec_game_list_tag">SUPPORTED GAME LIBRARY</string>
+    <string name="btn_change_scale">Change</string>
+
+    <!-- Screen 3: Telemetry HUD -->
+    <string name="hud_header_tag">HUD OVERLAY &amp; HARDWARE TELEMETRY</string>
+    <string name="hud_title">HUD Meter</string>
+    <string name="hud_subtitle">Customize realtime in-game hardware monitoring metrics and telemetry style.</string>
+    <string name="hud_preview_title">Real-time Simulation Canvas</string>
+    <string name="hud_preview_ratio">Aspect 20:9</string>
     <string name="btn_test_hud_on">👁️ Test HUD on Screen</string>
     <string name="btn_test_hud_off">⏹️ Stop HUD Preview</string>
-    <string name="sec_hud_style">HUD APPEARANCE &amp; LAYOUT</string>
-    <string name="lbl_layout_orientation">Layout Orientation</string>
-    <string name="lbl_font_size">Text Size</string>
-    <string name="lbl_bg_style">Background Opacity</string>
-    <string name="sec_hud_poll">POLLING INTERVAL</string>
-    <string name="sec_hud_metrics">TELEMETRY METRICS</string>
-    <string name="hud_guide_tips">💡 Tips: Tap floating HUD while gaming to record FPS &amp; Wattage logs • Drag anywhere freely • Drag into bottom-center corner to dismiss.</string>
+    <string name="btn_reset_pos">Reset Pos</string>
 
-    <!-- App / List Controls -->
-    <string name="subtitle_hint">Tap game to launch • Long-press for Home shortcut • Tap badge for custom scale</string>
-    <string name="reading_display">Reading display resolution...</string>
-    <string name="preview_display_fmt">%1$dx%2$d ➔ %4$dx%5$d (%6$d DPI)</string>
-    <string name="btn_reset_display">RESET NATIVE</string>
+    <string name="sec_hud_metrics_tag">TELEMETRY PARAMETERS</string>
+    <string name="metric_fps_title">Frame Rate (FPS)</string>
+    <string name="metric_fps_desc">Real-time FPS, 0.1 decimal precision &amp; drop alerts</string>
+    <string name="metric_temp_title">Battery &amp; CPU Temp (°C)</string>
+    <string name="metric_temp_desc">Shifts amber/red when reaching thermal limit &gt;45°C</string>
+    <string name="metric_battery_title">Battery &amp; Power Draw (Watt / %)</string>
+    <string name="metric_battery_desc">Discharge current mA, instantaneous wattage and charge status</string>
+    <string name="metric_gpu_title">CPU / GPU Clock &amp; Utilization (%)</string>
+    <string name="metric_gpu_desc">Adreno GPU load and Cortex cluster frequencies</string>
+    <string name="metric_ram_title">RAM Consumption (GB / %)</string>
+    <string name="metric_ram_desc">Available LPDDR5X memory &amp; active game PSS</string>
+    <string name="metric_skin_title">SoC &amp; Surface Chassis Temp (°C)</string>
+    <string name="metric_skin_desc">Device chassis surface and mainboard temperatures</string>
+    <string name="metric_vram_title">GPU Video RAM (VRAM)</string>
+    <string name="metric_vram_desc">Graphics memory allocated by active game process</string>
+    <string name="metric_cam_title">Camera Module Temp (°C)</string>
+    <string name="metric_cam_desc">Lens assembly and optical image stabilization thermals</string>
 
-    <string name="chk_telemetry_hud">Enable HUD in Game</string>
-    <string name="btn_orient_vert">Vertical Column</string>
-    <string name="btn_orient_horiz">Horizontal 1-Line</string>
-    <string name="btn_test_hud">Toggle HUD</string>
+    <string name="sec_hud_styling_tag">HUD DIMENSIONS &amp; APPEARANCE</string>
+    <string name="lbl_scale">HUD Scale Size</string>
+    <string name="lbl_opacity">Background Opacity</string>
+    <string name="lbl_layout_style">Layout Mode</string>
+    <string name="layout_horizontal">Horizontal Bar</string>
+    <string name="layout_vertical">Vertical Stack</string>
+    <string name="layout_compact">Compact</string>
 
-    <!-- Sizes -->
-    <string name="size_tiny">Micro</string>
-    <string name="size_small">Small</string>
-    <string name="size_medium">Medium</string>
-    <string name="size_large">Large</string>
+    <string name="size_tiny">70% (Small)</string>
+    <string name="size_small">85%</string>
+    <string name="size_medium">100% (Standard)</string>
+    <string name="size_large">125% (Wide)</string>
 
-    <!-- Backgrounds -->
-    <string name="bg_solid">Solid</string>
-    <string name="bg_glass">Glass</string>
-    <string name="bg_sheer">Sheer</string>
+    <string name="bg_solid">100% (Solid)</string>
+    <string name="bg_glass">85% (Glass)</string>
+    <string name="bg_sheer">40% (Sheer)</string>
     <string name="bg_clear">Text Only</string>
 
-    <!-- Polling -->
     <string name="poll_auto">Auto</string>
     <string name="poll_300ms">150ms</string>
     <string name="poll_1s">300ms</string>
     <string name="poll_2s">1s</string>
 
-    <!-- Metric details -->
-    <string name="metric_fps">Frame Rate (FPS)</string>
-    <string name="desc_fps">Real-time frame rate with 0.1 decimal precision</string>
-    <string name="metric_watt">Power Draw (W)</string>
-    <string name="desc_watt">Instantaneous battery discharge / charge wattage</string>
-    <string name="metric_vram">GPU VRAM</string>
-    <string name="desc_vram">Graphics memory allocated by the active game</string>
-    <string name="metric_cpu_freq">CPU Clock</string>
-    <string name="desc_cpu_freq">Peak frequency across active CPU clusters</string>
-    <string name="metric_bat_temp">Battery Temp</string>
-    <string name="desc_bat_temp">Battery cell temperature in Celsius</string>
-    <string name="metric_soc_temp">SoC Peak Temp</string>
-    <string name="desc_soc_temp">Highest thermal reading between CPU and GPU</string>
-    <string name="metric_cpu_temp">CPU Core Temp</string>
-    <string name="desc_cpu_temp">Silicon core temperature of processor clusters</string>
-    <string name="metric_gpu_temp">GPU Core Temp</string>
-    <string name="desc_gpu_temp">Graphics processor thermal zone reading</string>
-    <string name="metric_ddr_temp">DDR Memory Temp</string>
-    <string name="desc_ddr_temp">LPDDR / LLCC memory controller temperature</string>
-    <string name="metric_cam_temp">Camera Sensor Temp</string>
-    <string name="desc_cam_temp">Camera module and OIS thermal reading</string>
-    <string name="metric_skin_temp">Board / Skin Temp</string>
-    <string name="desc_skin_temp">Device chassis and mainboard surface temperature</string>
-    <string name="metric_ram">Memory Usage (RAM)</string>
-    <string name="desc_ram">Game PSS memory or system RAM utilization</string>
-
-    <!-- Quick Tile & Actions -->
-    <string name="btn_quick_tile">Quick Tile</string>
-    <string name="hint_quick_tile">Pull down Quick Settings -&gt; Tap Edit (✏️) -&gt; Drag \'FPS HUD\' tile up!</string>
-    <string name="toast_quick_tile_added">✅ Added FPS HUD tile to Quick Settings!</string>
-    <string name="btn_reset_pos">Reset Pos</string>
-    <string name="toast_pos_reset">✅ HUD position reset to default!</string>
-    <string name="btn_sensors">Sensors</string>
-    <string name="btn_perf_logs">Perf Logs</string>
+    <string name="hud_guide_tips">💡 Tips: Tap the floating HUD during gameplay to record performance logs • Drag anywhere freely • Drag into bottom corner to dismiss.</string>
+    <string name="subtitle_hint">Tap game to launch • Long-press for Home shortcut • Tap Change for custom scale</string>
+    <string name="reading_display">Reading display resolution...</string>
+    <string name="preview_display_fmt">%1$dx%2$d ➔ %4$dx%5$d (%6$d DPI)</string>
+    <string name="btn_reset_display">RESET NATIVE</string>
 
     <string name="chk_pinned_only">Favorites</string>
     <string name="hint_search">Search game or app name...</string>
-
     <string name="toast_scanning_sensors">Scanning device thermal zones...</string>
     <string name="no_sensors_found">No readable thermal sensors found.</string>
     <string name="dlg_sensors_title">Device Thermal Sensors (%1$d zones)</string>
@@ -196,4 +209,10 @@
     <string name="chart_power_title">Power Draw (Watts)</string>
     <string name="chart_temp_title">Thermal Profile (SoC vs Battery °C)</string>
     <string name="chart_scrub_hint">Touch &amp; drag across any chart to inspect exact values</string>
+    <string name="btn_quick_tile">Control Center</string>
+    <string name="hint_quick_tile">Pull down Quick Settings -&gt; Tap Edit (✏️) -&gt; Drag \'FPS HUD\' tile up!</string>
+    <string name="toast_quick_tile_added">✅ Added FPS HUD tile to Quick Settings!</string>
+    <string name="toast_pos_reset">✅ HUD position reset to default!</string>
+    <string name="btn_sensors">Sensors</string>
+    <string name="btn_perf_logs">Perf Logs</string>
 </resources>
