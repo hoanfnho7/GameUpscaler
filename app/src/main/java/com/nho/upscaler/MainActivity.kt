@@ -93,10 +93,13 @@ class MainActivity : Activity() {
     private lateinit var pinnedStripRow: LinearLayout
 
     // Tab 2: SSAA Resolution Views
-    private lateinit var globalSsaaSwitch: TextView
+    private lateinit var globalSsaaSwitch: ModernToggleSwitch
     private val ssaaCards = mutableListOf<LinearLayout>()
-    private val ssaaRadios = mutableListOf<TextView>()
+    private val ssaaRadios = mutableListOf<ModernRadioIndicator>()
     private val ssaaResolutions = mutableListOf<TextView>()
+
+    private fun dp(dp: Int): Int = (dp * resources.displayMetrics.density + 0.5f).toInt()
+    private fun dp(dp: Float): Float = dp * resources.displayMetrics.density
 
     // Tab 3: HUD Tuning Views
     private var liveHudMockTv: TextView? = null
@@ -151,7 +154,7 @@ class MainActivity : Activity() {
         val headerBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(22, 28, 22, 12)
+            setPadding(dp(20), dp(18), dp(20), dp(12))
             setBackgroundColor(UiTheme.bgRoot(this@MainActivity))
         }
 
@@ -166,19 +169,19 @@ class MainActivity : Activity() {
         }
         titleLine.addView(TextView(this).apply {
             text = "SSAA TOOL"
-            textSize = 17.5f
+            textSize = 18f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
         })
         titleLine.addView(TextView(this).apply {
             text = "PRO"
-            textSize = 9.5f
+            textSize = 11f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.accent(this@MainActivity))
             background = UiTheme.pillBox(UiTheme.accentSoft(this@MainActivity))
-            setPadding(10, 2, 10, 2)
+            setPadding(dp(8), dp(2), dp(8), dp(2))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                leftMargin = 8
+                leftMargin = dp(8)
             }
         })
         brandCol.addView(titleLine)
@@ -186,15 +189,15 @@ class MainActivity : Activity() {
         val socRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 2, 0, 0)
+            setPadding(0, dp(3), 0, 0)
         }
         socRow.addView(View(this).apply {
             background = UiTheme.ovalBox(UiTheme.TECH_EMERALD, 0, 0)
-            layoutParams = LinearLayout.LayoutParams(12, 12).apply { rightMargin = 8 }
+            layoutParams = LinearLayout.LayoutParams(dp(8), dp(8)).apply { rightMargin = dp(6) }
         })
         socRow.addView(TextView(this).apply {
             text = getDeviceSocName()
-            textSize = 10f
+            textSize = 12f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
         })
@@ -208,28 +211,28 @@ class MainActivity : Activity() {
                 2 -> Lang.str(this@MainActivity, R.string.theme_light)
                 else -> Lang.str(this@MainActivity, R.string.theme_auto)
             }
-            textSize = 10.5f
+            textSize = 12f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
-            setPadding(12, 7, 12, 7)
-            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), 12f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), dp(12f), 1, UiTheme.strokeSubtle(this@MainActivity))
             setOnClickListener {
                 prefsMgr.themeMode = (prefsMgr.themeMode + 1) % 3
                 recreate()
             }
         }
         headerBar.addView(themeBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            rightMargin = 8
+            rightMargin = dp(8)
         })
 
         // Language Toggle (Auto / VI / EN)
         val langBtn = TextView(this).apply {
             text = Lang.modeBadge(this@MainActivity)
-            textSize = 10.5f
+            textSize = 12f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
-            setPadding(12, 7, 12, 7)
-            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), 12f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), dp(12f), 1, UiTheme.strokeSubtle(this@MainActivity))
             setOnClickListener {
                 prefsMgr.appLang = (prefsMgr.appLang + 1) % 3
                 notifyOverlayStyleUpdated()
@@ -262,8 +265,8 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setBackgroundColor(UiTheme.bgNav(this@MainActivity))
-            setPadding(16, 8, 16, 14)
-            elevation = 16f
+            setPadding(dp(16), dp(8), dp(16), dp(12))
+            elevation = dp(8f)
         }
 
         navHomeBtn = makeNavItem("⊞", Lang.str(this, R.string.tab_home)) { switchTab(0) }
@@ -300,19 +303,19 @@ class MainActivity : Activity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(8, 8, 8, 8)
+            setPadding(dp(12), dp(8), dp(12), dp(8))
             setOnClickListener { onClick() }
             addView(TextView(this@MainActivity).apply {
                 text = icon
-                textSize = 17f
+                textSize = 20f
                 gravity = Gravity.CENTER
             })
             addView(TextView(this@MainActivity).apply {
                 text = title
-                textSize = 11f
+                textSize = 12f
                 setTypeface(null, Typeface.BOLD)
                 gravity = Gravity.CENTER
-                setPadding(0, 3, 0, 0)
+                setPadding(0, dp(3), 0, 0)
             })
         }
     }
@@ -349,37 +352,39 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this).apply { isVerticalScrollBarEnabled = false }
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(20, 4, 20, 24)
+            setPadding(dp(18), dp(8), dp(18), dp(28))
         }
 
         // Section Title
         val titleCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(2, 4, 2, 12)
+            setPadding(0, dp(4), 0, dp(16))
         }
         titleCol.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.home_header_tag)
-            textSize = 10f
+            textSize = 11f
+            letterSpacing = 0.08f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.TECH_AMBER)
         })
         val titleRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(2), 0, 0)
         }
         titleRow.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.home_title)
-            textSize = 24f
+            textSize = 25f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
         titleRow.addView(TextView(this).apply {
             text = "${Build.MANUFACTURER.replaceFirstChar { it.uppercase() }} • ${Build.MODEL}"
-            textSize = 10.5f
+            textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setPadding(12, 5, 12, 5)
+            setPadding(dp(12), dp(5), dp(12), dp(5))
             background = UiTheme.pillBox(UiTheme.bgTile(this@MainActivity))
         })
         titleCol.addView(titleRow)
@@ -388,13 +393,14 @@ class MainActivity : Activity() {
         // 1. Hero Status Card (GameCraft SSAA Engine Status)
         heroCardView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(20, 18, 20, 18)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 22f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(20), dp(20), dp(20), dp(20))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(20f), 1, UiTheme.strokeSubtle(this@MainActivity))
         }
 
         heroTagTv = TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.hero_status_ready_tag)
-            textSize = 10f
+            textSize = 11f
+            letterSpacing = 0.08f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.TECH_AMBER)
         }
@@ -402,30 +408,30 @@ class MainActivity : Activity() {
 
         heroTitleTv = TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.hero_status_ready_title)
-            textSize = 17f
+            textSize = 18f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
-            setPadding(0, 4, 0, 0)
+            setPadding(0, dp(6), 0, 0)
         }
         heroCardView.addView(heroTitleTv)
 
         heroDescTv = TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.hero_status_ready_desc, physW, physH)
-            textSize = 11.5f
+            textSize = 13.5f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setLineSpacing(3f, 1.15f)
-            setPadding(0, 6, 0, 14)
+            setLineSpacing(dp(3f), 1.2f)
+            setPadding(0, dp(6), 0, dp(16))
         }
         heroCardView.addView(heroDescTv)
 
         // Big Primary CTA Pill Button
         heroCtaBtn = TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.hero_btn_optimize)
-            textSize = 13.5f
+            textSize = 14.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textOnAccent(this@MainActivity))
             gravity = Gravity.CENTER
-            setPadding(20, 14, 20, 14)
+            setPadding(dp(20), dp(14), dp(20), dp(14))
             background = UiTheme.pillBox(UiTheme.accent(this@MainActivity))
             setOnClickListener {
                 if (!ShizukuHelper.isBinderAlive()) {
@@ -441,14 +447,14 @@ class MainActivity : Activity() {
         val heroStatsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(8, 12, 8, 6)
-            background = UiTheme.roundBox(UiTheme.bgNav(this@MainActivity), 14f)
+            setPadding(dp(10), dp(12), dp(10), dp(10))
+            background = UiTheme.roundBox(UiTheme.bgNav(this@MainActivity), dp(14f))
         }
         val col1 = makeHeroStatCol("6 lượt", Lang.str(this, R.string.hero_metric_daily), UiTheme.textPrimary(this))
         val col2 = makeHeroStatCol("100%", Lang.str(this, R.string.hero_metric_stability), UiTheme.TECH_EMERALD)
         heroBatTempTv = TextView(this).apply {
             text = "41.5°C"
-            textSize = 14f
+            textSize = 16f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.TECH_AMBER)
             gravity = Gravity.CENTER
@@ -460,38 +466,39 @@ class MainActivity : Activity() {
             addView(heroBatTempTv)
             addView(TextView(this@MainActivity).apply {
                 text = Lang.str(this@MainActivity, R.string.hero_metric_battery)
-                textSize = 9.5f
+                textSize = 11f
                 setTextColor(UiTheme.textSecondary(this@MainActivity))
                 gravity = Gravity.CENTER
-                setPadding(0, 2, 0, 0)
+                setPadding(0, dp(2), 0, 0)
             })
         }
         heroStatsRow.addView(col1)
         heroStatsRow.addView(col2)
         heroStatsRow.addView(col3)
         heroCardView.addView(heroStatsRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            topMargin = 12
+            topMargin = dp(16)
         })
         container.addView(heroCardView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = 14
+            bottomMargin = dp(18)
         })
 
         // 2. Realtime Hardware Telemetry Group Header
         val telemHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(4, 4, 4, 8)
+            setPadding(dp(4), dp(4), dp(4), dp(10))
         }
         telemHeader.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.sec_telemetry)
-            textSize = 10f
+            textSize = 11f
+            letterSpacing = 0.08f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
         telemHeader.addView(TextView(this).apply {
             text = "● LIVE POLLING"
-            textSize = 9.5f
+            textSize = 11f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.TECH_EMERALD)
         })
@@ -500,8 +507,8 @@ class MainActivity : Activity() {
         // Card A: RAM & Storage
         val ramCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(18, 14, 18, 14)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 18f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(18f), 1, UiTheme.strokeSubtle(this@MainActivity))
         }
         val ramTop = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -509,8 +516,8 @@ class MainActivity : Activity() {
         }
         ramTop.addView(TextView(this).apply {
             text = "💾"
-            textSize = 18f
-            setPadding(0, 0, 12, 0)
+            textSize = 20f
+            setPadding(0, 0, dp(12), 0)
         })
         val ramTextCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -518,49 +525,50 @@ class MainActivity : Activity() {
         }
         ramTextCol.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.card_ram_title)
-            textSize = 13.5f
+            textSize = 16f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
         })
         ramTextCol.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.card_ram_sub)
-            textSize = 10f
+            textSize = 12.5f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
+            setPadding(0, dp(2), 0, 0)
         })
         ramTop.addView(ramTextCol)
 
         ramUsageTv = TextView(this).apply {
             text = "47% ĐÃ DÙNG"
-            textSize = 10.5f
+            textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.accent(this@MainActivity))
-            setPadding(10, 4, 10, 4)
+            setPadding(dp(10), dp(4), dp(10), dp(4))
             background = UiTheme.pillBox(UiTheme.bgTile(this@MainActivity))
         }
         ramTop.addView(ramUsageTv)
         ramCard.addView(ramTop)
 
         ramBarView = ModernRamBarView(this)
-        ramCard.addView(ramBarView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 16).apply {
-            topMargin = 12
-            bottomMargin = 8
+        ramCard.addView(ramBarView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(8)).apply {
+            topMargin = dp(14)
+            bottomMargin = dp(10)
         })
 
         storageUsageTv = TextView(this).apply {
             text = "Bộ nhớ trong: Còn trống ... GB"
-            textSize = 10.5f
+            textSize = 12.5f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
         }
         ramCard.addView(storageUsageTv)
         container.addView(ramCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = 10
+            bottomMargin = dp(16)
         })
 
         // Card B: Nhiệt độ & Nguồn pin
         val tempCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(18, 14, 18, 14)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 18f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(18f), 1, UiTheme.strokeSubtle(this@MainActivity))
         }
         val tempTop = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -568,8 +576,8 @@ class MainActivity : Activity() {
         }
         tempTop.addView(TextView(this).apply {
             text = "🌡️"
-            textSize = 18f
-            setPadding(0, 0, 12, 0)
+            textSize = 20f
+            setPadding(0, 0, dp(12), 0)
         })
         val tempTextCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -577,23 +585,24 @@ class MainActivity : Activity() {
         }
         tempTextCol.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.card_temp_title)
-            textSize = 13.5f
+            textSize = 16f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
         })
         tempTextCol.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.card_temp_sub)
-            textSize = 10f
+            textSize = 12.5f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
+            setPadding(0, dp(2), 0, 0)
         })
         tempTop.addView(tempTextCol)
 
         val tempBadge = TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.temp_status_normal)
-            textSize = 10.5f
+            textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.TECH_EMERALD)
-            setPadding(10, 4, 10, 4)
+            setPadding(dp(10), dp(4), dp(10), dp(4))
             background = UiTheme.pillBox(UiTheme.bgTile(this@MainActivity))
         }
         tempTop.addView(tempBadge)
@@ -603,7 +612,7 @@ class MainActivity : Activity() {
         val threeGrid = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 12, 0, 0)
+            setPadding(0, dp(14), 0, 0)
         }
         val cell1 = makeTelemetryCell("Pin", "--%", "--°C")
         batPctTv = cell1.getChildAt(1) as TextView
@@ -615,25 +624,25 @@ class MainActivity : Activity() {
         val cell3 = makeTelemetryCell("Chế độ", "Pin xả", "0.0W")
         batModeTv = cell3.getChildAt(2) as TextView
 
-        threeGrid.addView(cell1, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 })
-        threeGrid.addView(cell2, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 })
+        threeGrid.addView(cell1, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) })
+        threeGrid.addView(cell2, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) })
         threeGrid.addView(cell3, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         tempCard.addView(threeGrid)
         container.addView(tempCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = 10
+            bottomMargin = dp(16)
         })
 
         // Card C: Màn hình & GPU
         val dispCard = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(18, 14, 18, 14)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 18f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(18f), 1, UiTheme.strokeSubtle(this@MainActivity))
         }
         dispCard.addView(TextView(this).apply {
             text = "🖥️"
-            textSize = 18f
-            setPadding(0, 0, 12, 0)
+            textSize = 20f
+            setPadding(0, 0, dp(12), 0)
         })
         val dispCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -641,14 +650,15 @@ class MainActivity : Activity() {
         }
         dispCol.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.card_display_gpu_title)
-            textSize = 13.5f
+            textSize = 16f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
         })
         displaySubTv = TextView(this).apply {
             text = "1080 x 2400 (420 DPI)"
-            textSize = 10.5f
+            textSize = 13f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
+            setPadding(0, dp(2), 0, 0)
         }
         dispCol.addView(displaySubTv)
         dispCard.addView(dispCol)
@@ -659,36 +669,38 @@ class MainActivity : Activity() {
         }
         gpuCol.addView(TextView(this).apply {
             text = "Adreno / Mali"
-            textSize = 11f
+            textSize = 13f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.accent(this@MainActivity))
         })
         gpuCol.addView(TextView(this).apply {
             text = "Vulkan 1.3"
-            textSize = 9.5f
+            textSize = 11.5f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
+            setPadding(0, dp(2), 0, 0)
         })
         dispCard.addView(gpuCol)
         container.addView(dispCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = 14
+            bottomMargin = dp(18)
         })
 
         // 3. System Setup Stepper (3 Steps List)
         val stepHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(4, 4, 4, 8)
+            setPadding(dp(4), dp(4), dp(4), dp(10))
         }
         stepHeader.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.sec_setup_steps)
-            textSize = 10f
+            textSize = 11f
+            letterSpacing = 0.08f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
         stepHeader.addView(TextView(this).apply {
             text = "3/3 Sẵn sàng"
-            textSize = 9.5f
+            textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.accent(this@MainActivity))
         })
@@ -703,7 +715,7 @@ class MainActivity : Activity() {
             isOk = ShizukuHelper.isBinderAlive()
         ) { launchShizukuApp() }
         step1Badge = b1
-        container.addView(s1Row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8 })
+        container.addView(s1Row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
 
         // Step 2: Overlay
         val (s2Row, b2) = makeStepRow(
@@ -716,7 +728,7 @@ class MainActivity : Activity() {
             startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         }
         step2Badge = b2
-        container.addView(s2Row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 8 })
+        container.addView(s2Row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) })
 
         // Step 3: Battery Optimization
         val (s3Row, b3) = makeStepRow(
@@ -731,7 +743,7 @@ class MainActivity : Activity() {
             } catch (_: Exception) {}
         }
         step3Badge = b3
-        container.addView(s3Row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 14 })
+        container.addView(s3Row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(18) })
 
         // 4. Quick Action Tools Row (Reset, Insights, Sensors, Quick Tile)
         val toolRow = LinearLayout(this).apply {
@@ -745,37 +757,38 @@ class MainActivity : Activity() {
                 stopService(Intent(this, FpsOverlayService::class.java))
                 Toast.makeText(this, Lang.str(this, R.string.toast_display_reset), Toast.LENGTH_SHORT).show()
             }
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 })
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) })
 
         toolRow.addView(makeSquareAction("📈", Lang.str(this, R.string.dash_insights)) {
             startActivity(Intent(this, PerfChartActivity::class.java))
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 })
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) })
 
         toolRow.addView(makeSquareAction("🌡️", Lang.str(this, R.string.btn_sensors)) {
             showThermalInspectorDialog()
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 })
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) })
 
         toolRow.addView(makeSquareAction("🎛️", Lang.str(this, R.string.btn_quick_tile)) {
             requestAddQuickTile()
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        container.addView(toolRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 14 })
+        container.addView(toolRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(18) })
 
         // 5. Pinned Games Strip
         val gamesHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(4, 4, 4, 8)
+            setPadding(dp(4), dp(4), dp(4), dp(10))
         }
         gamesHeader.addView(TextView(this).apply {
             text = "⭐ " + Lang.str(this@MainActivity, R.string.dash_my_games)
-            textSize = 10f
+            textSize = 11f
+            letterSpacing = 0.08f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
         gamesHeader.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.dash_manage) + " ➔"
-            textSize = 10.5f
+            textSize = 12f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.accent(this@MainActivity))
             setOnClickListener { switchTab(1) }
@@ -784,7 +797,7 @@ class MainActivity : Activity() {
 
         val stripScroll = HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
-            setPadding(0, 0, 0, 8)
+            setPadding(0, 0, 0, dp(8))
         }
         pinnedStripRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -804,17 +817,17 @@ class MainActivity : Activity() {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             addView(TextView(this@MainActivity).apply {
                 text = value
-                textSize = 14f
+                textSize = 16f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(valColor)
                 gravity = Gravity.CENTER
             })
             addView(TextView(this@MainActivity).apply {
                 text = label
-                textSize = 9.5f
+                textSize = 11f
                 setTextColor(UiTheme.textSecondary(this@MainActivity))
                 gravity = Gravity.CENTER
-                setPadding(0, 2, 0, 0)
+                setPadding(0, dp(2), 0, 0)
             })
         }
     }
@@ -822,25 +835,25 @@ class MainActivity : Activity() {
     private fun makeTelemetryCell(title: String, val1: String, val2: String): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(10, 8, 10, 8)
-            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), 12f)
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), dp(12f))
             addView(TextView(this@MainActivity).apply {
                 text = title
-                textSize = 9.5f
+                textSize = 11f
                 setTextColor(UiTheme.textSecondary(this@MainActivity))
             })
             addView(TextView(this@MainActivity).apply {
                 text = val1
-                textSize = 13.5f
+                textSize = 16f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(UiTheme.textPrimary(this@MainActivity))
-                setPadding(0, 2, 0, 0)
+                setPadding(0, dp(2), 0, 0)
             })
             addView(TextView(this@MainActivity).apply {
                 text = val2
-                textSize = 10f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(UiTheme.accent(this@MainActivity))
+                textSize = 11.5f
+                setTextColor(UiTheme.TECH_EMERALD)
+                setPadding(0, dp(1), 0, 0)
             })
         }
     }
@@ -849,45 +862,45 @@ class MainActivity : Activity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(14, 12, 14, 12)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 16f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(16f), 1, UiTheme.strokeSubtle(this@MainActivity))
             setOnClickListener { onClick() }
         }
         val iconBox = TextView(this).apply {
             text = icon
-            textSize = 14f
+            textSize = 15f
             setTypeface(null, Typeface.BOLD)
             setTextColor(if (isOk) UiTheme.accent(this@MainActivity) else UiTheme.TECH_AMBER)
             gravity = Gravity.CENTER
             background = UiTheme.ovalBox(if (isOk) UiTheme.accentSoft(this@MainActivity) else UiTheme.bgTile(this@MainActivity), 0, 0)
-            layoutParams = LinearLayout.LayoutParams(60, 60).apply { rightMargin = 12 }
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { rightMargin = dp(12) }
         }
         row.addView(iconBox)
 
         val textCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 }
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) }
         }
         textCol.addView(TextView(this).apply {
             text = title
-            textSize = 12.5f
+            textSize = 15f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
         })
         textCol.addView(TextView(this).apply {
             text = desc
-            textSize = 10.5f
+            textSize = 12.5f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setPadding(0, 2, 0, 0)
+            setPadding(0, dp(2), 0, 0)
         })
         row.addView(textCol)
 
         val badge = TextView(this).apply {
             text = status
-            textSize = 10f
+            textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(if (isOk) UiTheme.accent(this@MainActivity) else UiTheme.TECH_AMBER)
-            setPadding(10, 4, 10, 4)
+            setPadding(dp(10), dp(4), dp(10), dp(4))
             background = UiTheme.pillBox(if (isOk) UiTheme.accentSoft(this@MainActivity) else UiTheme.bgTile(this@MainActivity))
         }
         row.addView(badge)
@@ -898,22 +911,22 @@ class MainActivity : Activity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(8, 12, 8, 12)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 14f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(8), dp(14), dp(8), dp(14))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(14f), 1, UiTheme.strokeSubtle(this@MainActivity))
             setOnClickListener { onClick() }
             addView(TextView(this@MainActivity).apply {
                 text = icon
-                textSize = 17f
+                textSize = 22f
                 gravity = Gravity.CENTER
             })
             addView(TextView(this@MainActivity).apply {
                 text = title
-                textSize = 9.5f
+                textSize = 11.5f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(UiTheme.textPrimary(this@MainActivity))
                 gravity = Gravity.CENTER
                 setSingleLine(true)
-                setPadding(0, 4, 0, 0)
+                setPadding(0, dp(4), 0, 0)
             })
         }
     }
@@ -925,40 +938,41 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this).apply { isVerticalScrollBarEnabled = false }
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(20, 4, 20, 24)
+            setPadding(dp(18), dp(8), dp(18), dp(28))
         }
 
         // Section Title
         val titleCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(2, 4, 2, 12)
+            setPadding(0, dp(4), 0, dp(16))
         }
         titleCol.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.ssaa_header_tag)
-            textSize = 10f
+            textSize = 11f
+            letterSpacing = 0.08f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(UiTheme.textSecondary(this@MainActivity))
+            setTextColor(UiTheme.accent(this@MainActivity))
         })
         titleCol.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.ssaa_title)
-            textSize = 24f
+            textSize = 25f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
         })
         titleCol.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.ssaa_subtitle)
-            textSize = 11.5f
+            textSize = 13.5f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setLineSpacing(3f, 1.15f)
-            setPadding(0, 4, 0, 0)
+            setLineSpacing(dp(3f), 1.2f)
+            setPadding(0, dp(4), 0, 0)
         })
         container.addView(titleCol)
 
         // Global Master Toggle Card
         val globalCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(18, 14, 18, 14)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 18f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(18f), 1, UiTheme.strokeSubtle(this@MainActivity))
         }
         val gTop = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -966,12 +980,12 @@ class MainActivity : Activity() {
         }
         gTop.addView(TextView(this).apply {
             text = "⚡"
-            textSize = 20f
-            setPadding(0, 0, 12, 0)
+            textSize = 22f
+            setPadding(0, 0, dp(12), 0)
         })
         val gTextCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(12) }
         }
         val gTitleRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -979,42 +993,33 @@ class MainActivity : Activity() {
         }
         gTitleRow.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.ssaa_global_title)
-            textSize = 14f
+            textSize = 16f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
         })
         gTitleRow.addView(TextView(this).apply {
             text = "DAEMON"
-            textSize = 9f
+            textSize = 10.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.accent(this@MainActivity))
             background = UiTheme.pillBox(UiTheme.accentSoft(this@MainActivity))
-            setPadding(8, 2, 8, 2)
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = 8 }
+            setPadding(dp(8), dp(2), dp(8), dp(2))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(8) }
         })
         gTextCol.addView(gTitleRow)
         gTextCol.addView(TextView(this).apply {
             text = "● " + Lang.str(this@MainActivity, R.string.ssaa_global_desc)
-            textSize = 10.5f
+            textSize = 12.5f
             setTextColor(UiTheme.TECH_EMERALD)
-            setPadding(0, 2, 0, 0)
+            setPadding(0, dp(3), 0, 0)
         })
         gTop.addView(gTextCol)
 
-        globalSsaaSwitch = TextView(this).apply {
-            text = if (enableFpsOverlay) "ON" else "OFF"
-            textSize = 11.5f
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(if (enableFpsOverlay) UiTheme.textOnAccent(this@MainActivity) else UiTheme.textSecondary(this@MainActivity))
-            setPadding(14, 6, 14, 6)
-            background = UiTheme.roundBox(
-                if (enableFpsOverlay) UiTheme.accent(this@MainActivity) else UiTheme.bgTile(this@MainActivity),
-                10f
-            )
-            setOnClickListener {
-                enableFpsOverlay = !enableFpsOverlay
-                prefsMgr.enableFpsOverlay = enableFpsOverlay
-                updateGlobalSsaaToggleStyle()
+        globalSsaaSwitch = ModernToggleSwitch(this).apply {
+            setChecked(enableFpsOverlay, animate = false, notify = false)
+            onCheckedChangeListener = { isChecked ->
+                enableFpsOverlay = isChecked
+                prefsMgr.enableFpsOverlay = isChecked
             }
         }
         gTop.addView(globalSsaaSwitch)
@@ -1022,35 +1027,36 @@ class MainActivity : Activity() {
 
         globalCard.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.ssaa_global_hint)
-            textSize = 10.5f
+            textSize = 12.5f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setPadding(0, 10, 0, 0)
+            setPadding(0, dp(12), 0, 0)
         })
         container.addView(globalCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = 14
+            bottomMargin = dp(18)
         })
 
         // SSAA Resolution Scale Selection Group
         val scaleGroup = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(18, 16, 18, 16)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 18f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(18f), 1, UiTheme.strokeSubtle(this@MainActivity))
         }
         val scaleHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, 10)
+            setPadding(0, 0, 0, dp(12))
         }
         scaleHeader.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.ssaa_scale_group_title)
-            textSize = 10f
+            textSize = 11f
+            letterSpacing = 0.08f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
         resSummaryTv = TextView(this).apply {
             text = "1080x2400"
-            textSize = 10f
+            textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.accent(this@MainActivity))
         }
@@ -1072,12 +1078,12 @@ class MainActivity : Activity() {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(14, 12, 14, 12)
+                setPadding(dp(16), dp(14), dp(16), dp(14))
                 setOnClickListener { selectGlobalFactor(factor) }
             }
             val textCol = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 }
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(12) }
             }
             val row1 = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -1086,53 +1092,51 @@ class MainActivity : Activity() {
             val scaleTitle = "${factor / 100}.${factor % 100}x"
             row1.addView(TextView(this).apply {
                 text = scaleTitle
-                textSize = 14f
+                textSize = 16f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(UiTheme.textPrimary(this@MainActivity))
             })
             val resTv = TextView(this).apply {
                 text = ""
-                textSize = 11f
+                textSize = 13f
                 setTextColor(UiTheme.textSecondary(this@MainActivity))
-                setPadding(8, 0, 8, 0)
+                setPadding(dp(8), 0, dp(8), 0)
             }
             ssaaResolutions.add(resTv)
             row1.addView(resTv)
 
             row1.addView(TextView(this).apply {
                 text = Lang.str(this@MainActivity, tagRes)
-                textSize = 9.5f
+                textSize = 11f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(UiTheme.accent(this@MainActivity))
                 background = UiTheme.pillBox(UiTheme.accentSoft(this@MainActivity))
-                setPadding(8, 2, 8, 2)
+                setPadding(dp(8), dp(2), dp(8), dp(2))
             })
             textCol.addView(row1)
 
             textCol.addView(TextView(this).apply {
                 text = Lang.str(this@MainActivity, descRes)
-                textSize = 10.5f
+                textSize = 12.5f
                 setTextColor(UiTheme.textSecondary(this@MainActivity))
-                setPadding(0, 4, 0, 0)
+                setPadding(0, dp(4), 0, 0)
             })
             card.addView(textCol)
 
-            val radioTv = TextView(this).apply {
-                text = if (factor == selectedFactor) "●" else "○"
-                textSize = 18f
-                setTextColor(if (factor == selectedFactor) UiTheme.accent(this@MainActivity) else UiTheme.textSecondary(this@MainActivity))
+            val radioIndicator = ModernRadioIndicator(this).apply {
+                isRadioSelected = (factor == selectedFactor)
             }
-            card.addView(radioTv)
+            card.addView(radioIndicator)
 
             ssaaCards.add(card)
-            ssaaRadios.add(radioTv)
+            ssaaRadios.add(radioIndicator)
             scaleGroup.addView(card, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = 8
+                bottomMargin = dp(10)
             })
         }
         refreshSsaaCardStyles()
         container.addView(scaleGroup, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = 14
+            bottomMargin = dp(18)
         })
 
         // Quick Pair Buttons: [ Reset Display ] & [ Render Test ]
@@ -1142,12 +1146,12 @@ class MainActivity : Activity() {
         }
         pairRow.addView(TextView(this).apply {
             text = "↺  " + Lang.str(this@MainActivity, R.string.btn_reset_display)
-            textSize = 12f
+            textSize = 13.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
             gravity = Gravity.CENTER
-            setPadding(14, 12, 14, 12)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 14f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(14f), 1, UiTheme.strokeSubtle(this@MainActivity))
             setOnClickListener {
                 if (ShizukuHelper.ensureReady(this@MainActivity)) {
                     ShizukuHelper.resetDisplay()
@@ -1156,43 +1160,44 @@ class MainActivity : Activity() {
                     Toast.makeText(this@MainActivity, Lang.str(this@MainActivity, R.string.toast_display_reset), Toast.LENGTH_SHORT).show()
                 }
             }
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 })
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) })
 
         pairRow.addView(TextView(this).apply {
             text = "👁️  " + Lang.str(this@MainActivity, R.string.btn_render_test)
-            textSize = 12f
+            textSize = 13.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.accent(this@MainActivity))
             gravity = Gravity.CENTER
-            setPadding(14, 12, 14, 12)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 14f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(14f), 1, UiTheme.strokeSubtle(this@MainActivity))
             setOnClickListener { toggleHudPreviewService() }
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         container.addView(pairRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = 14
+            bottomMargin = dp(18)
         })
 
         // Supported Game Library
         val gameLibCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(18, 16, 18, 16)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 18f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(18f), 1, UiTheme.strokeSubtle(this@MainActivity))
         }
         val libTop = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, 10)
+            setPadding(0, 0, 0, dp(12))
         }
         libTop.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.sec_game_list_tag)
-            textSize = 10f
+            textSize = 11f
+            letterSpacing = 0.08f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
         libTop.addView(TextView(this).apply {
             text = "${filteredApps.size} Sẵn sàng"
-            textSize = 10f
+            textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.accent(this@MainActivity))
         })
@@ -1205,13 +1210,13 @@ class MainActivity : Activity() {
         }
         val searchBox = EditText(this).apply {
             hint = Lang.str(this@MainActivity, R.string.hint_search)
-            textSize = 12f
+            textSize = 13.5f
             setSingleLine(true)
             setHintTextColor(UiTheme.textSecondary(this@MainActivity))
             setTextColor(UiTheme.textPrimary(this@MainActivity))
-            setPadding(16, 10, 16, 10)
-            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), 12f, 1, UiTheme.strokeSubtle(this@MainActivity))
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 }
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), dp(12f), 1, UiTheme.strokeSubtle(this@MainActivity))
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) }
             addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
                     currentQuery = s?.toString() ?: ""
@@ -1225,15 +1230,15 @@ class MainActivity : Activity() {
 
         val pinFilterBtn = TextView(this).apply {
             text = "★"
-            textSize = 16f
+            textSize = 18f
             setTypeface(null, Typeface.BOLD)
             gravity = Gravity.CENTER
-            setPadding(16, 8, 16, 8)
+            setPadding(dp(14), dp(8), dp(14), dp(8))
             fun updateStyle() {
                 setTextColor(if (showPinnedOnly) UiTheme.accent(this@MainActivity) else UiTheme.textSecondary(this@MainActivity))
                 background = UiTheme.roundBox(
                     if (showPinnedOnly) UiTheme.bgTileActive(this@MainActivity) else UiTheme.bgTile(this@MainActivity),
-                    12f,
+                    dp(12f),
                     1,
                     if (showPinnedOnly) UiTheme.accent(this@MainActivity) else UiTheme.strokeSubtle(this@MainActivity)
                 )
@@ -1251,9 +1256,9 @@ class MainActivity : Activity() {
 
         gameLibCard.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.subtitle_hint)
-            textSize = 10f
+            textSize = 12f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setPadding(4, 8, 4, 10)
+            setPadding(dp(4), dp(8), dp(4), dp(10))
         })
 
         val embeddedAppContainer = LinearLayout(this).apply {
@@ -1283,12 +1288,11 @@ class MainActivity : Activity() {
             if (idx < ssaaCards.size && idx < ssaaRadios.size) {
                 ssaaCards[idx].background = UiTheme.roundBox(
                     if (isSelected) UiTheme.bgTileActive(this) else UiTheme.bgTile(this),
-                    14f,
+                    dp(14f),
                     1,
                     if (isSelected) accentCol else UiTheme.strokeSubtle(this)
                 )
-                ssaaRadios[idx].text = if (isSelected) "●" else "○"
-                ssaaRadios[idx].setTextColor(if (isSelected) accentCol else UiTheme.textSecondary(this))
+                ssaaRadios[idx].isRadioSelected = isSelected
             }
             if (idx < ssaaResolutions.size) {
                 val nw = physW * factor / 100
@@ -1299,12 +1303,7 @@ class MainActivity : Activity() {
     }
 
     private fun updateGlobalSsaaToggleStyle() {
-        globalSsaaSwitch.text = if (enableFpsOverlay) "ON" else "OFF"
-        globalSsaaSwitch.setTextColor(if (enableFpsOverlay) UiTheme.textOnAccent(this) else UiTheme.textSecondary(this))
-        globalSsaaSwitch.background = UiTheme.roundBox(
-            if (enableFpsOverlay) UiTheme.accent(this) else UiTheme.bgTile(this),
-            10f
-        )
+        globalSsaaSwitch.setChecked(enableFpsOverlay, animate = true, notify = false)
     }
 
     // =========================================================================
@@ -1314,17 +1313,18 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this).apply { isVerticalScrollBarEnabled = false }
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(20, 4, 20, 24)
+            setPadding(dp(18), dp(8), dp(18), dp(28))
         }
 
         // Section Title
         val titleCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(2, 4, 2, 12)
+            setPadding(0, dp(4), 0, dp(16))
         }
         titleCol.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.hud_header_tag)
-            textSize = 10f
+            textSize = 11f
+            letterSpacing = 0.08f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.accent(this@MainActivity))
         })
@@ -1334,54 +1334,55 @@ class MainActivity : Activity() {
         }
         hRow.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.hud_title)
-            textSize = 24f
+            textSize = 25f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
         hRow.addView(TextView(this).apply {
             text = "PRO"
-            textSize = 9.5f
+            textSize = 11f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.accent(this@MainActivity))
             background = UiTheme.pillBox(UiTheme.accentSoft(this@MainActivity))
-            setPadding(10, 2, 10, 2)
+            setPadding(dp(10), dp(2), dp(10), dp(2))
         })
         titleCol.addView(hRow)
 
         titleCol.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.hud_subtitle)
-            textSize = 11.5f
+            textSize = 13.5f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setLineSpacing(3f, 1.15f)
-            setPadding(0, 4, 0, 0)
+            setLineSpacing(dp(3f), 1.2f)
+            setPadding(0, dp(4), 0, 0)
         })
         container.addView(titleCol)
 
         // 1. Live Preview Canvas
         val previewCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(18, 16, 18, 16)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 18f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(18f), 1, UiTheme.strokeSubtle(this@MainActivity))
         }
         val prevHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, 10)
+            setPadding(0, 0, 0, dp(12))
         }
         prevHeader.addView(TextView(this).apply {
             text = "👁️  " + Lang.str(this@MainActivity, R.string.hud_preview_title)
-            textSize = 10.5f
+            textSize = 11f
+            letterSpacing = 0.08f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
         prevHeader.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.hud_preview_ratio)
-            textSize = 9.5f
+            textSize = 11f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.accent(this@MainActivity))
-            setPadding(10, 3, 10, 3)
+            setPadding(dp(10), dp(3), dp(10), dp(3))
             background = UiTheme.pillBox(UiTheme.bgTile(this@MainActivity))
         })
         previewCard.addView(prevHeader)
@@ -1390,10 +1391,11 @@ class MainActivity : Activity() {
         val stageFrame = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(16, 26, 16, 26)
-            background = UiTheme.roundBox(Color.parseColor("#0C0E11"), 16f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(16), dp(26), dp(16), dp(26))
+            background = UiTheme.roundBox(Color.parseColor("#0C0E11"), dp(16f), 1, UiTheme.strokeSubtle(this@MainActivity))
         }
         val mockTv = TextView(this).apply {
+            textSize = 13.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.VOLT_LIME)
         }
@@ -1405,31 +1407,31 @@ class MainActivity : Activity() {
         val stageActions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 10, 0, 0)
+            setPadding(0, dp(12), 0, 0)
         }
         testHudToggleBtn = TextView(this).apply {
             text = Lang.str(this@MainActivity, if (FpsOverlayService.isServiceRunning) R.string.btn_test_hud_off else R.string.btn_test_hud_on)
-            textSize = 11.5f
+            textSize = 13.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(if (FpsOverlayService.isServiceRunning) UiTheme.TECH_RED else UiTheme.accent(this@MainActivity))
             gravity = Gravity.CENTER
-            setPadding(12, 9, 12, 9)
-            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), 12f, 1, if (FpsOverlayService.isServiceRunning) UiTheme.TECH_RED else UiTheme.accent(this@MainActivity))
+            setPadding(dp(14), dp(11), dp(14), dp(11))
+            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), dp(12f), 1, if (FpsOverlayService.isServiceRunning) UiTheme.TECH_RED else UiTheme.accent(this@MainActivity))
             setOnClickListener {
                 toggleHudPreviewService()
                 postDelayed({ updateTestHudButtonText() }, 250)
             }
         }
-        stageActions.addView(testHudToggleBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 })
+        stageActions.addView(testHudToggleBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) })
 
         stageActions.addView(TextView(this).apply {
             text = "↺ " + Lang.str(this@MainActivity, R.string.btn_reset_pos)
-            textSize = 11.5f
+            textSize = 13.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
             gravity = Gravity.CENTER
-            setPadding(12, 9, 12, 9)
-            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), 12f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(14), dp(11), dp(14), dp(11))
+            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), dp(12f), 1, UiTheme.strokeSubtle(this@MainActivity))
             setOnClickListener {
                 prefsMgr.resetHudPosition()
                 if (FpsOverlayService.isServiceRunning) {
@@ -1440,23 +1442,24 @@ class MainActivity : Activity() {
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         previewCard.addView(stageActions)
         container.addView(previewCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = 14
+            bottomMargin = dp(18)
         })
 
         // 2. Telemetry Parameters Selector (8 Core Metrics)
         val metricsCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(18, 16, 18, 10)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 18f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(18), dp(18), dp(18), dp(12))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(18f), 1, UiTheme.strokeSubtle(this@MainActivity))
         }
         val metHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, 8)
+            setPadding(0, 0, 0, dp(10))
         }
         metHeader.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.sec_hud_metrics_tag)
-            textSize = 10f
+            textSize = 11f
+            letterSpacing = 0.08f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
@@ -1480,87 +1483,82 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(4, 11, 4, 11)
+                setPadding(dp(4), dp(12), dp(4), dp(12))
             }
             row.addView(TextView(this).apply {
                 text = spec.icon
-                textSize = 16f
-                setPadding(0, 0, 12, 0)
+                textSize = 18f
+                setPadding(0, 0, dp(12), 0)
             })
             val textCol = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 10 }
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(12) }
             }
             textCol.addView(TextView(this).apply {
                 text = Lang.str(this@MainActivity, spec.titleId)
-                textSize = 13f
+                textSize = 15f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(UiTheme.textPrimary(this@MainActivity))
             })
             textCol.addView(TextView(this).apply {
                 text = Lang.str(this@MainActivity, spec.descId)
-                textSize = 10.5f
+                textSize = 12.5f
                 setTextColor(UiTheme.textSecondary(this@MainActivity))
-                setPadding(0, 2, 0, 0)
+                setPadding(0, dp(2), 0, 0)
             })
             row.addView(textCol)
 
-            val toggleBtn = TextView(this).apply {
-                textSize = 11f
-                setTypeface(null, Typeface.BOLD)
-                gravity = Gravity.CENTER
-                setPadding(12, 4, 12, 4)
-                fun update() {
-                    text = if (enabled) "ON" else "OFF"
-                    setTextColor(if (enabled) UiTheme.textOnAccent(this@MainActivity) else UiTheme.textSecondary(this@MainActivity))
-                    background = UiTheme.roundBox(
-                        if (enabled) UiTheme.accent(this@MainActivity) else UiTheme.bgTile(this@MainActivity),
-                        8f
-                    )
-                }
-                update()
-                row.setOnClickListener {
-                    enabled = !enabled
-                    prefsMgr.setMetric(spec.key, enabled)
-                    update()
+            val toggleSwitch = ModernToggleSwitch(this).apply {
+                setChecked(enabled, animate = false, notify = false)
+                onCheckedChangeListener = { isChecked ->
+                    enabled = isChecked
+                    prefsMgr.setMetric(spec.key, isChecked)
                     updateLiveHudMockup()
                     notifyOverlayStyleUpdated()
                 }
             }
-            row.addView(toggleBtn)
+            row.setOnClickListener {
+                toggleSwitch.setChecked(!toggleSwitch.isChecked, animate = true, notify = true)
+            }
+            row.addView(toggleSwitch)
             metricsCard.addView(row)
 
             if (idx < specs.size - 1) {
                 metricsCard.addView(View(this).apply {
                     setBackgroundColor(UiTheme.divider(this@MainActivity))
-                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1).apply {
+                        topMargin = dp(2)
+                        bottomMargin = dp(2)
+                    }
                 })
             }
         }
         container.addView(metricsCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = 14
+            bottomMargin = dp(18)
         })
 
         // 3. HUD Styling & Dimensions Group
         val styleCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(18, 16, 18, 16)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 18f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(18f), 1, UiTheme.strokeSubtle(this@MainActivity))
         }
         styleCard.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.sec_hud_styling_tag)
-            textSize = 10f
+            textSize = 11f
+            letterSpacing = 0.08f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setPadding(0, 0, 0, 10)
+            setPadding(0, 0, 0, dp(12))
         })
 
         // Layout Mode: Horizontal / Vertical
         styleCard.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.lbl_layout_style)
-            textSize = 11f
+            textSize = 13f
+            setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setPadding(0, 4, 0, 6)
+            setPadding(0, dp(4), 0, dp(8))
         })
         styleCard.addView(buildSegmentedRow(
             items = listOf(
@@ -1569,7 +1567,7 @@ class MainActivity : Activity() {
             ),
             selectedIndex = if (overlayVertical) 1 else 0,
             padTop = 0,
-            padBottom = 12
+            padBottom = dp(14)
         ) { idx ->
             overlayVertical = (idx == 1)
             prefsMgr.overlayVertical = overlayVertical
@@ -1580,9 +1578,10 @@ class MainActivity : Activity() {
         // Scale Size: 70%, 85%, 100%, 125%
         styleCard.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.lbl_scale)
-            textSize = 11f
+            textSize = 13f
+            setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setPadding(0, 4, 0, 6)
+            setPadding(0, dp(4), 0, dp(8))
         })
         styleCard.addView(buildSegmentedRow(
             items = listOf(
@@ -1593,7 +1592,7 @@ class MainActivity : Activity() {
             ),
             selectedIndex = overlaySizeLevel,
             padTop = 0,
-            padBottom = 12
+            padBottom = dp(14)
         ) { lvl ->
             overlaySizeLevel = lvl
             prefsMgr.overlaySizeLevel = lvl
@@ -1604,9 +1603,10 @@ class MainActivity : Activity() {
         // Opacity: Solid, Glass, Sheer, Text Only
         styleCard.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.lbl_opacity)
-            textSize = 11f
+            textSize = 13f
+            setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setPadding(0, 4, 0, 6)
+            setPadding(0, dp(4), 0, dp(8))
         })
         styleCard.addView(buildSegmentedRow(
             items = listOf(
@@ -1617,7 +1617,7 @@ class MainActivity : Activity() {
             ),
             selectedIndex = overlayBgMode,
             padTop = 0,
-            padBottom = 12
+            padBottom = dp(14)
         ) { mode ->
             overlayBgMode = mode
             prefsMgr.overlayBgMode = mode
@@ -1628,9 +1628,10 @@ class MainActivity : Activity() {
         // Polling Rate
         styleCard.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.sec_hud_poll)
-            textSize = 11f
+            textSize = 13f
+            setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setPadding(0, 4, 0, 6)
+            setPadding(0, dp(4), 0, dp(8))
         })
         styleCard.addView(buildSegmentedRow(
             items = listOf(
@@ -1641,27 +1642,27 @@ class MainActivity : Activity() {
             ),
             selectedIndex = hudPollMode,
             padTop = 0,
-            padBottom = 4
+            padBottom = dp(4)
         ) { mode ->
             hudPollMode = mode
             prefsMgr.hudPollMode = mode
             notifyOverlayStyleUpdated()
         })
         container.addView(styleCard, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = 14
+            bottomMargin = dp(18)
         })
 
         // 4. Tips Card
         val tipCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(16, 14, 16, 14)
-            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), 14f, 1, UiTheme.strokeSubtle(this@MainActivity))
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            background = UiTheme.roundBox(UiTheme.bgCard(this@MainActivity), dp(16f), 1, UiTheme.strokeSubtle(this@MainActivity))
         }
         tipCard.addView(TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.hud_guide_tips)
-            textSize = 10.5f
+            textSize = 13f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
-            setLineSpacing(3f, 1.15f)
+            setLineSpacing(dp(3f), 1.25f)
         })
         container.addView(tipCard)
 
@@ -1676,7 +1677,7 @@ class MainActivity : Activity() {
         btn.setTextColor(if (isRunning) UiTheme.TECH_RED else UiTheme.accent(this))
         btn.background = UiTheme.roundBox(
             UiTheme.bgTile(this),
-            12f,
+            dp(12f),
             1,
             if (isRunning) UiTheme.TECH_RED else UiTheme.accent(this)
         )
@@ -1703,7 +1704,7 @@ class MainActivity : Activity() {
                 chip.setTextColor(if (active) UiTheme.textOnAccent(this) else UiTheme.textSecondary(this))
                 chip.background = UiTheme.roundBox(
                     if (active) accentCol else UiTheme.bgTile(this),
-                    10f,
+                    dp(10f),
                     if (active) 0 else 1,
                     UiTheme.strokeSubtle(this)
                 )
@@ -1713,10 +1714,10 @@ class MainActivity : Activity() {
         items.forEach { (id, label) ->
             val chip = TextView(this).apply {
                 text = label
-                textSize = 10.5f
+                textSize = 12f
                 setTypeface(null, Typeface.BOLD)
                 gravity = Gravity.CENTER
-                setPadding(6, 9, 6, 9)
+                setPadding(dp(8), dp(9), dp(8), dp(9))
                 setOnClickListener {
                     current = id
                     refresh()
@@ -1725,7 +1726,7 @@ class MainActivity : Activity() {
             }
             chips.add(chip)
             row.addView(chip, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                if (id < items.size - 1) rightMargin = 8
+                if (id < items.size - 1) rightMargin = dp(8)
             })
         }
         refresh()
@@ -1755,10 +1756,10 @@ class MainActivity : Activity() {
         if (filteredApps.isEmpty()) {
             parentLayout.addView(TextView(this).apply {
                 text = "Không tìm thấy game nào"
-                textSize = 12f
+                textSize = 13.5f
                 setTextColor(UiTheme.textSecondary(this@MainActivity))
                 gravity = Gravity.CENTER
-                setPadding(0, 20, 0, 20)
+                setPadding(0, dp(24), 0, dp(24))
             })
             return
         }
@@ -1768,7 +1769,7 @@ class MainActivity : Activity() {
             val item = filteredApps[i]
             val row = buildAppRow(item)
             parentLayout.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = 8
+                bottomMargin = dp(10)
             })
         }
     }
@@ -1780,10 +1781,10 @@ class MainActivity : Activity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(14, 10, 14, 10)
+            setPadding(dp(16), dp(12), dp(16), dp(12))
             background = UiTheme.roundBox(
                 if (item.isPinned) UiTheme.bgTileActive(this@MainActivity) else UiTheme.bgTile(this@MainActivity),
-                14f,
+                dp(14f),
                 1,
                 if (item.isPinned) accentCol else UiTheme.strokeSubtle(this@MainActivity)
             )
@@ -1796,17 +1797,17 @@ class MainActivity : Activity() {
 
         val img = ImageView(this).apply {
             setImageDrawable(item.icon)
-            layoutParams = LinearLayout.LayoutParams(76, 76).apply { rightMargin = 14 }
+            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply { rightMargin = dp(14) }
         }
         row.addView(img)
 
         val textCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = 8 }
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) }
         }
         textCol.addView(TextView(this).apply {
             text = item.name
-            textSize = 13f
+            textSize = 15f
             setTypeface(null, Typeface.BOLD)
             setTextColor(UiTheme.textPrimary(this@MainActivity))
             setSingleLine(true)
@@ -1815,20 +1816,21 @@ class MainActivity : Activity() {
         textCol.addView(TextView(this).apply {
             val scaleStr = "${effectiveScale / 100}.${effectiveScale % 100}x SSAA"
             text = "$scaleStr • ${item.pkg}"
-            textSize = 10f
+            textSize = 12f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
             setSingleLine(true)
             ellipsize = TextUtils.TruncateAt.END
+            setPadding(0, dp(2), 0, 0)
         })
         row.addView(textCol)
 
         // "Đổi" button to cycle scale
         val changeBtn = TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.btn_change_scale)
-            textSize = 10.5f
+            textSize = 11.5f
             setTypeface(null, Typeface.BOLD)
             setTextColor(accentCol)
-            setPadding(10, 4, 10, 4)
+            setPadding(dp(10), dp(5), dp(10), dp(5))
             background = UiTheme.pillBox(UiTheme.bgCard(this@MainActivity))
             setOnClickListener { cyclePerGameScale(item) }
         }
@@ -1837,9 +1839,9 @@ class MainActivity : Activity() {
         // Pin button (★)
         val pinBtn = TextView(this).apply {
             text = if (item.isPinned) "★" else "☆"
-            textSize = 18f
+            textSize = 20f
             setTextColor(if (item.isPinned) accentCol else UiTheme.textSecondary(this@MainActivity))
-            setPadding(10, 4, 2, 4)
+            setPadding(dp(10), dp(6), dp(4), dp(6))
             setOnClickListener { togglePin(item) }
         }
         row.addView(pinBtn)
@@ -1857,7 +1859,7 @@ class MainActivity : Activity() {
             val col = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(6, 4, 6, 4)
+                setPadding(dp(6), dp(4), dp(6), dp(4))
                 setOnClickListener { launchGameByPkg(item.pkg, item.name, effectiveScale) }
                 setOnLongClickListener {
                     createPinnedShortcut(item, effectiveScale)
@@ -1866,27 +1868,27 @@ class MainActivity : Activity() {
             }
             val img = ImageView(this).apply {
                 setImageDrawable(item.icon)
-                layoutParams = LinearLayout.LayoutParams(92, 92)
+                layoutParams = LinearLayout.LayoutParams(dp(48), dp(48))
             }
             val lbl = TextView(this).apply {
                 text = item.name
-                textSize = 10f
+                textSize = 11.5f
                 setTextColor(UiTheme.textPrimary(this@MainActivity))
                 gravity = Gravity.CENTER
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
-                layoutParams = LinearLayout.LayoutParams(110, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 4 }
+                layoutParams = LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) }
             }
             col.addView(img)
             col.addView(lbl)
-            pinnedStripRow.addView(col, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = 8 })
+            pinnedStripRow.addView(col, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(8) })
         }
 
         // "+ Thêm" Slot
         val addCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(6, 4, 6, 4)
+            setPadding(dp(6), dp(4), dp(6), dp(4))
             setOnClickListener { switchTab(1) }
         }
         val plusBox = TextView(this).apply {
@@ -1895,15 +1897,15 @@ class MainActivity : Activity() {
             setTypeface(null, Typeface.BOLD)
             setTextColor(accentCol)
             gravity = Gravity.CENTER
-            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), 16f, 1, UiTheme.strokeSubtle(this@MainActivity))
-            layoutParams = LinearLayout.LayoutParams(92, 92)
+            background = UiTheme.roundBox(UiTheme.bgTile(this@MainActivity), dp(16f), 1, UiTheme.strokeSubtle(this@MainActivity))
+            layoutParams = LinearLayout.LayoutParams(dp(48), dp(48))
         }
         val addLbl = TextView(this).apply {
             text = Lang.str(this@MainActivity, R.string.dash_add_game)
-            textSize = 10f
+            textSize = 11.5f
             setTextColor(UiTheme.textSecondary(this@MainActivity))
             gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(90, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 4 }
+            layoutParams = LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) }
         }
         addCol.addView(plusBox)
         addCol.addView(addLbl)

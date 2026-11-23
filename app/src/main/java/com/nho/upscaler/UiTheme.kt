@@ -77,6 +77,20 @@ object UiTheme {
     fun statusWarning(ctx: Context): Int = TECH_AMBER
     fun statusError(ctx: Context): Int = TECH_RED
 
+    fun dp(ctx: Context, dp: Int): Int = (dp * ctx.resources.displayMetrics.density + 0.5f).toInt()
+    fun dp(ctx: Context, dp: Float): Float = dp * ctx.resources.displayMetrics.density
+    fun dpF(ctx: Context, dp: Float): Float = dp * ctx.resources.displayMetrics.density
+
+    fun roundBoxDp(ctx: Context, fillColor: Int, radiusDp: Float, strokeWidthDp: Float = 0f, strokeColor: Int = 0): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(fillColor)
+            cornerRadius = dp(ctx, radiusDp)
+            if (strokeWidthDp > 0f && strokeColor != Color.TRANSPARENT) {
+                setStroke(dp(ctx, strokeWidthDp.toInt()).coerceAtLeast(1), strokeColor)
+            }
+        }
+    }
+
     fun roundBox(fillColor: Int, radiusPx: Float, strokeWidth: Int = 0, strokeColor: Int = 0): GradientDrawable {
         return GradientDrawable().apply {
             setColor(fillColor)
