@@ -137,6 +137,7 @@
     <string name="lbl_scale">HUD Scale Size</string>
     <string name="lbl_opacity">Background Opacity</string>
     <string name="lbl_layout_style">Layout Mode</string>
+    <string name="sec_hud_poll">Polling Interval</string>
     <string name="layout_horizontal">Horizontal Bar</string>
     <string name="layout_vertical">Vertical Stack</string>
     <string name="layout_compact">Compact</string>

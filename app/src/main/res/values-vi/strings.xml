@@ -137,6 +137,7 @@
     <string name="lbl_scale">Kích thước thanh đo (Scale)</string>
     <string name="lbl_opacity">Độ trong suốt nền (Opacity)</string>
     <string name="lbl_layout_style">Kiểu bố cục hiển thị</string>
+    <string name="sec_hud_poll">Nhịp cập nhật cảm biến</string>
     <string name="layout_horizontal">Thanh ngang</string>
     <string name="layout_vertical">Cột dọc</string>
     <string name="layout_compact">Khối gọn</string>
