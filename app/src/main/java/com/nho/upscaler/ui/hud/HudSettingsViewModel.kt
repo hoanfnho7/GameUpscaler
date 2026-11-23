@@ -269,13 +269,17 @@ class HudSettingsViewModel : ViewModel() {
         if (ShizukuHelper.isBinderAlive()) {
             try {
                 val cmd = "for z in /sys/class/thermal/thermal_zone*; do [ -r \"\$z/temp\" ] && [ -r \"\$z/type\" ] && echo \"\$(cat \$z/type 2>/dev/null): \$(cat \$z/temp 2>/dev/null)\"; done"
-                val out = ShizukuHelper.runSync(cmd)
-                for (line in out.splitlines()) {
+                val lines = ShizukuHelper.runCommand(cmd)
+                for (line in lines) {
                     val parts = line.split(":")
                     if (parts.size == 2) {
                         val name = parts[0].trim()
                         val raw = parts[1].trim().toFloatOrNull() ?: continue
-                        val deg = if (raw > 1000f) raw / 1000f else if (raw > 150f) raw / 10f else raw
+                        val deg = when {
+                            raw > 1000f -> raw / 1000f
+                            raw > 150f -> raw / 10f
+                            else -> raw
+                        }
                         if (deg in 15f..125f && name.isNotEmpty() && seen.add(name)) {
                             list.add(Pair(name, deg))
                         }
@@ -286,7 +290,8 @@ class HudSettingsViewModel : ViewModel() {
             // 2. Fallback via dumpsys thermalservice
             if (list.isEmpty()) {
                 try {
-                    val dump = ShizukuHelper.runSync("dumpsys thermalservice")
+                    val dumpLines = ShizukuHelper.runCommand("dumpsys thermalservice")
+                    val dump = dumpLines.joinToString("\n")
                     val regex = Regex("""Temperature\{mValue=([0-9.]+)[^}]*mName=([^,}]+)""")
                     for (m in regex.findAll(dump)) {
                         val deg = m.groupValues[1].toFloatOrNull() ?: continue
@@ -308,7 +313,11 @@ class HudSettingsViewModel : ViewModel() {
                     if (typeFile.exists() && tempFile.exists()) {
                         val name = typeFile.readText().trim()
                         val raw = tempFile.readText().trim().toFloatOrNull() ?: continue
-                        val deg = if (raw > 1000f) raw / 1000f else if (raw > 150f) raw / 10f else raw
+                        val deg = when {
+                            raw > 1000f -> raw / 1000f
+                            raw > 150f -> raw / 10f
+                            else -> raw
+                        }
                         if (deg in 15f..125f && name.isNotEmpty() && seen.add(name)) {
                             list.add(Pair(name, deg))
                         }
