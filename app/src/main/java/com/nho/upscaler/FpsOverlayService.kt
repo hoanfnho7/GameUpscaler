@@ -213,8 +213,11 @@ class FpsOverlayService : Service() {
                 }
                 return START_NOT_STICKY
             }
-            "UPDATE_STYLE" -> {
+            "UPDATE_STYLE", "STYLE_CHANGED" -> {
                 if (overlayView != null) {
+                    sizeLevel = prefsMgr.overlaySizeLevel
+                    bgMode = prefsMgr.overlayBgMode
+                    isVertical = (prefsMgr.hudLayoutMode == 1)
                     lastRenderedText = ""
                     lastRenderedColor = 0
                     tickCounter = 0
@@ -514,145 +517,98 @@ class FpsOverlayService : Service() {
         val isLand = isLandscapeMode()
         val idx = sizeLevel.coerceIn(0, 3)
         val bIdx = bgMode.coerceIn(0, 3)
+        val layoutMode = prefsMgr.hudLayoutMode // 0: Horizontal, 1: Compact 2x2, 2: Mini Dot
 
-        if (!isVertical && isLand) {
-            tv.isSingleLine = true
-            tv.maxLines = 1
-            tv.ellipsize = null
-            tv.gravity = Gravity.CENTER_VERTICAL
-            tv.setLineSpacing(0f, 1.0f)
-        } else if (isVertical) {
-            tv.isSingleLine = false
-            tv.maxLines = 16
-            tv.gravity = Gravity.START
-            tv.setLineSpacing(3f, 1.05f)
-        } else {
-            tv.isSingleLine = false
-            tv.maxLines = 6
-            tv.gravity = Gravity.CENTER_VERTICAL
-            tv.setLineSpacing(2f, 1.0f)
-        }
+        tv.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
 
         val textSizes = if (isLand) {
-            floatArrayOf(7.5f, 9.0f, 10.5f, 12.0f)
+            floatArrayOf(9.0f, 10.5f, 12.0f, 14.0f)
         } else {
-            floatArrayOf(8.5f, 10.5f, 12.0f, 13.5f)
+            floatArrayOf(10.0f, 11.5f, 13.0f, 15.0f)
         }
-        val padH = if (isLand) intArrayOf(8, 12, 16, 20) else intArrayOf(10, 16, 20, 24)
-        val padV = if (isLand) intArrayOf(2, 4, 6, 8) else intArrayOf(4, 8, 10, 12)
-        val radii = floatArrayOf(8f, 12f, 16f, 20f)
-        val strokes = intArrayOf(1, 1, 1, 2)
+        val padH = if (isLand) intArrayOf(10, 14, 18, 22) else intArrayOf(12, 16, 20, 24)
+        val padV = if (isLand) intArrayOf(3, 5, 7, 9) else intArrayOf(5, 7, 9, 11)
 
         tv.textSize = textSizes[idx]
-        tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
+
+        when (layoutMode) {
+            2 -> { // Mini Dot
+                tv.isSingleLine = true
+                tv.maxLines = 1
+                tv.gravity = Gravity.CENTER
+                tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
+                tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 999f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
+            }
+            1 -> { // Compact 2x2
+                tv.isSingleLine = false
+                tv.maxLines = 4
+                tv.gravity = Gravity.START
+                tv.setLineSpacing(2f, 1.05f)
+                tv.setPadding(padH[idx], padV[idx] + 2, padH[idx], padV[idx] + 2)
+                tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 16f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
+            }
+            else -> { // Horizontal Pill
+                tv.isSingleLine = true
+                tv.maxLines = 1
+                tv.gravity = Gravity.CENTER_VERTICAL
+                tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
+                tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 999f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
+            }
+        }
 
         if (bIdx >= 2) {
             tv.setShadowLayer(3.0f, 1.2f, 1.2f, UiTheme.TEXT_SHADOW)
         } else {
             tv.setShadowLayer(1.5f, 0.5f, 0.5f, UiTheme.TEXT_SHADOW)
         }
-
-        if (bIdx == 3) {
-            tv.background = null
-        } else {
-            tv.background = UiTheme.roundBox(
-                UiTheme.HUD_BG_OPACITY[bIdx],
-                radii[idx],
-                strokes[idx],
-                UiTheme.HUD_STROKE_OPACITY[bIdx]
-            )
-        }
     }
 
     private fun renderTelemetryText() {
         val tv = overlayView ?: return
-        val isLand = isLandscapeMode()
+        val layoutMode = prefsMgr.hudLayoutMode
 
         val showFps = prefsMgr.getMetric("m_fps", true)
         val showWatt = prefsMgr.getMetric("m_watt", true)
         val showGpu = prefsMgr.getMetric("m_gpu", true)
-        val showCpuFreq = prefsMgr.getMetric("m_cpu_freq", false)
-
         val showBatTemp = prefsMgr.getMetric("m_bat_temp", true)
         val showSocTemp = prefsMgr.getMetric("m_soc_temp", true)
         val showCpuTemp = prefsMgr.getMetric("m_cpu_temp", false)
-        val showGpuTemp = prefsMgr.getMetric("m_gpu_temp", false)
-
-        val showDdrTemp = prefsMgr.getMetric("m_ddr_temp", false)
-        val showCamTemp = prefsMgr.getMetric("m_cam_temp", false)
-        val showSkinTemp = prefsMgr.getMetric("m_skin_temp", false)
         val showRam = prefsMgr.getMetric("m_ram", false)
 
-        val parts = ArrayList<String>(13)
-        val isCompact = (sizeLevel == 0) || (isLand && !isVertical)
-        if (PerfLogManager.isRecording) {
-            parts.add("🔴")
-        }
+        val fpsVal = if (lastFps >= 0f) String.format(Locale.US, "%.1f", lastFps) else "--.-"
+        val tVal = if (cachedBatTemp > 0f) String.format(Locale.US, "%.1f°C", cachedBatTemp) else "--°C"
+        val prefix = if (isChargingNow) "+" else ""
+        val wVal = if (lastWatts > 0f) String.format(Locale.US, "%s%.1fW", prefix, lastWatts) else if (cachedVoltMv > 0) "${(cachedVoltMv / 1000f).toInt()}V" else "--W"
+        val gpuVal = if (lastGpuVramMb >= 0) "${lastGpuVramMb}%" else "--%"
+        val ramVal = lastRamText.ifEmpty { "--%" }
 
-        if (showFps) {
-            val fpsVal = if (lastFps >= 0f) String.format(Locale.US, "%.1f", lastFps) else "--.-"
-            parts.add(if (isCompact) "${fpsVal}F" else if (isVertical) "⚡ FPS: $fpsVal" else "⚡$fpsVal FPS")
-        }
-        if (showWatt) {
-            val prefix = if (isChargingNow) "+" else ""
-            val wVal = if (lastWatts > 0f) String.format(Locale.US, "%s%.1fW", prefix, lastWatts) else "--W"
-            parts.add(if (isCompact) wVal else if (isVertical) Lang.str(this, R.string.hud_vert_power, wVal) else "🔌$wVal")
-        }
-        if (showBatTemp) {
-            val tVal = if (cachedBatTemp > 0f) String.format(Locale.US, "%.1f°", cachedBatTemp) else "--°"
-            parts.add(if (isCompact) "🔋$tVal" else if (isVertical) Lang.str(this, R.string.hud_vert_bat, tVal) else "🔋${tVal}C")
-        }
-        if (showSocTemp) {
-            val stVal = if (lastSocTemp > 0f) String.format(Locale.US, "%.1f°", lastSocTemp) else "--°"
-            parts.add(if (isCompact) "🌡$stVal" else if (isVertical) "🌡️ SoC: ${stVal}C" else "🌡️${stVal}C")
-        }
-        if (showCpuTemp) {
-            val ctVal = if (lastCpuTemp > 0f) String.format(Locale.US, "%.1f°", lastCpuTemp) else "--°"
-            parts.add(if (isCompact) "🔥$ctVal" else if (isVertical) "🔥 CPU: ${ctVal}C" else "🔥${ctVal}C")
-        }
-        if (showGpuTemp) {
-            val gtVal = if (lastGpuTemp > 0f) String.format(Locale.US, "%.1f°", lastGpuTemp) else "--°"
-            parts.add(if (isCompact) "📟$gtVal" else if (isVertical) "📟 GPU: ${gtVal}C" else "📟${gtVal}C")
-        }
-        if (showDdrTemp) {
-            val dtVal = if (lastDdrTemp > 0f) String.format(Locale.US, "%.1f°", lastDdrTemp) else "--°"
-            parts.add(if (isCompact) "🧬$dtVal" else if (isVertical) "🧬 DDR: ${dtVal}C" else "🧬${dtVal}C")
-        }
-        if (showCamTemp) {
-            val camVal = if (lastCamTemp > 0f) String.format(Locale.US, "%.1f°", lastCamTemp) else "--°"
-            parts.add(if (isCompact) "📷$camVal" else if (isVertical) "📷 CAM: ${camVal}C" else "📷${camVal}C")
-        }
-        if (showSkinTemp) {
-            val skVal = if (lastSkinTemp > 0f) String.format(Locale.US, "%.1f°", lastSkinTemp) else "--°"
-            parts.add(if (isCompact) "📱$skVal" else if (isVertical) Lang.str(this, R.string.hud_vert_skin, skVal) else "📱${skVal}C")
-        }
-        if (showGpu) {
-            val vramStr = if (lastGpuVramMb >= 0) "${lastGpuVramMb}M" else "--M"
-            parts.add(if (isCompact) "V:$vramStr" else if (isVertical) "🎮 VRAM: ${vramStr}B" else "🎮${vramStr}B")
-        }
-        if (showCpuFreq) {
-            val cStr = when {
-                lastCpuKhz >= 1_000_000L -> String.format(Locale.US, "%.2fG", lastCpuKhz / 1_000_000.0)
-                lastCpuKhz > 0L -> "${lastCpuKhz / 1000L}M"
-                else -> "--G"
+        val newText = when (layoutMode) {
+            2 -> { // Mini Dot
+                "● $fpsVal"
             }
-            parts.add(if (isCompact) cStr else if (isVertical) "⚙️ CPU: ${cStr}Hz" else "⚙️${cStr}Hz")
-        }
-        if (showRam) {
-            val rStr = lastRamText.ifEmpty { "--G" }
-            parts.add(if (isCompact) rStr else if (isVertical) "💾 RAM: $rStr" else "💾$rStr")
-        }
+            1 -> { // Compact 2x2
+                val line1 = StringBuilder()
+                if (showFps) line1.append("● $fpsVal FPS   ")
+                if (showBatTemp || showSocTemp) line1.append("🌡️ $tVal")
 
-        if (parts.isEmpty()) {
-            parts.add(Lang.str(this, R.string.hud_no_metrics))
-        }
+                val line2 = StringBuilder()
+                if (showWatt) line2.append("🔋 $wVal   ")
+                if (showGpu) line2.append("🎮 $gpuVal")
 
-        val newText = if (isVertical) {
-            parts.joinToString("\n")
-        } else if (sizeLevel == 0 && isLand) {
-            parts.joinToString(" · ")
-        } else {
-            parts.joinToString(if (isCompact) " · " else " | ")
+                if (line1.isEmpty() && line2.isEmpty()) "● $fpsVal FPS"
+                else if (line2.isEmpty()) line1.toString().trim()
+                else "${line1.toString().trim()}\n${line2.toString().trim()}"
+            }
+            else -> { // Horizontal Pill
+                val items = mutableListOf<String>()
+                if (showFps) items.add("● $fpsVal FPS")
+                if (showBatTemp || showSocTemp) items.add("🌡️ $tVal")
+                if (showWatt) items.add("🔋 $wVal")
+                if (showGpu) items.add("🎮 $gpuVal")
+                if (showRam) items.add("💾 $ramVal")
+                if (items.isEmpty()) items.add("● $fpsVal FPS")
+                items.joinToString("  |  ")
+            }
         }
 
         if (newText != lastRenderedText) {
@@ -662,14 +618,14 @@ class FpsOverlayService : Service() {
 
         val maxChipTemp = maxOf(lastCpuTemp, lastGpuTemp, lastSocTemp)
         val baseAccent = when (prefsMgr.hudColorAccent) {
-            0 -> Color.parseColor("#D0EF65")
-            1 -> Color.parseColor("#00E5FF")
-            2 -> Color.parseColor("#FFB300")
+            0 -> Color.parseColor("#D0EF65") // Neon Lime
+            1 -> Color.parseColor("#6DFE9C") // Cyber Cyan / Emerald
+            2 -> Color.parseColor("#EEC14A") // Amber
             else -> Color.WHITE
         }
         val color = when {
-            cachedBatTemp >= 43.0f || maxChipTemp >= 85.0f -> UiTheme.ACCENT_RED_BRIGHT
-            cachedBatTemp >= 40.0f || maxChipTemp >= 75.0f -> UiTheme.ACCENT_GOLD
+            cachedBatTemp >= 45.0f || maxChipTemp >= 85.0f -> UiTheme.ACCENT_RED_BRIGHT
+            cachedBatTemp >= 42.0f || maxChipTemp >= 75.0f -> UiTheme.ACCENT_GOLD
             else -> baseAccent
         }
         if (color != lastRenderedColor) {

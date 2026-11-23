@@ -94,6 +94,22 @@ class PrefsManager(context: Context) {
     fun getAppCustomScale(pkg: String): Int = getGameScale(pkg)
     fun setAppCustomScale(pkg: String, scale: Int) = setGameScale(pkg, scale)
 
+    fun getCustomGames(): Set<String> {
+        return prefs.getStringSet("custom_games", emptySet()) ?: emptySet()
+    }
+
+    fun addCustomGame(pkg: String) {
+        val current = HashSet(getCustomGames())
+        current.add(pkg)
+        prefs.edit().putStringSet("custom_games", current).apply()
+    }
+
+    fun removeCustomGame(pkg: String) {
+        val current = HashSet(getCustomGames())
+        current.remove(pkg)
+        prefs.edit().putStringSet("custom_games", current).apply()
+    }
+
     fun getMetric(key: String, defVal: Boolean): Boolean = prefs.getBoolean(key, defVal)
 
     fun setMetric(key: String, enabled: Boolean) {

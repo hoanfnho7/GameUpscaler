@@ -33,6 +33,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.Locale
 import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
@@ -177,23 +178,56 @@ class MainActivity : Activity() {
             // Battery
             val batFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
             val batIntent = registerReceiver(null, batFilter)
-            val level = batIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: 88
+            val level = batIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: 80
             val scale = batIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: 100
-            val batPct = if (level >= 0 && scale > 0) (level * 100) / scale else 88
-            val tempRaw = batIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 412
-            val batTemp = tempRaw / 10.0f
+            val batPct = if (level >= 0 && scale > 0) (level * 100) / scale else 80
+            val tempRaw = batIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 360
+            val batTemp = if (tempRaw > 0) tempRaw / 10.0f else 36.0f
+            val status = batIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+            val isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL)
+            val batStatusStr = if (isCharging) "ĐANG SẠC" else if (batTemp >= 45f) "QUÁ NHIỆT" else "BÌNH THƯỜNG"
+            val batModeStr = if (isCharging) "Đang nạp sạc" else "Pin xả (${batPct}%)"
             put("batteryPct", batPct)
             put("batTemp", batTemp)
+            put("batStatus", batStatusStr)
+            put("batMode", batModeStr)
 
             // CPU Temp
             val cpuTemp = readCpuTemp()
             put("cpuTemp", cpuTemp)
 
-            // Overlay running state
+            // Display & Hardware
+            val rr = queryLiveRefreshRate()
+            put("refreshRate", rr)
+            val soc = getDeviceSocName()
+            put("soc", soc)
+            put("gpuName", getGpuName(soc))
+            put("physW", physW)
+            put("physH", physH)
+
+            // Permissions / Service
+            val shizukuReady = ShizukuHelper.isBinderAlive()
+            val overlayGranted = Settings.canDrawOverlays(this@MainActivity)
+            put("isShizukuReady", shizukuReady)
+            put("isOverlayGranted", overlayGranted)
             put("isOverlayRunning", FpsOverlayService.isServiceRunning)
         }
 
         webView.evaluateJavascript("if(window.onTelemetryUpdate) window.onTelemetryUpdate(${json.toString()});", null)
+    }
+
+    private fun queryLiveRefreshRate(): Int {
+        return try {
+            val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                display
+            } else {
+                @Suppress("DEPRECATION")
+                windowManager.defaultDisplay
+            }
+            display?.mode?.refreshRate?.toInt() ?: refreshRate
+        } catch (_: Exception) {
+            refreshRate
+        }
     }
 
     private fun pushInitialData() {
@@ -205,14 +239,18 @@ class MainActivity : Activity() {
 
     private fun getInitialDataJson(): String {
         return JSONObject().apply {
-            put("soc", getDeviceSocName())
+            val soc = getDeviceSocName()
+            put("soc", soc)
+            put("gpuName", getGpuName(soc))
             put("deviceModel", "${Build.MANUFACTURER} • ${Build.MODEL}")
             put("physW", physW)
             put("physH", physH)
             put("physDen", physDen)
-            put("refreshRate", refreshRate)
+            put("refreshRate", queryLiveRefreshRate())
             put("selectedFactor", (prefsMgr.targetScaleFactor / 100f).toDouble())
             put("globalSsaaEnabled", prefsMgr.enableFpsOverlay)
+            put("isShizukuReady", ShizukuHelper.isBinderAlive())
+            put("isOverlayGranted", Settings.canDrawOverlays(this@MainActivity))
             put("isHudRunning", FpsOverlayService.isServiceRunning)
             put("hudLayoutMode", prefsMgr.hudLayoutMode)
             put("hudColorAccent", prefsMgr.hudColorAccent)
@@ -241,19 +279,21 @@ class MainActivity : Activity() {
             }
             val resolved = pm.queryIntentActivities(mainIntent, 0)
             val items = mutableListOf<AppItem>()
+            val customGames = prefsMgr.getCustomGames()
 
             for (ri in resolved) {
                 val pkg = ri.activityInfo.packageName
                 if (pkg == packageName) continue
 
-                // Check if likely a game or user app
                 val appInfo = ri.activityInfo.applicationInfo
                 val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
                 val isGame = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     appInfo.category == ApplicationInfo.CATEGORY_GAME
                 } else false
 
-                if (!isSystem || isGame || isCommonGame(pkg)) {
+                val isCustomGame = customGames.contains(pkg)
+
+                if (isCustomGame || isGame || (!isSystem && isCommonGame(pkg))) {
                     val label = ri.loadLabel(pm).toString()
                     val icon = ri.loadIcon(pm)
                     val base64 = drawableToBase64(icon)
@@ -263,8 +303,7 @@ class MainActivity : Activity() {
                 }
             }
 
-            // Sort: games first, then alphabet
-            items.sortBy { it.name.lowercase() }
+            items.sortBy { it.name.lowercase(Locale.ROOT) }
 
             synchronized(cachedApps) {
                 cachedApps.clear()
@@ -280,11 +319,12 @@ class MainActivity : Activity() {
     }
 
     private fun isCommonGame(pkg: String): Boolean {
-        val p = pkg.lowercase()
+        val p = pkg.lowercase(Locale.ROOT)
         return p.contains("game") || p.contains("genshin") || p.contains("pubg") ||
                p.contains("arena") || p.contains("moba") || p.contains("mobile") ||
                p.contains("mihoyo") || p.contains("tencent") || p.contains("garena") ||
-               p.contains("riot") || p.contains("unity") || p.contains("epic")
+               p.contains("riot") || p.contains("unity") || p.contains("epic") ||
+               p.contains("kgvn") || p.contains("speed") || p.contains("vng")
     }
 
     private fun drawableToBase64(drawable: Drawable): String {
@@ -325,27 +365,60 @@ class MainActivity : Activity() {
                 }
             } catch (_: Exception) {}
         }
-        return 44.0f
+        return 38.0f
     }
 
     private fun getDeviceSocName(): String {
         return try {
-            val hardware = Build.HARDWARE
-            val board = Build.BOARD
+            val hardware = Build.HARDWARE.lowercase(Locale.ROOT)
+            val board = Build.BOARD.lowercase(Locale.ROOT)
+            val socModel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Build.SOC_MODEL.lowercase(Locale.ROOT)
+            } else ""
+            val roSoc = getSystemProp("ro.soc.model").lowercase(Locale.ROOT)
+            val roPlatform = getSystemProp("ro.board.platform").lowercase(Locale.ROOT)
+            val roChip = getSystemProp("ro.chipname").lowercase(Locale.ROOT)
+
+            val combined = "$hardware $board $socModel $roSoc $roPlatform $roChip"
+
             when {
-                hardware.contains("qcom", true) || board.contains("qcom", true) -> {
-                    when {
-                        board.contains("pineapple", true) -> "Snapdragon 8 Gen 3"
-                        board.contains("kalama", true) -> "Snapdragon 8 Gen 2"
-                        board.contains("taro", true) -> "Snapdragon 8 Gen 1"
-                        else -> "Snapdragon Platform"
-                    }
-                }
-                hardware.contains("mt", true) || board.contains("mt", true) -> "MediaTek Dimensity"
+                combined.contains("sun") || combined.contains("8750") || combined.contains("elite") -> "Snapdragon 8 Elite"
+                combined.contains("pineapple") || combined.contains("8650") -> "Snapdragon 8 Gen 3"
+                combined.contains("kalama") || combined.contains("8550") -> "Snapdragon 8 Gen 2"
+                combined.contains("taro") || combined.contains("8450") || combined.contains("8475") -> "Snapdragon 8 Gen 1"
+                combined.contains("lahaina") || combined.contains("8350") -> "Snapdragon 888"
+                combined.contains("kona") || combined.contains("8250") -> "Snapdragon 865"
+                combined.contains("qcom") || combined.contains("qualcomm") || combined.contains("snapdragon") -> "Snapdragon Platform"
+                combined.contains("mt") || combined.contains("dimensity") -> "MediaTek Dimensity"
+                combined.contains("exynos") -> "Samsung Exynos"
+                combined.contains("tensor") -> "Google Tensor"
                 else -> "${Build.MANUFACTURER} SoC"
             }
         } catch (_: Exception) {
-            "Gaming SoC"
+            "Snapdragon 8 Elite"
+        }
+    }
+
+    private fun getGpuName(soc: String): String {
+        return when {
+            soc.contains("Elite", true) -> "Adreno 830"
+            soc.contains("Gen 3", true) -> "Adreno 750"
+            soc.contains("Gen 2", true) -> "Adreno 740"
+            soc.contains("Gen 1", true) -> "Adreno 730"
+            soc.contains("888", true) -> "Adreno 660"
+            soc.contains("865", true) -> "Adreno 650"
+            soc.contains("Dimensity", true) -> "Mali-G925"
+            else -> "Adreno GPU"
+        }
+    }
+
+    private fun getSystemProp(key: String): String {
+        return try {
+            val c = Class.forName("android.os.SystemProperties")
+            val get = c.getMethod("get", String::class.java)
+            (get.invoke(c, key) as? String) ?: ""
+        } catch (_: Exception) {
+            ""
         }
     }
 
@@ -356,6 +429,62 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun getInitialData(): String {
             return getInitialDataJson()
+        }
+
+        @JavascriptInterface
+        fun getAllInstalledApps(): String {
+            val pm = packageManager
+            val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val resolved = pm.queryIntentActivities(mainIntent, 0)
+            val customGames = prefsMgr.getCustomGames()
+            val list = JSONArray()
+
+            for (ri in resolved) {
+                val pkg = ri.activityInfo.packageName
+                if (pkg == packageName) continue
+                val label = ri.loadLabel(pm).toString()
+                val icon = ri.loadIcon(pm)
+                val base64 = drawableToBase64(icon)
+                val isAdded = customGames.contains(pkg) || cachedApps.any { it.pkg == pkg }
+
+                list.put(JSONObject().apply {
+                    put("name", label)
+                    put("pkg", pkg)
+                    put("icon", base64)
+                    put("isAdded", isAdded)
+                })
+            }
+            return list.toString()
+        }
+
+        @JavascriptInterface
+        fun addCustomGame(pkg: String) {
+            prefsMgr.addCustomGame(pkg)
+            loadAppsInBackground()
+            mainHandler.post {
+                Toast.makeText(this@MainActivity, "Đã thêm game vào danh sách", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        @JavascriptInterface
+        fun removeCustomGame(pkg: String) {
+            prefsMgr.removeCustomGame(pkg)
+            loadAppsInBackground()
+            mainHandler.post {
+                Toast.makeText(this@MainActivity, "Đã xóa khỏi danh sách", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        @JavascriptInterface
+        fun setThemeMode(mode: Int) {
+            prefsMgr.themeMode = mode
+        }
+
+        @JavascriptInterface
+        fun setAppLang(lang: Int) {
+            prefsMgr.appLanguage = lang
         }
 
         @JavascriptInterface

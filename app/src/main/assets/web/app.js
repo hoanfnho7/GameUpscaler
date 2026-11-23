@@ -8,22 +8,19 @@
   let selectedFactor = 1.15;
   let selectedGamePkg = null;
   let gamesList = [];
+  let allInstalledAppsCache = [];
+  let activeHudLayout = 'horizontal';
   let isOverlayActive = false;
 
-  // Clock Update
-  function updateClock() {
-    const now = new Date();
-    const h = String(now.getHours()).padStart(2, '0');
-    const m = String(now.getMinutes()).padStart(2, '0');
-    const el = document.getElementById('clock-display');
-    if (el) el.textContent = `${h}:${m}`;
-  }
-  setInterval(updateClock, 1000);
-  updateClock();
-
-  // Tab Navigation
+  // =========================================================================
+  // 1. TAB NAVIGATION WITH PERSISTENCE (FIX TAB KICK-BACK BUG)
+  // =========================================================================
   window.switchTab = function(idx) {
     currentTab = idx;
+    try {
+      localStorage.setItem('active_tab_index', idx.toString());
+    } catch (_) {}
+
     const tabIds = ['tab-home', 'tab-ssaa', 'tab-hud'];
     tabIds.forEach((id, i) => {
       const el = document.getElementById(id);
@@ -45,17 +42,53 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // SSAA Scale Selection
+  // =========================================================================
+  // 2. THEME & LANGUAGE CONTROLS
+  // =========================================================================
+  window.toggleTheme = function() {
+    const html = document.documentElement;
+    const isDark = html.classList.contains('dark');
+    const icon = document.getElementById('theme-icon');
+    if (isDark) {
+      html.classList.remove('dark');
+      if (icon) icon.textContent = 'light_mode';
+      try { localStorage.setItem('app_theme', 'light'); } catch (_) {}
+      if (window.Android && window.Android.setThemeMode) window.Android.setThemeMode(2);
+    } else {
+      html.classList.add('dark');
+      if (icon) icon.textContent = 'dark_mode';
+      try { localStorage.setItem('app_theme', 'dark'); } catch (_) {}
+      if (window.Android && window.Android.setThemeMode) window.Android.setThemeMode(1);
+    }
+  };
+
+  let currentLang = 'VI';
+  window.toggleLanguage = function() {
+    currentLang = (currentLang === 'VI') ? 'EN' : 'VI';
+    const langEl = document.getElementById('lang-text');
+    if (langEl) langEl.textContent = currentLang;
+    try { localStorage.setItem('app_lang', currentLang); } catch (_) {}
+    if (window.Android && window.Android.setAppLang) {
+      window.Android.setAppLang(currentLang === 'VI' ? 1 : 2);
+    }
+  };
+
+  // =========================================================================
+  // 3. SSAA SCALE OPTIONS
+  // =========================================================================
   function initSsaaOptions() {
     const cards = document.querySelectorAll('.ssaa-card');
     cards.forEach(card => {
-      card.addEventListener('click', function() {
+      card.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         const ratio = parseFloat(this.getAttribute('data-ratio'));
         selectedFactor = ratio;
         if (window.Android && window.Android.setSsaaFactor) {
           window.Android.setSsaaFactor(ratio);
         }
         updateSsaaCardStyles(ratio);
+        renderGamesList(gamesList);
       });
     });
   }
@@ -90,6 +123,10 @@
       const targetH = Math.round(physH * r);
       el.textContent = `${targetW} × ${targetH}`;
     });
+    const nativeTag = document.getElementById('ssaa-current-native-tag');
+    if (nativeTag) {
+      nativeTag.textContent = `Gốc: ${physW}×${physH}`;
+    }
   }
 
   // Global SSAA switch
@@ -109,22 +146,31 @@
     }
   };
 
-  // Optimize SSAA button on Tab 0
-  const btnOpt = document.getElementById('btnOptimize');
-  if (btnOpt) {
-    btnOpt.addEventListener('click', function() {
-      switchTab(1);
-    });
-  }
-
-  // Game Whitelist Rendering
+  // =========================================================================
+  // 4. REAL GAME WHITELIST RENDERING & APP PICKER MODAL
+  // =========================================================================
   function renderGamesList(apps) {
     gamesList = apps || [];
     const container = document.getElementById('game-library-list');
+    const badgeCount = document.getElementById('game-count-badge');
+    const heroCount = document.getElementById('hero-game-count');
+
+    const countText = `${gamesList.length} Sẵn sàng`;
+    if (badgeCount) badgeCount.textContent = countText;
+    if (heroCount) heroCount.textContent = `${gamesList.length} Game`;
+
     if (!container) return;
 
     if (gamesList.length === 0) {
-      container.innerHTML = '<div class="p-space-md text-center text-on-surface-variant font-body-sm">Không tìm thấy game nào trên thiết bị</div>';
+      container.innerHTML = `
+        <div class="p-space-md text-center text-on-surface-variant font-body-sm flex flex-col items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-[32px] text-on-surface-variant/60">sports_esports</span>
+          <span>Chưa có game nào trong danh sách nhận diện</span>
+          <button onclick="openAddGameModal()" class="px-3 py-1.5 rounded-full bg-primary-container text-on-primary-fixed font-label-mono text-xs font-bold mt-1">
+            + Thêm game ngay
+          </button>
+        </div>
+      `;
       return;
     }
 
@@ -143,14 +189,12 @@
 
       html += `
         <div class="flex items-center justify-between p-space-md hover:bg-surface-container-high/50 transition-colors ${borderClass}">
-          <div class="flex items-center gap-space-sm min-w-0 flex-1 mr-2 cursor-pointer" onclick="handleLaunchGame('${game.pkg}')">
+          <div class="flex items-center gap-space-sm min-w-0 flex-1 mr-2 cursor-pointer" onclick="handleLaunchGame('${game.pkg}')" title="Chạm để khởi chạy game với SSAA">
             <img src="${game.icon}" class="w-11 h-11 rounded-lg bg-surface-container-highest object-cover shrink-0" alt="${game.name}">
             <div class="flex flex-col min-w-0">
               <span class="font-headline-sm text-headline-sm font-semibold text-on-surface truncate">${game.name}</span>
               <div class="flex items-center gap-2 text-on-surface-variant mt-0.5">
                 <span class="font-label-mono text-label-mono text-surface-tint">${scaleLabel}</span>
-                <span class="text-[10px]">•</span>
-                <span class="font-label-mono text-label-mono text-on-surface-variant truncate">${game.fpsTarget || '120 FPS'}</span>
               </div>
             </div>
           </div>
@@ -181,7 +225,7 @@
     }
   };
 
-  // Game Scale Modal
+  // Game Scale Modal (Lock per-game resolution)
   window.openGameScaleModal = function(pkg, name, currentScale) {
     selectedGamePkg = pkg;
     const modal = document.getElementById('game-scale-modal');
@@ -196,7 +240,7 @@
       { val: 0, title: 'Mặc định chung', sub: `Theo tỉ lệ toàn cục (${selectedFactor.toFixed(2)}x)` },
       { val: 1.10, title: 'Khóa 1.10x', sub: 'Nhẹ nhàng, tiết kiệm pin' },
       { val: 1.15, title: 'Khóa 1.15x', sub: 'Cân bằng độ nét và nhiệt độ' },
-      { val: 1.20, title: 'Khóa 1.20x', sub: 'Hình ảnh rõ nét, độ phân giải cao' },
+      { val: 1.20, title: 'Khóa 1.20x', sub: 'Hình ảnh rõ nét, khử răng cưa tốt' },
       { val: 1.25, title: 'Khóa 1.25x', sub: 'Cực nét chuẩn Esports, tối đa GPU' }
     ];
 
@@ -229,14 +273,104 @@
     if (window.Android && window.Android.setGameScale) {
       window.Android.setGameScale(selectedGamePkg, scale);
     }
-    // Update local game data & re-render
     const g = gamesList.find(x => x.pkg === selectedGamePkg);
     if (g) g.customScale = scale;
     renderGamesList(gamesList);
     closeGameScaleModal();
   };
 
-  // Tab 3: HUD Overlay Functions
+  // Add Game Modal (All Apps Picker)
+  window.openAddGameModal = function() {
+    const modal = document.getElementById('add-game-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    const container = document.getElementById('add-game-list-container');
+    if (container) container.innerHTML = '<div class="p-4 text-center text-on-surface-variant font-body-sm">Đang tải danh sách ứng dụng trên thiết bị...</div>';
+    
+    if (window.Android && window.Android.getAllInstalledApps) {
+      try {
+        const json = window.Android.getAllInstalledApps();
+        allInstalledAppsCache = JSON.parse(json) || [];
+        renderAddGameList(allInstalledAppsCache);
+      } catch (e) {
+        console.error('getAllInstalledApps error:', e);
+      }
+    }
+  };
+
+  window.closeAddGameModal = function() {
+    const modal = document.getElementById('add-game-modal');
+    if (modal) modal.classList.add('hidden');
+  };
+
+  function renderAddGameList(list) {
+    const container = document.getElementById('add-game-list-container');
+    if (!container) return;
+    if (!list || list.length === 0) {
+      container.innerHTML = '<div class="p-4 text-center text-on-surface-variant font-body-sm">Không tìm thấy ứng dụng phù hợp</div>';
+      return;
+    }
+    let html = '';
+    list.forEach(app => {
+      const btnText = app.isAdded ? 'Xóa' : '+ Thêm';
+      const btnClass = app.isAdded 
+        ? 'bg-surface-container-highest text-error hover:bg-surface-bright active:scale-95'
+        : 'bg-primary-container text-on-primary-fixed hover:bg-primary-fixed-dim active:scale-95';
+      const actionCall = app.isAdded 
+        ? `handleRemoveCustomGame('${app.pkg}')`
+        : `handleAddCustomGame('${app.pkg}')`;
+
+      html += `
+        <div class="flex items-center justify-between p-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors">
+          <div class="flex items-center gap-3 min-w-0 flex-1 mr-2">
+            <img src="${app.icon}" class="w-10 h-10 rounded-lg bg-surface-container-highest object-cover shrink-0" alt="">
+            <div class="flex flex-col min-w-0">
+              <span class="font-headline-sm text-sm font-semibold text-on-surface truncate">${app.name}</span>
+              <span class="font-label-mono text-[11px] text-on-surface-variant truncate">${app.pkg}</span>
+            </div>
+          </div>
+          <button onclick="${actionCall}" class="px-3 py-1.5 rounded-full text-xs font-label-mono font-bold shrink-0 transition-all ${btnClass}">
+            ${btnText}
+          </button>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  window.filterAddGameList = function(query) {
+    const q = (query || '').toLowerCase().trim();
+    if (!q) {
+      renderAddGameList(allInstalledAppsCache);
+      return;
+    }
+    const filtered = allInstalledAppsCache.filter(a => 
+      a.name.toLowerCase().includes(q) || a.pkg.toLowerCase().includes(q)
+    );
+    renderAddGameList(filtered);
+  };
+
+  window.handleAddCustomGame = function(pkg) {
+    if (window.Android && window.Android.addCustomGame) {
+      window.Android.addCustomGame(pkg);
+    }
+    const item = allInstalledAppsCache.find(x => x.pkg === pkg);
+    if (item) item.isAdded = true;
+    renderAddGameList(allInstalledAppsCache);
+  };
+
+  window.handleRemoveCustomGame = function(pkg) {
+    if (window.Android && window.Android.removeCustomGame) {
+      window.Android.removeCustomGame(pkg);
+    }
+    const item = allInstalledAppsCache.find(x => x.pkg === pkg);
+    if (item) item.isAdded = false;
+    renderAddGameList(allInstalledAppsCache);
+  };
+
+  // =========================================================================
+  // 5. HUD CONFIGURATION & LIVE PREVIEW CANVAS
+  // =========================================================================
   window.toggleSwitch = function(btn, targetElementId) {
     const isEnabled = btn.getAttribute('data-enabled') === 'true';
     const newState = !isEnabled;
@@ -250,7 +384,7 @@
       btn.classList.add('bg-primary-container');
       dot.classList.remove('bg-on-surface-variant', 'translate-x-0');
       dot.classList.add('bg-on-primary-container', 'translate-x-6');
-      if (targetEl) targetEl.classList.remove('hidden');
+      if (targetEl && activeHudLayout !== 'dot') targetEl.classList.remove('hidden');
     } else {
       btn.classList.remove('bg-primary-container');
       btn.classList.add('bg-surface-container-highest');
@@ -259,19 +393,23 @@
       if (targetEl) targetEl.classList.add('hidden');
     }
 
-    // Map targetElementId to metric key
     const metricMap = {
       'hud-item-fps': 'm_fps',
       'hud-item-temp': 'm_bat_temp',
       'hud-item-battery': 'm_watt',
       'hud-item-gpu': 'm_gpu',
-      'hud-item-ram': 'm_ram',
-      'hud-item-ping': 'm_ping'
+      'hud-item-ram': 'm_ram'
     };
     const key = metricMap[targetElementId];
     if (key && window.Android && window.Android.setHudMetric) {
       window.Android.setHudMetric(key, newState);
     }
+
+    // Update active metrics count
+    const enabledToggles = document.querySelectorAll('.toggle-btn[data-enabled="true"]').length;
+    const totalToggles = document.querySelectorAll('.toggle-btn').length;
+    const countEl = document.getElementById('hud-metrics-count');
+    if (countEl) countEl.textContent = `${enabledToggles}/${totalToggles} Kích hoạt`;
   };
 
   window.updateScale = function(val) {
@@ -295,6 +433,7 @@
   };
 
   window.selectLayout = function(btn, mode) {
+    activeHudLayout = mode;
     document.querySelectorAll('.layout-btn').forEach(b => {
       b.classList.remove('bg-surface-container-high', 'text-primary-fixed', 'shadow-sm');
       b.classList.add('bg-surface-container', 'text-on-surface-variant');
@@ -303,16 +442,43 @@
     btn.classList.add('bg-surface-container-high', 'text-primary-fixed', 'shadow-sm');
 
     const hudInner = document.getElementById('hud-inner');
+    const hudTemp = document.getElementById('hud-item-temp');
+    const hudBat = document.getElementById('hud-item-battery');
+    const hudGpu = document.getElementById('hud-item-gpu');
+    const hudRam = document.getElementById('hud-item-ram');
+    const sep1 = document.getElementById('hud-sep-1');
+    const sep2 = document.getElementById('hud-sep-2');
+    const sep3 = document.getElementById('hud-sep-3');
+
     let modeIdx = 0;
     if (mode === 'compact') {
       modeIdx = 1;
       if (hudInner) hudInner.className = 'px-3 py-2 rounded-2xl bg-surface-container-lowest/85 backdrop-blur-md shadow-lg grid grid-cols-2 gap-2 text-xs';
+      if (sep1) sep1.classList.add('hidden');
+      if (sep2) sep2.classList.add('hidden');
+      if (sep3) sep3.classList.add('hidden');
+      if (hudTemp) hudTemp.classList.remove('hidden');
+      if (hudBat) hudBat.classList.remove('hidden');
+      if (hudGpu) hudGpu.classList.remove('hidden');
     } else if (mode === 'dot') {
       modeIdx = 2;
-      if (hudInner) hudInner.className = 'px-2 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-lg flex items-center gap-1.5';
+      if (hudInner) hudInner.className = 'px-2.5 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-lg flex items-center gap-1.5';
+      if (sep1) sep1.classList.add('hidden');
+      if (sep2) sep2.classList.add('hidden');
+      if (sep3) sep3.classList.add('hidden');
+      if (hudTemp) hudTemp.classList.add('hidden');
+      if (hudBat) hudBat.classList.add('hidden');
+      if (hudGpu) hudGpu.classList.add('hidden');
+      if (hudRam) hudRam.classList.add('hidden');
     } else {
       modeIdx = 0;
       if (hudInner) hudInner.className = 'px-3 py-1.5 rounded-full bg-surface-container-lowest/85 backdrop-blur-md shadow-lg flex items-center gap-2.5 max-w-full overflow-x-auto no-scrollbar';
+      if (sep1) sep1.classList.remove('hidden');
+      if (sep2) sep2.classList.remove('hidden');
+      if (sep3) sep3.classList.remove('hidden');
+      if (hudTemp) hudTemp.classList.remove('hidden');
+      if (hudBat) hudBat.classList.remove('hidden');
+      if (hudGpu) hudGpu.classList.remove('hidden');
     }
 
     if (window.Android && window.Android.setHudLayoutMode) {
@@ -330,6 +496,8 @@
     
     const fpsText = document.querySelector('#hud-item-fps span:last-child');
     if (fpsText) fpsText.style.color = colorHex;
+    const fpsDot = document.querySelector('#hud-item-fps span:first-child');
+    if (fpsDot) fpsDot.style.backgroundColor = colorHex;
 
     const colorDots = Array.from(document.querySelectorAll('.color-dot'));
     const idx = colorDots.indexOf(btn);
@@ -338,7 +506,7 @@
     }
   };
 
-  // Draggable HUD Simulation in Tab 3 Preview
+  // Draggable HUD Simulation in Tab 2 Preview
   function initDragSimulation() {
     const hudPill = document.getElementById('hud-pill');
     if (!hudPill) return;
@@ -355,8 +523,8 @@
 
     hudPill.addEventListener('pointermove', (e) => {
       if (!isDragging) return;
-      initialTranslateX = Math.max(-100, Math.min(100, e.clientX - startX));
-      initialTranslateY = Math.max(-30, Math.min(30, e.clientY - startY));
+      initialTranslateX = Math.max(-120, Math.min(120, e.clientX - startX));
+      initialTranslateY = Math.max(-40, Math.min(40, e.clientY - startY));
       hudPill.style.transform = `translate(${initialTranslateX}px, ${initialTranslateY}px)`;
     });
 
@@ -370,7 +538,7 @@
     hudPill.addEventListener('pointercancel', stopDrag);
   }
 
-  // Toggle Overlay CTA
+  // Toggle Overlay CTA Button
   window.triggerOverlayLaunch = function(btn) {
     if (window.Android && window.Android.toggleOverlay) {
       window.Android.toggleOverlay();
@@ -423,81 +591,169 @@
     }
   };
 
-  // Real-time Telemetry Callback from Android
+  // =========================================================================
+  // 6. REAL-TIME TELEMETRY CALLBACK FROM ANDROID
+  // =========================================================================
   window.onTelemetryUpdate = function(jsonStr) {
     try {
       const data = (typeof jsonStr === 'string') ? JSON.parse(jsonStr) : jsonStr;
       if (!data) return;
 
-      // Tab 0 Hero & Telemetry
-      if (data.batTemp !== undefined) {
-        const heroBat = document.querySelector('.hero-bat-temp');
-        if (heroBat) heroBat.textContent = `${data.batTemp.toFixed(1)}°C`;
-        const hudTemp = document.querySelector('#hud-item-temp span:last-child');
-        if (hudTemp) hudTemp.textContent = `${data.batTemp.toFixed(1)}°C`;
-        const cardBatTemp = document.querySelector('.card-bat-temp');
-        if (cardBatTemp) cardBatTemp.textContent = `${data.batTemp.toFixed(1)}°C`;
+      // Real SoC & Chip
+      if (data.soc) {
+        const topSoc = document.getElementById('top-soc-model');
+        if (topSoc) topSoc.textContent = data.soc;
+        const homeChip = document.getElementById('home-device-chip');
+        if (homeChip) homeChip.textContent = data.soc;
+        const tab2Soc = document.getElementById('tab2-soc-summary');
+        if (tab2Soc && data.batTemp) {
+          tab2Soc.textContent = `${data.soc} • ${data.batTemp.toFixed(1)}°C`;
+        }
       }
+
+      // Live Display Refresh Rate
+      if (data.refreshRate) {
+        const topFps = document.getElementById('top-fps-display');
+        if (topFps) topFps.textContent = `${data.refreshRate} Hz`;
+        const dispRes = document.getElementById('card-display-res');
+        if (dispRes) dispRes.textContent = `${devicePhysW} x ${devicePhysH} • ${data.refreshRate}Hz`;
+      }
+
+      // Real GPU Name
+      if (data.gpuName) {
+        const cardGpu = document.getElementById('card-gpu-name');
+        if (cardGpu) cardGpu.textContent = data.gpuName;
+      }
+
+      // Real Battery & Temp
       if (data.batteryPct !== undefined) {
-        const topBat = document.getElementById('top-bat-pct');
-        if (topBat) topBat.textContent = `${data.batteryPct}%`;
+        const cardBat = document.getElementById('card-bat-pct');
+        if (cardBat) cardBat.textContent = `${data.batteryPct}%`;
         const hudBat = document.querySelector('#hud-item-battery span:last-child');
         if (hudBat) hudBat.textContent = `${data.batteryPct}%`;
-        const cardBat = document.querySelector('.card-bat-pct');
-        if (cardBat) cardBat.textContent = `${data.batteryPct}%`;
       }
+      if (data.batTemp !== undefined) {
+        const heroBat = document.getElementById('hero-bat-temp');
+        if (heroBat) heroBat.textContent = `${data.batTemp.toFixed(1)}°C`;
+        const cardBatTemp = document.getElementById('card-bat-temp');
+        if (cardBatTemp) cardBatTemp.textContent = `${data.batTemp.toFixed(1)}°C`;
+        const hudTemp = document.querySelector('#hud-item-temp span:last-child');
+        if (hudTemp) hudTemp.textContent = `${data.batTemp.toFixed(1)}°C`;
+      }
+      if (data.batStatus) {
+        const batBadge = document.getElementById('bat-status-badge');
+        if (batBadge) batBadge.textContent = data.batStatus;
+        const heroLabel = document.getElementById('hero-bat-label');
+        if (heroLabel) heroLabel.textContent = `Pin (${data.batStatus})`;
+      }
+      if (data.batMode) {
+        const batMode = document.getElementById('card-bat-mode');
+        if (batMode) batMode.textContent = data.batMode;
+      }
+
+      // Real CPU Temp
       if (data.cpuTemp !== undefined) {
-        const cpuEl = document.querySelector('.card-cpu-temp');
+        const cpuEl = document.getElementById('card-cpu-temp');
         if (cpuEl) cpuEl.textContent = `${Math.round(data.cpuTemp)}°C`;
       }
-      if (data.fps !== undefined) {
-        const hudFps = document.querySelector('#hud-item-fps span:last-child');
-        if (hudFps) hudFps.textContent = data.fps.toFixed(1);
-      }
-      if (data.gpuLoad !== undefined) {
-        const hudGpu = document.querySelector('#hud-item-gpu span:last-child');
-        if (hudGpu) hudGpu.textContent = `${data.gpuLoad}%`;
-      }
+
+      // Real RAM Usage
       if (data.ramUsedPct !== undefined) {
-        const ramBar = document.querySelector('.ram-progress-bar');
+        const ramBar = document.getElementById('ram-progress-bar');
         if (ramBar) ramBar.style.width = `${data.ramUsedPct}%`;
-        const ramBadge = document.querySelector('.ram-used-badge');
+        const ramBadge = document.getElementById('ram-used-badge');
         if (ramBadge) ramBadge.textContent = `${data.ramUsedPct}% ĐÃ DÙNG`;
       }
       if (data.ramAvailGb !== undefined && data.ramTotalGb !== undefined) {
-        const ramText = document.querySelector('.ram-avail-text');
-        if (ramText) ramText.innerHTML = `RAM Khả dụng: <strong class="text-primary-fixed">${data.ramAvailGb.toFixed(1)} GB</strong> / ${data.ramTotalGb.toFixed(0)} GB`;
-        const ramFree = document.querySelector('.ram-free-text');
+        const ramAvail = document.getElementById('ram-avail-text');
+        if (ramAvail) ramAvail.innerHTML = `RAM Khả dụng: <strong class="text-primary-fixed">${data.ramAvailGb.toFixed(1)} GB</strong> / ${data.ramTotalGb.toFixed(0)} GB`;
+        const ramFree = document.getElementById('ram-free-text');
         if (ramFree) ramFree.textContent = `${data.ramAvailGb.toFixed(1)} GB trống`;
       }
+
+      // Shizuku & Overlay Permissions State
+      if (data.isShizukuReady !== undefined) {
+        const heroShizuku = document.getElementById('hero-shizuku-status');
+        if (heroShizuku) heroShizuku.textContent = data.isShizukuReady ? '100%' : 'Chưa cấp';
+        const s1 = document.getElementById('step1-badge');
+        if (s1) {
+          s1.textContent = data.isShizukuReady ? 'Đã kích hoạt' : 'Chưa cấp';
+          s1.className = data.isShizukuReady 
+            ? 'px-2 py-1 rounded-full bg-primary-container/20 text-primary-fixed font-label-badge text-label-badge font-bold'
+            : 'px-2 py-1 rounded-full bg-error-container/20 text-error font-label-badge text-label-badge font-bold';
+        }
+        const eye = document.getElementById('home-shizuku-eyebrow');
+        if (eye) eye.textContent = `TRẠNG THÁI DỊCH VỤ · SSAA ENGINE (${data.isShizukuReady ? 'SẴN SÀNG' : 'CHƯA KÍCH HOẠT'})`;
+        const tit = document.getElementById('home-shizuku-title');
+        if (tit) tit.textContent = data.isShizukuReady ? 'Khử răng cưa đang sẵn sàng · Đã kết nối Shizuku' : 'Cần kích hoạt Shizuku để áp dụng SSAA';
+      }
+      if (data.isOverlayGranted !== undefined) {
+        const s2 = document.getElementById('step2-badge');
+        if (s2) {
+          s2.textContent = data.isOverlayGranted ? 'Đã cấp' : 'Chưa cấp';
+          s2.className = data.isOverlayGranted 
+            ? 'px-2 py-1 rounded-full bg-primary-container/20 text-primary-fixed font-label-badge text-label-badge font-bold'
+            : 'px-2 py-1 rounded-full bg-error-container/20 text-error font-label-badge text-label-badge font-bold';
+        }
+      }
+
+      // Stepper Summary
+      const readyCount = (data.isShizukuReady ? 1 : 0) + (data.isOverlayGranted ? 1 : 0) + 1;
+      const stepSummary = document.getElementById('stepper-summary');
+      if (stepSummary) stepSummary.textContent = `${readyCount}/3 Sẵn sàng`;
+
+      // Live HUD Overlay Running Status
       if (data.isOverlayRunning !== undefined) {
         updateOverlayButtonState(data.isOverlayRunning);
+      }
+
+      // Apps list update
+      if (data.apps) {
+        renderGamesList(data.apps);
       }
     } catch (e) {
       console.error('onTelemetryUpdate error:', e);
     }
   };
 
-  // Initialization
+  // =========================================================================
+  // 7. INITIALIZATION
+  // =========================================================================
   function initApp() {
     initSsaaOptions();
     initDragSimulation();
 
-    // Hook up step clicks on Tab 0
-    const steps = document.querySelectorAll('#tab-home .rounded-lg');
-    steps.forEach((step, idx) => {
-      const text = step.textContent || '';
-      if (text.includes('Shizuku')) {
-        step.style.cursor = 'pointer';
-        step.onclick = window.handleShizukuStep;
-      } else if (text.includes('Quyền vẽ')) {
-        step.style.cursor = 'pointer';
-        step.onclick = window.handleOverlayStep;
-      } else if (text.includes('tối ưu hóa pin')) {
-        step.style.cursor = 'pointer';
-        step.onclick = window.handleBatteryStep;
+    // Restore saved active tab (Fix navigation kick-back)
+    try {
+      const savedTab = localStorage.getItem('active_tab_index');
+      if (savedTab !== null) {
+        switchTab(parseInt(savedTab, 10));
+      } else {
+        switchTab(0);
       }
-    });
+    } catch (_) {
+      switchTab(0);
+    }
+
+    // Restore saved theme
+    try {
+      const savedTheme = localStorage.getItem('app_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.textContent = 'light_mode';
+      }
+    } catch (_) {}
+
+    // Restore saved lang
+    try {
+      const savedLang = localStorage.getItem('app_lang');
+      if (savedLang) {
+        currentLang = savedLang;
+        const langEl = document.getElementById('lang-text');
+        if (langEl) langEl.textContent = currentLang;
+      }
+    } catch (_) {}
 
     // Fetch initial data from Android bridge
     if (window.Android && window.Android.getInitialData) {
@@ -508,14 +764,8 @@
             devicePhysW = initData.physW;
             devicePhysH = initData.physH;
             updateResolutionLabels(devicePhysW, devicePhysH);
-          }
-          if (initData.soc) {
-            const socEl = document.getElementById('top-soc-model');
-            if (socEl) socEl.textContent = initData.soc;
-          }
-          if (initData.refreshRate) {
-            const fpsEl = document.getElementById('top-fps-display');
-            if (fpsEl) fpsEl.textContent = `${initData.refreshRate} FPS`;
+            const previewRes = document.getElementById('preview-game-res');
+            if (previewRes) previewRes.textContent = `Màn hình mô phỏng • ${devicePhysH}x${devicePhysW}`;
           }
           if (initData.selectedFactor) {
             selectedFactor = initData.selectedFactor;
@@ -533,9 +783,10 @@
           }
           if (initData.hudLayoutMode !== undefined) {
             const layoutBtns = document.querySelectorAll('.layout-btn');
-            if (layoutBtns[initData.hudLayoutMode]) {
-              const modes = ['horizontal', 'compact', 'dot'];
-              window.selectLayout(layoutBtns[initData.hudLayoutMode], modes[initData.hudLayoutMode]);
+            const modes = ['horizontal', 'compact', 'dot'];
+            const targetModeIdx = initData.hudLayoutMode;
+            if (layoutBtns[targetModeIdx]) {
+              window.selectLayout(layoutBtns[targetModeIdx], modes[targetModeIdx]);
             }
           }
           if (initData.hudColorAccent !== undefined) {
@@ -545,6 +796,8 @@
               window.changeThemeColor(colors[initData.hudColorAccent], dots[initData.hudColorAccent]);
             }
           }
+          // Process full initial telemetry
+          window.onTelemetryUpdate(initData);
         }
       } catch (err) {
         console.error('Failed to parse getInitialData:', err);
