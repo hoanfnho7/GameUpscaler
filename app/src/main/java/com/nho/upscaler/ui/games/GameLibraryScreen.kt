@@ -78,6 +78,7 @@ import com.nho.upscaler.ui.theme.DarkSurfaceLowest
 import com.nho.upscaler.ui.theme.TechAmber
 import com.nho.upscaler.ui.theme.TechEmerald
 import com.nho.upscaler.ui.theme.VoltLime
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -256,7 +257,7 @@ fun GameLibraryScreen(
             // My Games Section Header
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, top = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {

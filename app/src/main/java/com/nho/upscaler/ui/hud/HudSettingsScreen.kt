@@ -23,7 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddModerator
-import androidx.compose.material.icons.filled.BatteryCharging90
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dashboard
@@ -680,7 +680,7 @@ private fun HudMetricsListCard(
             // 13 Items
             val metricsList = listOf(
                 MetricItemDef("m_fps", "Tốc độ khung hình (FPS)", "Hiển thị real-time FPS đo chính xác 0.1", Icons.Default.Speed),
-                MetricItemDef("m_watt", "Công suất điện (Watt)", "Điện năng tiêu thụ phần cứng tức thời (W)", Icons.Default.BatteryCharging90),
+                MetricItemDef("m_watt", "Công suất điện (Watt)", "Điện năng tiêu thụ phần cứng tức thời (W)", Icons.Default.BatteryChargingFull),
                 MetricItemDef("m_gpu", "Mức tải GPU (%)", "Tỷ lệ chiếm dụng nhân đồ họa GPU", Icons.Default.DeveloperBoard),
                 MetricItemDef("m_vram", "Bộ nhớ đồ họa VRAM (MB)", "Dung lượng VRAM buffer đang dùng", Icons.Default.Memory),
                 MetricItemDef("m_cpu_freq", "Xung nhịp CPU (GHz)", "Tần số xung nhịp cụm nhân CPU", Icons.Default.Speed),

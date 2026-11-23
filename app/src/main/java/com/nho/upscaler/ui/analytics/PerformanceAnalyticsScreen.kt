@@ -26,7 +26,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.BatteryCharging90
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Speed

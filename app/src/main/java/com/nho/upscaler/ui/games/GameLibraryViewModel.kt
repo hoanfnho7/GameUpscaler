@@ -161,16 +161,16 @@ class GameLibraryViewModel : ViewModel() {
     }
 
     fun togglePin(pkg: String, context: Context) {
-        val current = HashSet(getPinnedGames())
-        if (current.contains(pkg)) current.remove(pkg) else current.add(pkg)
-        prefsMgr?.let {
-            it.prefs.edit().putStringSet("pinned_games", current).apply()
+        prefsMgr?.let { mgr ->
+            val current = mgr.getPinnedPackages()
+            if (current.contains(pkg)) current.remove(pkg) else current.add(pkg)
+            mgr.savePinnedPackages(current)
         }
         loadInstalledGames(context)
     }
 
     private fun getPinnedGames(): Set<String> {
-        return prefsMgr?.prefs?.getStringSet("pinned_games", emptySet()) ?: emptySet()
+        return prefsMgr?.getPinnedPackages() ?: emptySet()
     }
 
     fun toggleGameEnabled(pkg: String, enabled: Boolean) {
