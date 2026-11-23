@@ -33,16 +33,21 @@ val DarkTextTertiary = Color(0xFF64748B)
 val DarkBorder = Color(0x1FFFFFFF) // rgba(255,255,255, 0.12)
 val DarkBorderSubtle = Color(0x14FFFFFF) // rgba(255,255,255, 0.08)
 
-// Light Theme Surfaces
-val LightBackground = Color(0xFFFAF8FF)
+// Light Theme Surfaces & Accents
+val LightBackground = Color(0xFFF8FAFC)
 val LightSurface = Color(0xFFFFFFFF)
 val LightSurfaceLow = Color(0xFFF8FAFC)
 val LightSurfaceContainer = Color(0xFFF1F5F9)
 val LightSurfaceHigh = Color(0xFFE2E8F0)
 val LightSurfaceHighest = Color(0xFFCBD5E1)
 
-val LightVoltLime = Color(0xFF65A30D)
+val LightVoltLime = Color(0xFF4D7C0F) // High-contrast deep volt green
 val LightVoltContainer = Color(0xFFE8F5D2)
-val LightTextPrimary = Color(0xFF0F172A)
-val LightTextSecondary = Color(0xFF64748B)
-val LightBorder = Color(0xFFE2E8F0)
+val LightTextPrimary = Color(0xFF0F172A) // Slate-900: strong, crisp text
+val LightTextSecondary = Color(0xFF334155) // Slate-700: high contrast subtext
+val LightTextTertiary = Color(0xFF475569) // Slate-600
+val LightBorder = Color(0xFFCBD5E1) // Slate-300
+val LightBorderSubtle = Color(0xFFE2E8F0) // Slate-200
+
+val LightTechAmber = Color(0xFFB45309) // High-contrast amber for light mode
+val LightTechEmerald = Color(0xFF047857) // High-contrast emerald for light mode

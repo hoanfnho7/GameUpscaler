@@ -99,7 +99,6 @@ fun HudSettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         LazyColumn(
             modifier = Modifier
@@ -147,7 +146,7 @@ fun HudSettingsScreen(
                     onClick = { viewModel.toggleActualHud(context) },
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (uiState.isHudActive) TechRed else VoltLime,
+                        containerColor = if (uiState.isHudActive) TechRed else MaterialTheme.colorScheme.primary,
                         contentColor = if (uiState.isHudActive) Color.White else Color(0xFF171E00)
                     ),
                     modifier = Modifier
@@ -253,7 +252,7 @@ private fun LiveHudPreviewCanvas(
                     Icon(
                         imageVector = Icons.Default.Visibility,
                         contentDescription = null,
-                        tint = VoltLime,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
@@ -264,11 +263,11 @@ private fun LiveHudPreviewCanvas(
                 }
             }
 
-            // Simulated Game Screen
+            // Simulated Game Screen - Flexibly expands to fit preview content
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(20f / 9f)
+                    .defaultMinSize(minHeight = 110.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(
                         Brush.linearGradient(
@@ -279,8 +278,9 @@ private fun LiveHudPreviewCanvas(
                             )
                         )
                     )
-                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.TopCenter
+                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(14.dp))
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center
             ) {
                 val bgAlpha = (uiState.bgOpacity / 100f).coerceIn(0.1f, 1f)
                 val pillBg = Color(0xFF0C0E11).copy(alpha = bgAlpha)
@@ -288,22 +288,17 @@ private fun LiveHudPreviewCanvas(
 
                 Box(
                     modifier = Modifier
-                        .padding(top = 10.dp)
                         .graphicsLayer(
                             scaleX = uiState.scaleLevel.coerceIn(0.5f, 1.3f),
                             scaleY = uiState.scaleLevel.coerceIn(0.5f, 1.3f)
                         )
-                        .clip(if (uiState.layoutPreset == HudLayoutPreset.VERTICAL) RoundedCornerShape(12.dp) else CircleShape)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(pillBg)
-                        .border(
-                            1.dp,
-                            pillBorder,
-                            if (uiState.layoutPreset == HudLayoutPreset.VERTICAL) RoundedCornerShape(12.dp) else CircleShape
-                        )
+                        .border(1.dp, pillBorder, RoundedCornerShape(12.dp))
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     if (uiState.layoutPreset == HudLayoutPreset.HORIZONTAL) {
-                        // Horizontal layout: Monospace tokens separated by |
+                        // Horizontal layout: Tokens wrap cleanly in rows of up to 3 items
                         val items = mutableListOf<String>()
                         if (uiState.metricsMap["m_fps"] != false) items.add("59.8 FPS")
                         if (uiState.metricsMap["m_bat_temp"] != false) items.add("Pin 36.2°C")
@@ -313,21 +308,28 @@ private fun LiveHudPreviewCanvas(
                         if (uiState.metricsMap["m_ram"] != false) items.add("RAM 4.2G")
                         if (items.isEmpty()) items.add("59.8 FPS")
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            items.forEachIndexed { i, text ->
-                                if (i > 0) {
-                                    Text("|", style = MaterialTheme.typography.labelSmall, color = Color(0x55FFFFFF))
+                            items.chunked(3).forEach { rowItems ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    rowItems.forEachIndexed { i, text ->
+                                        if (i > 0) {
+                                            Text("|", style = MaterialTheme.typography.labelSmall, color = Color(0x55FFFFFF))
+                                        }
+                                        Text(
+                                            text = text,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = accentColor,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
-                                Text(
-                                    text = text,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = accentColor,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
-                                )
                             }
                         }
                     } else {
@@ -405,7 +407,7 @@ private fun HudAppearanceCard(
                         color = if (isHoriz) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
                         border = BorderStroke(
                             1.dp,
-                            if (isHoriz) VoltLime.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant
+                            if (isHoriz) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -420,13 +422,13 @@ private fun HudAppearanceCard(
                             Icon(
                                 imageVector = Icons.Default.ViewStream,
                                 contentDescription = null,
-                                tint = if (isHoriz) VoltLime else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (isHoriz) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
                                 text = if (lang == "VI") "Thanh ngang" else "Horizontal",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = if (isHoriz) VoltLime else MaterialTheme.colorScheme.onSurface,
+                                color = if (isHoriz) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -439,7 +441,7 @@ private fun HudAppearanceCard(
                         color = if (isVert) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
                         border = BorderStroke(
                             1.dp,
-                            if (isVert) VoltLime.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant
+                            if (isVert) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -454,13 +456,13 @@ private fun HudAppearanceCard(
                             Icon(
                                 imageVector = Icons.Default.Dashboard,
                                 contentDescription = null,
-                                tint = if (isVert) VoltLime else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (isVert) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
                                 text = if (lang == "VI") "Dạng dọc" else "Vertical",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = if (isVert) VoltLime else MaterialTheme.colorScheme.onSurface,
+                                color = if (isVert) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -483,7 +485,7 @@ private fun HudAppearanceCard(
                     Text(
                         text = String.format(Locale.US, "%.1fx (%d%%)", uiState.scaleLevel, (uiState.scaleLevel * 100).toInt()),
                         style = MaterialTheme.typography.labelMedium,
-                        color = VoltLime,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -492,8 +494,8 @@ private fun HudAppearanceCard(
                     onValueChange = onScaleChange,
                     valueRange = 0.5f..1.5f,
                     colors = SliderDefaults.colors(
-                        thumbColor = VoltLime,
-                        activeTrackColor = VoltLime,
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
                         inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 )
@@ -523,7 +525,7 @@ private fun HudAppearanceCard(
                     Text(
                         text = "${uiState.bgOpacity}%",
                         style = MaterialTheme.typography.labelMedium,
-                        color = VoltLime,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -532,8 +534,8 @@ private fun HudAppearanceCard(
                     onValueChange = { onOpacityChange(it.toInt()) },
                     valueRange = 0f..100f,
                     colors = SliderDefaults.colors(
-                        thumbColor = VoltLime,
-                        activeTrackColor = VoltLime,
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
                         inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 )
@@ -585,7 +587,7 @@ private fun HudAppearanceCard(
                                     .background(color)
                                     .border(
                                         width = if (isSelected) 2.5.dp else 1.dp,
-                                        color = if (isSelected) VoltLime else Color(0x44888888),
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color(0x44888888),
                                         shape = CircleShape
                                     )
                                     .clickable { onColorChange(idx) },
@@ -627,10 +629,10 @@ private fun HudAppearanceCard(
                         }
                         Surface(
                             shape = CircleShape,
-                            color = if (isSel) VoltLime else MaterialTheme.colorScheme.surfaceVariant,
+                            color = if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                             border = BorderStroke(
                                 1.dp,
-                                if (isSel) VoltLime else MaterialTheme.colorScheme.outlineVariant
+                                if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                             ),
                             modifier = Modifier
                                 .weight(1f)
@@ -687,7 +689,7 @@ private fun HudMetricsListCard(
                 Text(
                     text = if (lang == "VI") "$enabledCount/13 Kích hoạt" else "$enabledCount/13 Enabled",
                     style = MaterialTheme.typography.labelSmall,
-                    color = VoltLime,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -753,7 +755,7 @@ private fun HudMetricsListCard(
                             Icon(
                                 imageVector = item.icon,
                                 contentDescription = null,
-                                tint = if (isChecked) VoltLime else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -781,7 +783,7 @@ private fun HudMetricsListCard(
                         onCheckedChange = { onToggleMetric(item.key) },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color(0xFF171E00),
-                            checkedTrackColor = VoltLime,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
                             uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             uncheckedTrackColor = MaterialTheme.colorScheme.surface
                         )
@@ -858,7 +860,7 @@ private fun HudUtilityActionsRow(
                 Icon(
                     imageVector = Icons.Default.RestartAlt,
                     contentDescription = null,
-                    tint = VoltLime,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
@@ -970,7 +972,7 @@ private fun ThermalSensorsDialog(
                             Text(
                                 text = String.format(Locale.US, "%.1f°C", temp),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = if (temp >= 43f) TechRed else VoltLime,
+                                color = if (temp >= 43f) TechRed else MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
                             )
                         }

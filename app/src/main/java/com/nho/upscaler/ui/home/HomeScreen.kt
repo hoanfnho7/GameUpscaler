@@ -91,34 +91,16 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
-    var showAboutDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.init(context)
-    }
-
-    if (showAboutDialog) {
-        AboutDialog(
-            lang = uiState.currentLang,
-            onDismiss = { showAboutDialog = false }
-        )
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
-        // TOP APP BAR (Real native header)
-        TopAppBarHeader(
-            isDark = uiState.isDarkTheme,
-            lang = uiState.currentLang,
-            onToggleTheme = { viewModel.toggleTheme() },
-            onToggleLang = { viewModel.toggleLanguage() },
-            onOpenAbout = { showAboutDialog = true }
-        )
-
         // SCROLLABLE CONTENT
         LazyColumn(
             modifier = Modifier
@@ -253,273 +235,6 @@ fun HomeScreen(
 }
 
 @Composable
-private fun AboutDialog(
-    lang: String,
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(VoltLime.copy(alpha = 0.2f))
-                        .border(1.dp, VoltLime.copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Tune,
-                        contentDescription = null,
-                        tint = VoltLime,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Column {
-                    Text(
-                        text = "GameUpscaler Pro",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Phiên bản v1.0.53",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = VoltLime,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = if (lang == "VI")
-                        "Công cụ tối ưu hóa độ phân giải hiển thị (SSAA) và hiển thị thanh đo thông số phần cứng thời gian thực qua Shizuku."
-                    else
-                        "Display resolution optimizer (SSAA) and real-time hardware telemetry overlay via Shizuku.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = if (lang == "VI") "Tác giả: hoanfnho7" else "Author: hoanfnho7",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = if (lang == "VI") "Giấy phép: GNU General Public License v3.0" else "License: GNU GPL v3.0",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = if (lang == "VI") "Mã nguồn: 100% Open Source" else "Source: 100% Open Source",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = TechEmerald,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-                Button(
-                    onClick = {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/hoanfnho7/GameUpscaler")).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            context.startActivity(intent)
-                        } catch (_: Exception) {
-                            Toast.makeText(context, "https://github.com/hoanfnho7/GameUpscaler", Toast.LENGTH_LONG).show()
-                        }
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = VoltLime,
-                        contentColor = Color(0xFF171E00)
-                    ),
-                    modifier = Modifier.fillMaxWidth().height(42.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Launch,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "GitHub Repository",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Text(if (lang == "VI") "Đóng" else "Close", fontWeight = FontWeight.Bold)
-            }
-        }
-    )
-}
-
-@Composable
-private fun TopAppBarHeader(
-    isDark: Boolean,
-    lang: String,
-    onToggleTheme: () -> Unit,
-    onToggleLang: () -> Unit,
-    onOpenAbout: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(60.dp)
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Left: Logo & Pro badge (Clickable to open About dialog)
-        Row(
-            modifier = Modifier
-                .weight(1f, fill = false)
-                .padding(end = 6.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .clickable { onOpenAbout() },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(VoltLime.copy(alpha = 0.2f))
-                    .border(1.dp, VoltLime.copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Tune,
-                    contentDescription = "About",
-                    tint = VoltLime,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = "GameUpscaler",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(VoltLime)
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = "PRO",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF171E00),
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-            }
-        }
-
-        // Right: Theme and Language buttons
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Theme button
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier
-                    .height(34.dp)
-                    .clip(CircleShape)
-                    .clickable { onToggleTheme() }
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isDark) Icons.Default.DarkMode else Icons.Default.LightMode,
-                        contentDescription = null,
-                        tint = VoltLime,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = if (isDark) "Tối" else "Sáng",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-
-            // Language button
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier
-                    .height(34.dp)
-                    .clip(CircleShape)
-                    .clickable { onToggleLang() }
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Language,
-                        contentDescription = null,
-                        tint = TechAmber,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = lang,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun HeroStatusCard(
     uiState: HomeUiState,
     onResetRes: () -> Unit,
@@ -536,7 +251,7 @@ private fun HeroStatusCard(
                 .fillMaxWidth()
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(VoltLime.copy(alpha = 0.08f), Color.Transparent),
+                        colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), Color.Transparent),
                         radius = 600f
                     )
                 )
@@ -697,7 +412,7 @@ private fun RamStorageCard(uiState: HomeUiState) {
                         Icon(
                             imageVector = Icons.Default.Memory,
                             contentDescription = null,
-                            tint = VoltLime,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -717,13 +432,13 @@ private fun RamStorageCard(uiState: HomeUiState) {
                 Box(
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(VoltLime.copy(alpha = 0.15f))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = "${uiState.ramUsedPct}% " + (if (uiState.currentLang == "VI") "ĐÃ DÙNG" else "USED"),
                         style = MaterialTheme.typography.labelSmall,
-                        color = VoltLime,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -736,7 +451,7 @@ private fun RamStorageCard(uiState: HomeUiState) {
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(CircleShape),
-                color = VoltLime,
+                color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
 
@@ -831,7 +546,7 @@ private fun BatteryTempCard(uiState: HomeUiState) {
                 Icon(
                     imageVector = if (uiState.batteryTemp >= 43f) Icons.Default.BatteryAlert else Icons.Default.BatteryStd,
                     contentDescription = null,
-                    tint = if (uiState.isCharging) TechEmerald else VoltLime,
+                    tint = if (uiState.isCharging) TechEmerald else MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -871,7 +586,7 @@ private fun DisplaySocCard(uiState: HomeUiState) {
                         Icon(
                             imageVector = Icons.Default.DeveloperBoard,
                             contentDescription = null,
-                            tint = VoltLime,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -885,7 +600,7 @@ private fun DisplaySocCard(uiState: HomeUiState) {
                         Text(
                             text = "${uiState.socName} • ${uiState.refreshRate}Hz",
                             style = MaterialTheme.typography.labelMedium,
-                            color = VoltLime,
+                            color = MaterialTheme.colorScheme.primary,
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
@@ -940,7 +655,7 @@ private fun DisplaySocCard(uiState: HomeUiState) {
                     Icon(
                         imageVector = Icons.Default.TrendingFlat,
                         contentDescription = null,
-                        tint = VoltLime,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp).padding(horizontal = 4.dp)
                     )
 
@@ -951,14 +666,14 @@ private fun DisplaySocCard(uiState: HomeUiState) {
                         Text(
                             text = if (uiState.currentLang == "VI") "SSAA TỐI ƯU" else "SSAA UPSCALE",
                             style = MaterialTheme.typography.labelSmall,
-                            color = VoltLime,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1
                         )
                         Text(
                             text = "${uiState.targetW}x${uiState.targetH} (${uiState.targetDen} DPI)",
                             style = MaterialTheme.typography.labelMedium,
-                            color = VoltLime,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
@@ -1051,7 +766,7 @@ private fun HistoryLogsCard(
             Icon(
                 imageVector = Icons.Default.ArrowForward,
                 contentDescription = null,
-                tint = VoltLime,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -1170,13 +885,13 @@ private fun SetupStepItem(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(if (isDone) VoltLime.copy(alpha = 0.2f) else TechAmber.copy(alpha = 0.2f)),
+                        .background(if (isDone) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else TechAmber.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = if (isDone) VoltLime else TechAmber,
+                        tint = if (isDone) MaterialTheme.colorScheme.primary else TechAmber,
                         modifier = Modifier.size(17.dp)
                     )
                 }
@@ -1202,13 +917,13 @@ private fun SetupStepItem(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(if (isDone) VoltLime.copy(alpha = 0.15f) else TechAmber.copy(alpha = 0.15f))
+                    .background(if (isDone) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else TechAmber.copy(alpha = 0.15f))
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
                 Text(
                     text = if (isDone) doneText else pendingText,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (isDone) VoltLime else TechAmber,
+                    color = if (isDone) MaterialTheme.colorScheme.primary else TechAmber,
                     fontWeight = FontWeight.Bold
                 )
             }

@@ -24,8 +24,10 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.service.quicksettings.TileService
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.TextView
 import android.widget.Toast
@@ -410,11 +412,13 @@ class FpsOverlayService : Service() {
             overlayParams = params
             applyPositionForCurrentOrientation()
 
+            val touchSlop = ViewConfiguration.get(this).scaledTouchSlop.coerceAtLeast(36)
             tv.setOnTouchListener(object : View.OnTouchListener {
                 private var initialX = 0
                 private var initialY = 0
                 private var initialTouchX = 0f
                 private var initialTouchY = 0f
+                private var downTimeMs = 0L
                 private var isDragging = false
 
                 override fun onTouch(v: View, event: MotionEvent): Boolean {
@@ -424,6 +428,7 @@ class FpsOverlayService : Service() {
                             initialY = params.y
                             initialTouchX = event.rawX
                             initialTouchY = event.rawY
+                            downTimeMs = System.currentTimeMillis()
                             isDragging = false
                             isOverCloseZone = false
                             return true
@@ -431,7 +436,9 @@ class FpsOverlayService : Service() {
                         MotionEvent.ACTION_MOVE -> {
                             val dx = (event.rawX - initialTouchX).toInt()
                             val dy = (event.rawY - initialTouchY).toInt()
-                            if (abs(dx) > 10 || abs(dy) > 10) {
+                            val dist = hypot(dx.toDouble(), dy.toDouble())
+
+                            if (dist > touchSlop) {
                                 if (!isDragging) {
                                     isDragging = true
                                     closeTargetView?.visibility = View.VISIBLE
@@ -443,8 +450,8 @@ class FpsOverlayService : Service() {
                                 val dm = resources.displayMetrics
                                 val targetCenterX = dm.widthPixels / 2f
                                 val targetCenterY = dm.heightPixels - 90f - 68f
-                                val dist = hypot(event.rawX - targetCenterX, event.rawY - targetCenterY)
-                                val insideZone = dist < 145f
+                                val distToZone = hypot(event.rawX - targetCenterX, event.rawY - targetCenterY)
+                                val insideZone = distToZone < 145f
 
                                 if (insideZone != isOverCloseZone) {
                                     isOverCloseZone = insideZone
@@ -455,14 +462,15 @@ class FpsOverlayService : Service() {
                         }
                         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                             closeTargetView?.visibility = View.GONE
-                            if (isDragging) {
-                                if (isOverCloseZone) {
-                                    Toast.makeText(this@FpsOverlayService, Lang.str(this@FpsOverlayService, R.string.toast_hud_closed), Toast.LENGTH_SHORT).show()
-                                    stopSelf()
-                                    return true
-                                }
-                                prefsMgr.saveHudPosition(isLandscapeMode(), params.x, params.y)
-                            } else {
+                            val totalDist = hypot((event.rawX - initialTouchX).toDouble(), (event.rawY - initialTouchY).toDouble())
+                            val duration = System.currentTimeMillis() - downTimeMs
+                            val isClick = (!isDragging || totalDist <= touchSlop * 1.5) && duration < 450L
+
+                            if (isClick) {
+                                try {
+                                    v.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                                } catch (_: Exception) {}
+
                                 if (!PerfLogManager.isRecording) {
                                     val (recPkg, recName, recScale) = resolveEffectiveSessionInfo()
                                     PerfLogManager.startSession(recPkg, recName, recScale)
@@ -482,7 +490,15 @@ class FpsOverlayService : Service() {
                                 }
                                 lastRenderedText = ""
                                 renderTelemetryText()
+                            } else if (isDragging) {
+                                if (isOverCloseZone) {
+                                    Toast.makeText(this@FpsOverlayService, Lang.str(this@FpsOverlayService, R.string.toast_hud_closed), Toast.LENGTH_SHORT).show()
+                                    stopSelf()
+                                    return true
+                                }
+                                prefsMgr.saveHudPosition(isLandscapeMode(), params.x, params.y)
                             }
+                            isDragging = false
                             isOverCloseZone = false
                             updateCloseTargetVisual(false)
                             return true
@@ -548,12 +564,24 @@ class FpsOverlayService : Service() {
                 tv.setPadding(padH[idx], padV[idx] + 3, padH[idx], padV[idx] + 3)
                 tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 14f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
             }
-            else -> { // Horizontal Pill
-                tv.isSingleLine = true
-                tv.maxLines = 1
-                tv.gravity = Gravity.CENTER_VERTICAL
-                tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
-                tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 999f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
+            else -> { // Horizontal Pill / Wrapped rows
+                val isLand = isLandscapeMode()
+                val dm = resources.displayMetrics
+                if (isLand) {
+                    tv.isSingleLine = false
+                    tv.maxLines = 3
+                    tv.maxWidth = (dm.widthPixels - 40).coerceAtLeast(300)
+                    tv.gravity = Gravity.CENTER_VERTICAL
+                    tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
+                    tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 12f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
+                } else {
+                    tv.isSingleLine = false
+                    tv.maxLines = 6
+                    tv.maxWidth = (dm.widthPixels - 32).coerceAtLeast(200)
+                    tv.gravity = Gravity.CENTER
+                    tv.setPadding(padH[idx], padV[idx] + 2, padH[idx], padV[idx] + 2)
+                    tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 12f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
+                }
             }
         }
 
@@ -604,6 +632,7 @@ class FpsOverlayService : Service() {
             }
             1 -> { // Vertical Column (Aligned monospace labels)
                 val lines = mutableListOf<String>()
+                if (PerfLogManager.isRecording) lines.add("● REC")
                 if (showFps) lines.add("FPS  $fpsVal")
                 if (showBatTemp) lines.add("PIN  $batVal")
                 if (showSocTemp) lines.add("SOC  $socVal")
@@ -620,8 +649,9 @@ class FpsOverlayService : Service() {
                 if (lines.isEmpty()) lines.add("FPS  $fpsVal")
                 lines.joinToString("\n")
             }
-            else -> { // Horizontal Pill
+            else -> { // Horizontal Pill / Multi-line Wrap
                 val items = mutableListOf<String>()
+                if (PerfLogManager.isRecording) items.add("● REC")
                 if (showFps) items.add("$fpsVal FPS")
                 if (showBatTemp) items.add("Pin $batVal")
                 if (showSocTemp) items.add("SoC $socVal")
@@ -636,7 +666,20 @@ class FpsOverlayService : Service() {
                 if (showCpuFreq) items.add(cpuFreqVal)
                 if (showRam) items.add("RAM $ramVal")
                 if (items.isEmpty()) items.add("$fpsVal FPS")
-                items.joinToString("  |  ")
+
+                if (isLandscapeMode()) {
+                    if (items.size <= 6) {
+                        items.joinToString("  |  ")
+                    } else {
+                        items.chunked(5).joinToString("\n") { row -> row.joinToString("  |  ") }
+                    }
+                } else {
+                    if (items.size <= 3) {
+                        items.joinToString("  |  ")
+                    } else {
+                        items.chunked(3).joinToString("\n") { row -> row.joinToString("  |  ") }
+                    }
+                }
             }
         }
 
@@ -653,6 +696,7 @@ class FpsOverlayService : Service() {
             else -> Color.WHITE
         }
         val color = when {
+            PerfLogManager.isRecording -> UiTheme.ACCENT_RED_ALERT
             cachedBatTemp >= 45.0f || maxChipTemp >= 85.0f -> UiTheme.ACCENT_RED_BRIGHT
             cachedBatTemp >= 42.0f || maxChipTemp >= 75.0f -> UiTheme.ACCENT_GOLD
             else -> baseAccent

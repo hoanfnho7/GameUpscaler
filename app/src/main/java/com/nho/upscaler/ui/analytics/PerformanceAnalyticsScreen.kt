@@ -93,7 +93,6 @@ fun PerformanceAnalyticsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         // Top App Bar (Back + Title + Export CSV + Delete)
         Row(
@@ -125,7 +124,7 @@ fun PerformanceAnalyticsScreen(
                         Icon(
                             imageVector = Icons.Default.FileDownload,
                             contentDescription = "Export CSV",
-                            tint = VoltLime
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
 
@@ -172,13 +171,13 @@ fun PerformanceAnalyticsScreen(
                                 modifier = Modifier
                                     .size(56.dp)
                                     .clip(CircleShape)
-                                    .background(VoltLime.copy(alpha = 0.15f)),
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.ShowChart,
                                     contentDescription = null,
-                                    tint = VoltLime,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(30.dp)
                                 )
                             }
@@ -212,10 +211,10 @@ fun PerformanceAnalyticsScreen(
                                 val filterLabel = if (id == "all") (if (lang == "VI") "Tất cả" else "All") else name
                                 Surface(
                                     shape = CircleShape,
-                                    color = if (isSelected) VoltLime else MaterialTheme.colorScheme.surface,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                                     border = BorderStroke(
                                         1.dp,
-                                        if (isSelected) VoltLime else MaterialTheme.colorScheme.outlineVariant
+                                        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                                     ),
                                     modifier = Modifier
                                         .clip(CircleShape)
@@ -251,7 +250,7 @@ fun PerformanceAnalyticsScreen(
                                 color = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
                                 border = BorderStroke(
                                     1.dp,
-                                    if (isSelected) VoltLime.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant
+                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant
                                 ),
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(14.dp))
@@ -268,7 +267,7 @@ fun PerformanceAnalyticsScreen(
                                         Text(
                                             text = s.scaleLabel,
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = if (isSelected) VoltLime else TechAmber,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else TechAmber,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
@@ -345,7 +344,7 @@ fun PerformanceAnalyticsScreen(
                         Card(
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                            border = BorderStroke(1.dp, VoltLime.copy(alpha = 0.3f)),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -362,13 +361,13 @@ fun PerformanceAnalyticsScreen(
                                     Icon(
                                         imageVector = Icons.Default.Schedule,
                                         contentDescription = null,
-                                        tint = VoltLime,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Text(
                                         text = timeStr,
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = VoltLime,
+                                        color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -380,7 +379,7 @@ fun PerformanceAnalyticsScreen(
                                     Text(
                                         text = String.format(Locale.US, "%.1f FPS", scrub.fps),
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = VoltLime,
+                                        color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
@@ -530,7 +529,7 @@ fun PerformanceAnalyticsScreen(
                 Text(
                     text = if (lang == "VI") "XUẤT CSV THÀNH CÔNG" else "CSV EXPORT SUCCESS",
                     style = MaterialTheme.typography.headlineSmall,
-                    color = VoltLime,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             },

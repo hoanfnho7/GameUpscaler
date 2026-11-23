@@ -89,7 +89,6 @@ fun GameLibraryScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         // Scrollable content
         LazyColumn(
@@ -147,13 +146,13 @@ fun GameLibraryScreen(
                                 modifier = Modifier
                                     .size(38.dp)
                                     .clip(CircleShape)
-                                    .background(VoltLime.copy(alpha = 0.15f)),
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.AutoFixHigh,
                                     contentDescription = null,
-                                    tint = VoltLime,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -177,7 +176,7 @@ fun GameLibraryScreen(
                             onCheckedChange = { viewModel.toggleAutoLaunchHud(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color(0xFF171E00),
-                                checkedTrackColor = VoltLime,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
                                 uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
@@ -202,7 +201,7 @@ fun GameLibraryScreen(
                         Text(
                             text = if (lang == "VI") "Mặc định: ${uiState.globalScale}x" else "Default: ${uiState.globalScale}x",
                             style = MaterialTheme.typography.labelSmall,
-                            color = VoltLime,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -336,7 +335,7 @@ fun GameLibraryScreen(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = MaterialTheme.colorScheme.surface,
                             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = VoltLime,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                             focusedTextColor = MaterialTheme.colorScheme.onSurface,
                             unfocusedTextColor = MaterialTheme.colorScheme.onSurface
@@ -493,7 +492,7 @@ private fun SsaaOptionCard(
         ),
         border = BorderStroke(
             1.dp,
-            if (isSelected) VoltLime.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant
+            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant
         ),
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
@@ -512,13 +511,13 @@ private fun SsaaOptionCard(
                     Text(
                         text = label,
                         style = MaterialTheme.typography.headlineSmall,
-                        color = if (isSelected) VoltLime else MaterialTheme.colorScheme.onSurface,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = tag,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (isSelected) VoltLime else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1
                     )
@@ -529,10 +528,10 @@ private fun SsaaOptionCard(
                     modifier = Modifier
                         .size(18.dp)
                         .clip(CircleShape)
-                        .background(if (isSelected) VoltLime else MaterialTheme.colorScheme.surfaceVariant)
+                        .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
                         .border(
                             1.dp,
-                            if (isSelected) VoltLime else MaterialTheme.colorScheme.outlineVariant,
+                            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                             CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -622,7 +621,7 @@ private fun GameListItem(
                         Box(
                             modifier = Modifier
                                 .clip(CircleShape)
-                                .background(if (game.customScale > 0f) TechAmber.copy(alpha = 0.2f) else VoltLime.copy(alpha = 0.2f))
+                                .background(if (game.customScale > 0f) TechAmber.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
@@ -632,7 +631,7 @@ private fun GameListItem(
                                     String.format(Locale.US, "%.2fx (%s)", globalScale, if (lang == "VI") "Mặc định" else "Default")
                                 },
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (game.customScale > 0f) TechAmber else VoltLime,
+                                color = if (game.customScale > 0f) TechAmber else MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1
                             )
@@ -668,7 +667,7 @@ private fun GameListItem(
                     Text(
                         text = if (lang == "VI") "Sửa" else "Edit",
                         style = MaterialTheme.typography.labelMedium,
-                        color = VoltLime,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         fontWeight = FontWeight.Bold,
                         maxLines = 1
@@ -742,14 +741,14 @@ private fun GameScaleLockDialog(
                             selected = isChecked,
                             onClick = { selectedVal = value },
                             colors = RadioButtonDefaults.colors(
-                                selectedColor = VoltLime,
+                                selectedColor = MaterialTheme.colorScheme.primary,
                                 unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
                         Text(
                             text = label,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (isChecked) VoltLime else MaterialTheme.colorScheme.onSurface
+                            color = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -802,7 +801,7 @@ private fun AppPickerDialog(
                 Text(
                     text = if (lang == "VI") "CHỌN GAME / ỨNG DỤNG" else "SELECT APP / GAME",
                     style = MaterialTheme.typography.labelSmall,
-                    color = VoltLime
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = if (lang == "VI") "Thêm ứng dụng vào danh sách" else "Add apps to your library",
@@ -830,7 +829,7 @@ private fun AppPickerDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        focusedBorderColor = VoltLime,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                         focusedTextColor = MaterialTheme.colorScheme.onSurface,
                         unfocusedTextColor = MaterialTheme.colorScheme.onSurface

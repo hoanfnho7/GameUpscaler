@@ -43,15 +43,15 @@ private val LightColorScheme = lightColorScheme(
     primary = LightVoltLime,
     onPrimary = Color.White,
     primaryContainer = LightVoltContainer,
-    onPrimaryContainer = LightVoltLime,
-    secondary = TechAmber,
+    onPrimaryContainer = Color(0xFF1B3100),
+    secondary = LightTechAmber,
     onSecondary = Color.White,
-    secondaryContainer = Color(0x26EEC14A),
-    onSecondaryContainer = TechAmberDark,
-    tertiary = TechEmerald,
+    secondaryContainer = Color(0xFFFEF3C7),
+    onSecondaryContainer = Color(0xFF78350F),
+    tertiary = LightTechEmerald,
     onTertiary = Color.White,
-    tertiaryContainer = Color(0x266DFE9C),
-    onTertiaryContainer = TechEmeraldDark,
+    tertiaryContainer = Color(0xFFD1FAE5),
+    onTertiaryContainer = Color(0xFF064E3B),
     background = LightBackground,
     onBackground = LightTextPrimary,
     surface = LightSurface,
@@ -59,11 +59,11 @@ private val LightColorScheme = lightColorScheme(
     surfaceVariant = LightSurfaceContainer,
     onSurfaceVariant = LightTextSecondary,
     outline = LightBorder,
-    outlineVariant = LightBorder,
-    error = TechRed,
+    outlineVariant = LightBorderSubtle,
+    error = Color(0xFFB91C1C),
     onError = Color.White,
     errorContainer = Color(0xFFFFDAD6),
-    onErrorContainer = TechRedDim
+    onErrorContainer = Color(0xFF93000A)
 )
 
 @Composable
