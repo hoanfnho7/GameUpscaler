@@ -363,9 +363,9 @@ class MainActivity : Activity() {
             val factorInt = (factor * 100).toInt()
             prefsMgr.targetScaleFactor = factorInt
             if (prefsMgr.enableFpsOverlay && ShizukuHelper.isBinderAlive()) {
-                val w = (physW * factor).toInt()
-                val h = (physH * factor).toInt()
-                val den = (physDen * factor).toInt()
+                val w = (physW.toFloat() * factor).toInt()
+                val h = (physH.toFloat() * factor).toInt()
+                val den = (physDen.toFloat() * factor).toInt()
                 ShizukuHelper.runAsync("wm size ${w}x${h}; wm density $den")
             }
         }
@@ -374,10 +374,10 @@ class MainActivity : Activity() {
         fun setGlobalSsaa(enabled: Boolean) {
             prefsMgr.enableFpsOverlay = enabled
             if (enabled) {
-                val f = prefsMgr.targetScaleFactor / 100f
-                val w = (physW * f).toInt()
-                val h = (physH * f).toInt()
-                val den = (physDen * f).toInt()
+                val f = prefsMgr.targetScaleFactor.toFloat() / 100f
+                val w = (physW.toFloat() * f).toInt()
+                val h = (physH.toFloat() * f).toInt()
+                val den = (physDen.toFloat() * f).toInt()
                 ShizukuHelper.runAsync("wm size ${w}x${h}; wm density $den")
             } else {
                 ShizukuHelper.resetDisplay()

@@ -20,6 +20,10 @@ class PrefsManager(context: Context) {
         get() = prefs.getInt("saved_factor", 125)
         set(value) = prefs.edit().putInt("saved_factor", value).apply()
 
+    var targetScaleFactor: Int
+        get() = savedFactor
+        set(value) { savedFactor = value }
+
     var showPinnedOnly: Boolean
         get() = prefs.getBoolean("show_pinned_only", false)
         set(value) = prefs.edit().putBoolean("show_pinned_only", value).apply()
@@ -86,6 +90,9 @@ class PrefsManager(context: Context) {
     fun setGameScale(pkg: String, scale: Int) {
         prefs.edit().putInt("scale_$pkg", scale).apply()
     }
+
+    fun getAppCustomScale(pkg: String): Int = getGameScale(pkg)
+    fun setAppCustomScale(pkg: String, scale: Int) = setGameScale(pkg, scale)
 
     fun getMetric(key: String, defVal: Boolean): Boolean = prefs.getBoolean(key, defVal)
 
