@@ -111,11 +111,13 @@ object UiTheme {
         }
     }
 
-    fun ovalBox(fillColor: Int, strokeWidth: Int, strokeColor: Int): GradientDrawable {
+    fun ovalBox(fillColor: Int, strokeWidth: Int = 0, strokeColor: Int = Color.TRANSPARENT): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(fillColor)
-            setStroke(strokeWidth, strokeColor)
+            if (strokeWidth > 0) {
+                setStroke(strokeWidth, strokeColor)
+            }
         }
     }
 }

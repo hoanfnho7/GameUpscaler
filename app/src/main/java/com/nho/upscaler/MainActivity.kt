@@ -2377,7 +2377,7 @@ class MainActivity : Activity() {
             }
             if (showPulseDot) {
                 val dot = View(this).apply {
-                    background = UiTheme.ovalBox(valueColor)
+                    background = UiTheme.ovalBox(valueColor, 0, Color.TRANSPARENT)
                     layoutParams = LinearLayout.LayoutParams(dp(6), dp(6)).apply { rightMargin = dp(4) }
                 }
                 item.addView(dot)
