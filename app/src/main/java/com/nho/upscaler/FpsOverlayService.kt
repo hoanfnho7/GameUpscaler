@@ -27,6 +27,7 @@ import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
+import android.view.Surface
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
@@ -168,22 +169,41 @@ class FpsOverlayService : Service() {
         }
     }
 
+    private var lastKnownIsLand: Boolean? = null
+
     private fun isLandscapeMode(config: Configuration? = null): Boolean {
         if (config != null) {
-            return config.orientation == Configuration.ORIENTATION_LANDSCAPE
+            if (config.orientation == Configuration.ORIENTATION_LANDSCAPE) return true
+            if (config.orientation == Configuration.ORIENTATION_PORTRAIT) return false
         }
-        val conf = resources.configuration
-        if (conf.orientation == Configuration.ORIENTATION_LANDSCAPE) return true
-        if (conf.orientation == Configuration.ORIENTATION_PORTRAIT) return false
         val wm = windowManager ?: getSystemService(Context.WINDOW_SERVICE) as? WindowManager
-        if (wm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        if (wm != null) {
             try {
-                val bounds = wm.currentWindowMetrics.bounds
-                return bounds.width() > bounds.height()
+                @Suppress("DEPRECATION")
+                val rot = wm.defaultDisplay?.rotation
+                if (rot == Surface.ROTATION_90 || rot == Surface.ROTATION_270) return true
+                if (rot == Surface.ROTATION_0 || rot == Surface.ROTATION_180) return false
+            } catch (_: Exception) {}
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                try {
+                    val bounds = wm.currentWindowMetrics.bounds
+                    if (bounds.width() > bounds.height()) return true
+                    if (bounds.height() > bounds.width()) return false
+                } catch (_: Exception) {}
+            }
+
+            try {
+                val dm = DisplayMetrics()
+                @Suppress("DEPRECATION")
+                wm.defaultDisplay?.getRealMetrics(dm)
+                if (dm.widthPixels > dm.heightPixels) return true
+                if (dm.heightPixels > dm.widthPixels) return false
             } catch (_: Exception) {}
         }
         val dm = resources.displayMetrics
-        return dm.widthPixels > dm.heightPixels
+        if (dm.widthPixels > dm.heightPixels) return true
+        return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     }
 
     private fun getScreenDimensions(config: Configuration? = null): Pair<Int, Int> {
@@ -227,8 +247,8 @@ class FpsOverlayService : Service() {
         val params = overlayParams ?: return
         val (screenW, screenH) = getScreenDimensions(config)
 
-        val specW = View.MeasureSpec.makeMeasureSpec((screenW - 16).coerceAtLeast(100), View.MeasureSpec.AT_MOST)
-        val specH = View.MeasureSpec.makeMeasureSpec((screenH - 16).coerceAtLeast(100), View.MeasureSpec.AT_MOST)
+        val specW = View.MeasureSpec.makeMeasureSpec((screenW - 8).coerceAtLeast(100), View.MeasureSpec.AT_MOST)
+        val specH = View.MeasureSpec.makeMeasureSpec((screenH - 8).coerceAtLeast(100), View.MeasureSpec.AT_MOST)
         tv.measure(specW, specH)
         val measuredW = tv.measuredWidth
         val measuredH = tv.measuredHeight
@@ -272,16 +292,31 @@ class FpsOverlayService : Service() {
         val (rawX, rawY) = prefsMgr.getHudPosition(isLand)
 
         val tv = overlayView
-        val viewW = tv?.width?.takeIf { it > 0 } ?: (if (isLand) 400 else 200)
-        val viewH = tv?.height?.takeIf { it > 0 } ?: 60
+        val specW = View.MeasureSpec.makeMeasureSpec(screenW, View.MeasureSpec.AT_MOST)
+        val specH = View.MeasureSpec.makeMeasureSpec(screenH, View.MeasureSpec.AT_MOST)
+        tv?.measure(specW, specH)
+        val viewW = tv?.measuredWidth?.takeIf { it > 0 } ?: (if (isLand) 400 else 200)
+        val viewH = tv?.measuredHeight?.takeIf { it > 0 } ?: 60
+
+        val hasCustomLand = prefsMgr.hasCustomHudPosition(true)
+        val targetX = if (isLand && (!hasCustomLand || rawX <= 24)) {
+            ((screenW - viewW) / 2).coerceAtLeast(4)
+        } else {
+            rawX
+        }
+        val targetY = if (isLand && (!hasCustomLand || rawY <= 6)) {
+            4
+        } else {
+            rawY
+        }
 
         val maxX = (screenW - viewW - 8).coerceAtLeast(4)
         val maxY = (screenH - viewH - 8).coerceAtLeast(2)
 
         params.width = WindowManager.LayoutParams.WRAP_CONTENT
         params.height = WindowManager.LayoutParams.WRAP_CONTENT
-        params.x = rawX.coerceIn(4, maxX)
-        params.y = rawY.coerceIn(2, maxY)
+        params.x = targetX.coerceIn(4, maxX)
+        params.y = targetY.coerceIn(2, maxY)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -692,15 +727,14 @@ class FpsOverlayService : Service() {
             }
             else -> { // Horizontal Mode
                 if (isLand) {
-                    // Landscape: Bung het thanh 1 hang ngang duy nhat!
-                    // Neu text dai vuot qua chieu ngang man hinh thi tu dong xuong dong (maxLines = 4), can deu le trai!
-                    tv.isSingleLine = false
-                    tv.maxLines = 4
+                    // Landscape: 100% tren 1 hang ngang duy nhat, cam tuyet doi xuong dong!
+                    tv.isSingleLine = true
+                    tv.maxLines = 1
                     tv.ellipsize = null
-                    tv.maxWidth = (screenW - 16).coerceAtLeast(1000)
-                    tv.gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                    tv.maxWidth = screenW
+                    tv.gravity = Gravity.CENTER_VERTICAL
                     tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
-                    tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 12f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
+                    tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 999f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
                 } else {
                     // Portrait: Tu dong xuong dong, can deu le trai (Gravity.START)
                     tv.isSingleLine = false
@@ -723,6 +757,16 @@ class FpsOverlayService : Service() {
 
     private fun renderTelemetryText(config: Configuration? = null) {
         val tv = overlayView ?: return
+        val isLand = isLandscapeMode(config)
+        if (lastKnownIsLand != null && lastKnownIsLand != isLand) {
+            lastKnownIsLand = isLand
+            lastRenderedText = ""
+            applyOverlayStyle(config)
+            applyPositionForCurrentOrientation(config)
+        } else {
+            lastKnownIsLand = isLand
+        }
+
         val layoutMode = prefsMgr.hudLayoutMode
 
         val isConcise = prefsMgr.hudHideLabels
@@ -845,8 +889,8 @@ class FpsOverlayService : Service() {
                 }
 
                 val separator = if (isConcise) " · " else "  |  "
-                if (isLandscapeMode(config)) {
-                    // Landscape: Bung het thanh 1 hang ngang duy nhat!
+                if (isLand) {
+                    // Landscape: 100% tren 1 hang ngang duy nhat, KHONG BAO GIO ngat dong hay chunk!
                     items.joinToString(separator)
                 } else {
                     // Portrait: Tu dong xuong dong, can deu le trai

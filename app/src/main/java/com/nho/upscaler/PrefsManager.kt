@@ -124,6 +124,14 @@ class PrefsManager(context: Context) {
         prefs.edit().putBoolean(key, enabled).apply()
     }
 
+    fun hasCustomHudPosition(isLandscape: Boolean): Boolean {
+        return if (isLandscape) {
+            prefs.contains("overlay_land_x")
+        } else {
+            prefs.contains("overlay_port_x")
+        }
+    }
+
     fun getHudPosition(isLandscape: Boolean): Pair<Int, Int> {
         return if (isLandscape) {
             prefs.getInt("overlay_land_x", 24) to prefs.getInt("overlay_land_y", 6)
