@@ -97,6 +97,22 @@ object ShizukuHelper {
     @Volatile
     private var isVivoRmsLocked: Boolean = false
 
+    @Volatile
+    private var keepAliveApplied: Boolean = false
+
+    // Prevent OriginOS/HyperOS/ColorOS from freezing HUD & auto-restore watcher during long gaming sessions (inspired by Scene)
+    fun ensureAppKeepAlive(pkg: String = "com.nho.upscaler") {
+        if (keepAliveApplied || !isBinderAlive()) return
+        keepAliveApplied = true
+        val cmd = "dumpsys deviceidle whitelist +$pkg >/dev/null 2>&1 || true; " +
+            "cmd appops set $pkg RUN_IN_BACKGROUND allow >/dev/null 2>&1 || true; " +
+            "cmd appops set $pkg RUN_ANY_IN_BACKGROUND allow >/dev/null 2>&1 || true; " +
+            "am set-standby-bucket $pkg active >/dev/null 2>&1 || true; " +
+            "am set-bg-restriction-level --user 0 $pkg unrestricted >/dev/null 2>&1 || true; " +
+            "am unfreeze --sticky $pkg >/dev/null 2>&1 || true"
+        runAsync(cmd)
+    }
+
     fun isVivoRmsAvailable(): Boolean {
         return try {
             if (!isBinderAlive()) return false
@@ -282,6 +298,7 @@ object ShizukuHelper {
 
     fun launchGameWithUpscale(pkg: String, factor: Int, fpsCap: Int = 0, refreshRate: Int = 0) {
         val mySession = launchSessionId.incrementAndGet()
+        ensureAppKeepAlive()
         thread {
             try {
                 val dl = "$"

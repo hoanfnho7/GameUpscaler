@@ -45,6 +45,7 @@ data class HudSettingsUiState(
         "m_fps" to true,
         "m_frametime" to false,
         "m_watt" to true,
+        "m_cpu_load" to false,
         "m_gpu" to true,
         "m_vram" to false,
         "m_cpu_freq" to false,
@@ -64,7 +65,8 @@ data class HudSettingsUiState(
     val thermalGuardEnabled: Boolean = true,
     val thermalGuardTempLimit: Int = 44,
     val thermalGuardBatMin: Int = 15,
-    val thermalGuardAutoReset: Boolean = false
+    val thermalGuardAutoReset: Boolean = false,
+    val dualCellBattery: Boolean = false
 )
 
 class HudSettingsViewModel : ViewModel() {
@@ -100,7 +102,7 @@ class HudSettingsViewModel : ViewModel() {
 
         val map = mutableMapOf<String, Boolean>()
         listOf(
-            "m_fps", "m_frametime", "m_watt", "m_gpu", "m_vram", "m_cpu_freq",
+            "m_fps", "m_frametime", "m_watt", "m_cpu_load", "m_gpu", "m_vram", "m_cpu_freq",
             "m_bat_temp", "m_soc_temp", "m_cpu_temp", "m_gpu_temp",
             "m_ddr_temp", "m_cam_temp", "m_skin_temp", "m_ram"
         ).forEach { key ->
@@ -120,7 +122,8 @@ class HudSettingsViewModel : ViewModel() {
                 thermalGuardEnabled = p.thermalGuardEnabled,
                 thermalGuardTempLimit = p.thermalGuardTempLimit,
                 thermalGuardBatMin = p.thermalGuardBatMin,
-                thermalGuardAutoReset = p.thermalGuardAutoReset
+                thermalGuardAutoReset = p.thermalGuardAutoReset,
+                dualCellBattery = p.dualCellBattery
             )
         }
     }
@@ -196,6 +199,12 @@ class HudSettingsViewModel : ViewModel() {
     fun setThermalGuardEnabled(enabled: Boolean, context: Context) {
         prefsMgr?.thermalGuardEnabled = enabled
         _uiState.update { it.copy(thermalGuardEnabled = enabled) }
+        notifyStyleChanged(context)
+    }
+
+    fun setDualCellBattery(enabled: Boolean, context: Context) {
+        prefsMgr?.dualCellBattery = enabled
+        _uiState.update { it.copy(dualCellBattery = enabled) }
         notifyStyleChanged(context)
     }
 

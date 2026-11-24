@@ -145,6 +145,11 @@ class PrefsManager(context: Context) {
         get() = prefs.getBoolean("thermal_guard_auto_reset", false)
         set(value) = prefs.edit().putBoolean("thermal_guard_auto_reset", value).apply()
 
+    // Dual-cell battery (2S fast-charge phones like iQOO/OnePlus/Realme reporting 1-cell voltage)
+    var dualCellBattery: Boolean
+        get() = prefs.getBoolean("dual_cell_battery", false)
+        set(value) = prefs.edit().putBoolean("dual_cell_battery", value).apply()
+
     fun getCustomGames(): Set<String> {
         return prefs.getStringSet("custom_games", emptySet()) ?: emptySet()
     }

@@ -126,6 +126,9 @@ class FpsOverlayService : Service() {
     private var lastWatts = 0f
     private var lastGpuLoadPct = -1
     private var lastGpuVramMb = -1
+    private var lastCpuLoadPct = -1
+    private var prevCpuTotal = -1L
+    private var prevCpuIdle = -1L
     private var lastCpuKhz = 0L
     private var lastRamText = ""
 
@@ -133,7 +136,9 @@ class FpsOverlayService : Service() {
     private var lastRenderedColor = 0
 
     private var prevLayerFrames = HashMap<String, Long>(16)
+    private var prevLayerJanks = HashMap<String, Long>(16)
     private var prevGlobalFrames = -1L
+    private var prevGlobalJanks = -1L
     private var lastFpsSampleNs = 0L
     private var emptyFpsTicks = 0
     private var hasValidFpsSample = false
@@ -452,6 +457,7 @@ class FpsOverlayService : Service() {
         }
 
         isServiceRunning = true
+        ShizukuHelper.ensureAppKeepAlive(packageName)
         syncQuickSettingsTile()
 
         if (!isRunning) {
@@ -983,6 +989,7 @@ class FpsOverlayService : Service() {
         val showWatt = prefsMgr.getMetric("m_watt", true)
         val showGpu = prefsMgr.getMetric("m_gpu", true)
         val showVram = prefsMgr.getMetric("m_vram", false)
+        val showCpuLoad = prefsMgr.getMetric("m_cpu_load", false)
         val showCpuFreq = prefsMgr.getMetric("m_cpu_freq", false)
         val showBatTemp = prefsMgr.getMetric("m_bat_temp", true)
         val showSocTemp = prefsMgr.getMetric("m_soc_temp", true)
@@ -1002,6 +1009,8 @@ class FpsOverlayService : Service() {
         val hasValidVram = showVram && (lastGpuVramMb >= 0)
         val vramVal = if (lastGpuVramMb >= 0) "${lastGpuVramMb}MB" else "--MB"
         val vramConciseVal = if (lastGpuVramMb >= 0) "${lastGpuVramMb}M" else "--M"
+        val hasValidCpuLoad = showCpuLoad && (lastCpuLoadPct in 0..100)
+        val cpuLoadVal = if (hasValidCpuLoad) "${lastCpuLoadPct}%" else ""
         val cpuFreqVal = if (lastCpuKhz > 0) String.format(Locale.US, "%.2fGHz", lastCpuKhz / 1_000_000f) else "--GHz"
         val cpuFreqConciseVal = if (lastCpuKhz > 0) String.format(Locale.US, "%.1fG", lastCpuKhz / 1_000_000f) else "--G"
 
@@ -1054,6 +1063,7 @@ class FpsOverlayService : Service() {
         if (isConcise && layoutMode == 0) {
             // Mockup 1B concise horizontal order: FPS · W · GPU% · Bat° · SoC° · RAM
             if (showWatt) entries.add(HudMetricEntry("PWR", "", fullValue = wVal, conciseValue = wVal, valueColor = UiTheme.TECH_AMBER))
+            if (hasValidCpuLoad) entries.add(HudMetricEntry("CPU%", "CPU", fullValue = cpuLoadVal, conciseValue = cpuLoadVal, valueColor = UiTheme.TECH_BLUE))
             if (hasValidGpu) entries.add(HudMetricEntry("GPU", "GPU", fullValue = gpuVal, conciseValue = gpuVal, valueColor = UiTheme.HUD_CYAN))
             if (hasValidVram) entries.add(HudMetricEntry("VRM", "VRAM", fullValue = vramVal, conciseValue = vramConciseVal, valueColor = UiTheme.HUD_SLATE_300))
             if (showCpuFreq) entries.add(HudMetricEntry("CLK", "", fullValue = cpuFreqVal, conciseValue = cpuFreqConciseVal, valueColor = UiTheme.TECH_BLUE))
@@ -1075,6 +1085,7 @@ class FpsOverlayService : Service() {
             if (showCamTemp) entries.add(HudMetricEntry("CAM", "CAM", fullValue = camTempVal, conciseValue = camTempConcise, valueColor = chipTempColor(lastCamTemp, UiTheme.HUD_SLATE_300)))
             if (showSkinTemp) entries.add(HudMetricEntry("SKN", "SKN", fullValue = skinTempVal, conciseValue = skinTempConcise, valueColor = chipTempColor(lastSkinTemp, UiTheme.TECH_EMERALD)))
             if (showWatt) entries.add(HudMetricEntry("PWR", "", fullValue = wVal, conciseValue = wVal, valueColor = UiTheme.TECH_AMBER))
+            if (hasValidCpuLoad) entries.add(HudMetricEntry("CPU%", "CPU", fullValue = cpuLoadVal, conciseValue = cpuLoadVal, valueColor = UiTheme.TECH_BLUE))
             if (hasValidGpu) entries.add(HudMetricEntry("GPU", "GPU", fullValue = gpuVal, conciseValue = gpuVal, valueColor = UiTheme.HUD_CYAN))
             if (hasValidVram) entries.add(HudMetricEntry("VRM", "VRAM", fullValue = vramVal, conciseValue = vramConciseVal, valueColor = UiTheme.HUD_SLATE_300))
             if (showCpuFreq) entries.add(HudMetricEntry("CLK", "", fullValue = cpuFreqVal, conciseValue = cpuFreqConciseVal, valueColor = UiTheme.TECH_BLUE))
@@ -1323,8 +1334,9 @@ class FpsOverlayService : Service() {
                 val absCurr = abs(rawCurr.toDouble())
                 val amps = if (absCurr > 15_000.0) absCurr / 1_000_000.0 else absCurr / 1_000.0
                 val volts = voltMv / 1_000.0
-                val instWatts = (amps * volts).toFloat()
-                if (instWatts in 0.1f..180f) {
+                val cellMultiplier = if (prefsMgr.dualCellBattery) 2.0 else 1.0
+                val instWatts = (amps * volts * cellMultiplier).toFloat()
+                if (instWatts in 0.1f..240f) {
                     lastWatts = instWatts
                 }
             }
@@ -1487,6 +1499,7 @@ class FpsOverlayService : Service() {
                     val showCamTemp = prefsMgr.getMetric("m_cam_temp", false)
                     val showSkinTemp = prefsMgr.getMetric("m_skin_temp", false)
                     val showRam = prefsMgr.getMetric("m_ram", false)
+                    val showCpuLoad = prefsMgr.getMetric("m_cpu_load", false)
 
                     // Chu kỳ nhanh (150ms-300ms, mỗi tick): Đo công suất điện tiêu thụ tức thời
                     if (showWatt) {
@@ -1495,16 +1508,19 @@ class FpsOverlayService : Service() {
 
                     sb.setLength(0)
 
-                    // Chu kỳ nhanh: Đọc trực tiếp mức tải GPU (%) từ node sysfs (~0.1ms, không fork, không vỡ pipe)
+                    // Chu kỳ nhanh: Đọc trực tiếp mức tải GPU (%) từ đa node sysfs (Adreno + MediaTek + Mali)
                     if (showGpu) {
-                        sb.append("gload=-1; if [ -r /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage ]; then read -r gload < /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage 2>/dev/null; elif [ -r /sys/class/misc/mali0/device/utilization ]; then read -r gload < /sys/class/misc/mali0/device/utilization 2>/dev/null; fi; printf \"GPU_LOAD=%s\\n\" \"\$gload\"; ")
+                        sb.append("gload=-1; if [ -r /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage ]; then read -r gload < /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage 2>/dev/null; elif [ -r /sys/module/ged/parameters/gpu_loading ]; then read -r gload < /sys/module/ged/parameters/gpu_loading 2>/dev/null; elif [ -r /sys/class/misc/mali0/device/utilization ]; then read -r gload < /sys/class/misc/mali0/device/utilization 2>/dev/null; fi; printf \"GPU_LOAD=%s\\n\" \"\$gload\"; ")
                     }
 
-                    // Chu kỳ trung bình (1 giây / 1000ms): Kiểm tra PID tiến trình, xung nhịp CPU và nhiệt độ phần cứng
+                    // Chu kỳ trung bình (1 giây / 1000ms): Kiểm tra PID tiến trình, tải CPU (/proc/stat), xung nhịp CPU và nhiệt độ phần cứng
                     if (targetPkg.isNotEmpty() && is1sTick) {
                         sb.append("printf \"PID=%s\\n\" \"\$(pidof ").append(targetPkg).append(" 2>/dev/null)\"; ")
                     } else if (detectedPkg.isNotEmpty() && is1sTick) {
                         sb.append("printf \"DPID=%s\\n\" \"\$(pidof ").append(detectedPkg).append(" 2>/dev/null)\"; ")
+                    }
+                    if (showCpuLoad && is1sTick) {
+                        sb.append("read -r cstat < /proc/stat 2>/dev/null && printf \"CPU_STAT=%s\\n\" \"\$cstat\"; ")
                     }
                     if (showCpuFreq && is1sTick) {
                         sb.append("printf \"CPU_KHZ=\"; _rdz \"\$FREQ_FILES\"; ")
@@ -1525,7 +1541,7 @@ class FpsOverlayService : Service() {
                         sb.append("printf \"SKIN_T=\"; _rdz \"\$SKIN_ZONES\"; ")
                     }
 
-                    // Chu kỳ chậm (3 giây / 3000ms): Dò app foreground, bộ nhớ đệm VRAM và dung lượng RAM hệ thống
+                    // Chu kỳ chậm (3 giây / 3000ms): Dò app foreground, VRAM và RAM siêu nhẹ qua /proc (không dùng dumpsys meminfo gây khựng)
                     if (targetPkg.isEmpty() && (is3sTick || detectedPkg.isEmpty())) {
                         sb.append("printf \"FG_ACT=%s\\n\" \"\$(dumpsys activity activities 2>/dev/null | grep -m 1 -E 'topResumedActivity|mResumedActivity')\"; ")
                     }
@@ -1534,7 +1550,7 @@ class FpsOverlayService : Service() {
                     }
                     if (showRam && (is3sTick || lastRamText.isEmpty())) {
                         if (activePkg.isNotEmpty()) {
-                            sb.append("printf \"APP_PSS=%s\\n\" \"\$(dumpsys meminfo ").append(activePkg).append(" 2>/dev/null | grep 'TOTAL PSS:' | awk '{print \$3}')\"; ")
+                            sb.append("p1=\$(pidof ").append(activePkg).append(" 2>/dev/null | awk '{print \$1}'); if [ -n \"\$p1\" ] && [ -r \"/proc/\$p1/status\" ]; then grep -m 1 '^VmRSS:' \"/proc/\$p1/status\" 2>/dev/null; fi; ")
                         }
                         sb.append("{ read -r m1; read -r m2; read -r m3; printf \"%s\\n%s\\n%s\\n\" \"\$m1\" \"\$m2\" \"\$m3\"; } < /proc/meminfo; ")
                     }
@@ -1743,6 +1759,24 @@ class FpsOverlayService : Service() {
                     val bytesVal = l.substringAfter("total:").trim().toLongOrNull() ?: 0L
                     procGpuMap[pidKey] = bytesVal
                 }
+                l.startsWith("CPU_STAT=") -> {
+                    // Scene cn0.java /proc/stat delta formula: total = sum(cols 1..7), idle = col4 + col5
+                    val parts = l.substring(9).trim().split(WS_REGEX)
+                    if (parts.size >= 8 && parts[0] == "cpu") {
+                        var total = 0L
+                        for (i in 1..7) {
+                            total += parts[i].toLongOrNull() ?: 0L
+                        }
+                        val idle = (parts[4].toLongOrNull() ?: 0L) + (parts[5].toLongOrNull() ?: 0L)
+                        if (prevCpuTotal >= 0L && total > prevCpuTotal) {
+                            val dTotal = total - prevCpuTotal
+                            val dIdle = (idle - prevCpuIdle).coerceAtLeast(0L)
+                            lastCpuLoadPct = (((dTotal - dIdle) * 100L) / dTotal).toInt().coerceIn(0, 100)
+                        }
+                        prevCpuTotal = total
+                        prevCpuIdle = idle
+                    }
+                }
                 l.startsWith("CPU_KHZ=") -> {
                     val maxKhz = l.substring(8).trim().split(WS_REGEX).mapNotNull { it.toLongOrNull() }.maxOrNull() ?: 0L
                     if (maxKhz > 0L) lastCpuKhz = maxKhz
@@ -1766,6 +1800,9 @@ class FpsOverlayService : Service() {
                 l.startsWith("SKIN_T=") -> {
                     val v = parseMaxThermalTokens(l.substring(7))
                     if (v > 0f) lastSkinTemp = v
+                }
+                l.startsWith("VmRSS:") -> {
+                    appPssKb = NUM_REGEX.find(l)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
                 }
                 l.startsWith("APP_PSS=") -> {
                     appPssKb = l.substring(8).trim().toLongOrNull() ?: 0L
@@ -1826,8 +1863,10 @@ class FpsOverlayService : Service() {
         if (dump.isNotEmpty()) {
             var statsEnabled = true
             var globalFrames = -1L
+            var globalJanks = -1L
             var currentLayer = ""
             val currentLayerMap = HashMap<String, Long>(12)
+            val currentJankMap = HashMap<String, Long>(12)
 
             var start = 0
             val len = dump.length
@@ -1852,6 +1891,18 @@ class FpsOverlayService : Service() {
                             }
                         }
                     }
+                } else if (line.startsWith("jankyFrames =")) {
+                    val janks = line.substring(13).trim().toLongOrNull() ?: -1L
+                    if (janks >= 0L) {
+                        if (currentLayer.isEmpty()) {
+                            if (globalJanks < 0L) globalJanks = janks
+                        } else if (!isIgnoredLayer(currentLayer)) {
+                            if (pkg.isEmpty() || currentLayer.contains(pkg)) {
+                                val existing = currentJankMap[currentLayer] ?: -1L
+                                if (janks > existing) currentJankMap[currentLayer] = janks
+                            }
+                        }
+                    }
                 }
             }
 
@@ -1861,21 +1912,42 @@ class FpsOverlayService : Service() {
                 val dtSec = (nowNs - lastFpsSampleNs) / 1_000_000_000.0
                 if (dtSec >= 0.12) {
                     var maxLayerDelta = 0L
+                    var maxLayerName = ""
                     for ((layer, frames) in currentLayerMap) {
                         val prev = prevLayerFrames[layer]
                         if (prev != null && frames >= prev) {
                             val delta = frames - prev
-                            if (delta > maxLayerDelta) maxLayerDelta = delta
+                            if (delta > maxLayerDelta) {
+                                maxLayerDelta = delta
+                                maxLayerName = layer
+                            }
                         }
                     }
+
+                    val layerJankDelta = if (maxLayerName.isNotEmpty()) {
+                        val curJ = currentJankMap[maxLayerName] ?: -1L
+                        val prevJ = prevLayerJanks[maxLayerName] ?: -1L
+                        if (curJ >= 0L && prevJ >= 0L && curJ > prevJ) (curJ - prevJ) else 0L
+                    } else 0L
+
+                    val globalJankDelta = if (prevGlobalJanks >= 0L && globalJanks > prevGlobalJanks) {
+                        globalJanks - prevGlobalJanks
+                    } else 0L
 
                     val globalDelta = if (prevGlobalFrames >= 0L && globalFrames >= prevGlobalFrames) {
                         globalFrames - prevGlobalFrames
                     } else 0L
 
                     prevLayerFrames = currentLayerMap
+                    prevLayerJanks = currentJankMap
                     prevGlobalFrames = globalFrames
+                    prevGlobalJanks = globalJanks
                     lastFpsSampleNs = nowNs
+
+                    val bestJankDelta = if (maxLayerName.isNotEmpty() && layerJankDelta > 0L) layerJankDelta else globalJankDelta
+                    if (bestJankDelta > 0L) {
+                        PerfLogManager.addJankDelta(bestJankDelta.toInt())
+                    }
 
                     val bestDelta = if (pkg.isNotEmpty() && maxLayerDelta > 0L) maxLayerDelta else maxOf(maxLayerDelta, globalDelta)
 
@@ -1884,7 +1956,7 @@ class FpsOverlayService : Service() {
                         frozenDrmTicks = 0
                         hasValidFpsSample = true
                         val computed = (bestDelta / dtSec).toFloat()
-                        return computed.coerceIn(1f, 144f)
+                        return computed.coerceIn(1f, 240f)
                     } else {
                         emptyFpsTicks++
                         if (emptyFpsTicks >= 6) initializedStatsForPkg = null
@@ -1898,7 +1970,7 @@ class FpsOverlayService : Service() {
                             lastDrmFps = drmFpsFallback
                             if (frozenDrmTicks < 4) {
                                 hasValidFpsSample = true
-                                return drmFpsFallback.coerceIn(1f, 144f)
+                                return drmFpsFallback.coerceIn(1f, 240f)
                             }
                         }
 
@@ -1911,7 +1983,9 @@ class FpsOverlayService : Service() {
                 }
             } else {
                 prevLayerFrames = currentLayerMap
+                prevLayerJanks = currentJankMap
                 prevGlobalFrames = globalFrames
+                prevGlobalJanks = globalJanks
                 lastFpsSampleNs = nowNs
             }
         }

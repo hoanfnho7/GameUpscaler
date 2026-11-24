@@ -65,6 +65,7 @@ object PerfLogManager {
     private var activeGameName = "Game"
     private var activeScale = "Native"
     private var startTimeMs = 0L
+    private var sessionJankCount = 0
     private val buffer = ArrayList<PerfSample>(600)
 
     fun startSession(pkg: String, gameName: String, scaleLabel: String) {
@@ -74,7 +75,15 @@ object PerfLogManager {
             activeGameName = gameName.ifBlank { pkg.ifBlank { "Screen Session" } }
             activeScale = scaleLabel.ifBlank { "Native" }
             startTimeMs = System.currentTimeMillis()
+            sessionJankCount = 0
             isRecording = true
+        }
+    }
+
+    fun addJankDelta(delta: Int) {
+        if (!isRecording || delta <= 0) return
+        synchronized(lock) {
+            if (isRecording) sessionJankCount += delta
         }
     }
 
@@ -110,6 +119,7 @@ object PerfLogManager {
         val gName: String
         val scale: String
         val started: Long
+        val realJanks: Int
 
         synchronized(lock) {
             if (!isRecording) return null
@@ -120,6 +130,8 @@ object PerfLogManager {
             gName = activeGameName
             scale = activeScale
             started = startTimeMs
+            realJanks = sessionJankCount
+            sessionJankCount = 0
         }
 
         if (snapshot.size < 3) return null
@@ -145,7 +157,8 @@ object PerfLogManager {
         val validCpu = snapshot.map { it.cpuMhz }.filter { it > 0 }
         val avgCpu = if (validCpu.isNotEmpty()) validCpu.average().toInt() else 0
 
-        val (avgFt, jitterMs, stabilityPct, stutters) = computeSmoothnessMetrics(snapshot, avgFps)
+        val (avgFt, jitterMs, stabilityPct, estimatedStutters) = computeSmoothnessMetrics(snapshot, avgFps)
+        val stutters = if (realJanks > 0) realJanks else estimatedStutters
 
         val dir = File(context.filesDir, "perf_logs").apply { if (!exists()) mkdirs() }
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(started))

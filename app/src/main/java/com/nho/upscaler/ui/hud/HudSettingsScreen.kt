@@ -195,11 +195,13 @@ fun HudSettingsScreen(
                     tempLimit = uiState.thermalGuardTempLimit,
                     batMin = uiState.thermalGuardBatMin,
                     autoReset = uiState.thermalGuardAutoReset,
+                    dualCellBattery = uiState.dualCellBattery,
                     lang = lang,
                     onToggleEnabled = { viewModel.setThermalGuardEnabled(it, context) },
                     onSelectTempLimit = { viewModel.setThermalGuardTempLimit(it, context) },
                     onSelectBatMin = { viewModel.setThermalGuardBatMin(it, context) },
-                    onToggleAutoReset = { viewModel.setThermalGuardAutoReset(it, context) }
+                    onToggleAutoReset = { viewModel.setThermalGuardAutoReset(it, context) },
+                    onToggleDualCell = { viewModel.setDualCellBattery(it, context) }
                 )
             }
 
@@ -335,7 +337,8 @@ private fun LiveHudPreviewCanvas(
                     previewMetrics.add(PreviewMetric("FT", "", fullVal = "16.7ms", conciseVal = "16.7ms", color = slate300))
                 }
                 if (isConcise && !isVertical) {
-                    if (uiState.metricsMap["m_watt"] != false) previewMetrics.add(PreviewMetric("PWR", "", fullVal = "4.8W", conciseVal = "4.8W", color = TechAmber))
+                    if (uiState.metricsMap["m_watt"] != false) previewMetrics.add(PreviewMetric("PWR", "", fullVal = if (uiState.dualCellBattery) "9.6W" else "4.8W", conciseVal = if (uiState.dualCellBattery) "9.6W" else "4.8W", color = TechAmber))
+                    if (uiState.metricsMap["m_cpu_load"] == true) previewMetrics.add(PreviewMetric("CPU%", "CPU", fullVal = "42%", conciseVal = "42%", color = TechBlue))
                     if (uiState.metricsMap["m_gpu"] != false) previewMetrics.add(PreviewMetric("GPU", "GPU", fullVal = "65%", conciseVal = "65%", color = cyanColor))
                     if (uiState.metricsMap["m_vram"] == true) previewMetrics.add(PreviewMetric("VRM", "VRAM", fullVal = "650MB", conciseVal = "650M", color = slate300))
                     if (uiState.metricsMap["m_bat_temp"] != false) previewMetrics.add(PreviewMetric("PIN", "Pin", fullVal = "36.2°C", conciseVal = "36°", color = TechEmerald))
@@ -344,7 +347,8 @@ private fun LiveHudPreviewCanvas(
                 } else {
                     if (uiState.metricsMap["m_bat_temp"] != false) previewMetrics.add(PreviewMetric("PIN", "Pin", fullVal = "36.2°C", conciseVal = "36°", color = TechEmerald))
                     if (uiState.metricsMap["m_soc_temp"] != false) previewMetrics.add(PreviewMetric("SOC", "SoC", fullVal = "41.5°C", conciseVal = "42°", color = accentColor))
-                    if (uiState.metricsMap["m_watt"] != false) previewMetrics.add(PreviewMetric("PWR", "", fullVal = "4.8W", conciseVal = "4.8W", color = TechAmber))
+                    if (uiState.metricsMap["m_watt"] != false) previewMetrics.add(PreviewMetric("PWR", "", fullVal = if (uiState.dualCellBattery) "9.6W" else "4.8W", conciseVal = if (uiState.dualCellBattery) "9.6W" else "4.8W", color = TechAmber))
+                    if (uiState.metricsMap["m_cpu_load"] == true) previewMetrics.add(PreviewMetric("CPU%", "CPU", fullVal = "42%", conciseVal = "42%", color = TechBlue))
                     if (uiState.metricsMap["m_gpu"] != false) previewMetrics.add(PreviewMetric("GPU", "GPU", fullVal = "65%", conciseVal = "65%", color = cyanColor))
                     if (uiState.metricsMap["m_vram"] == true) previewMetrics.add(PreviewMetric("VRM", "VRAM", fullVal = "650MB", conciseVal = "650M", color = slate300))
                     if (uiState.metricsMap["m_ram"] != false) previewMetrics.add(PreviewMetric("RAM", "RAM", fullVal = "4.2G", conciseVal = "4.2G", color = Color.White))
@@ -887,11 +891,13 @@ private fun ThermalGuardCard(
     tempLimit: Int,
     batMin: Int,
     autoReset: Boolean,
+    dualCellBattery: Boolean,
     lang: String,
     onToggleEnabled: (Boolean) -> Unit,
     onSelectTempLimit: (Int) -> Unit,
     onSelectBatMin: (Int) -> Unit,
-    onToggleAutoReset: (Boolean) -> Unit
+    onToggleAutoReset: (Boolean) -> Unit,
+    onToggleDualCell: (Boolean) -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(20.dp),
@@ -1079,6 +1085,44 @@ private fun ThermalGuardCard(
                     )
                 }
             }
+
+            // Dual-Cell Battery (2S Fast-Charge Wattage Calibration) — always accessible
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                    Text(
+                        text = if (lang == "VI") "Pin 2 Cell (Nhân đôi công suất 2x)" else "Dual-Cell Battery (2x Watts)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = if (lang == "VI")
+                            "Bật nếu máy sạc siêu nhanh (iQOO/OnePlus/Realme) bị đo hụt 1 nửa Watt"
+                        else
+                            "Enable if 2S fast-charge phone reports half real wattage",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = dualCellBattery,
+                    onCheckedChange = onToggleDualCell,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color(0xFF1F1600),
+                        checkedTrackColor = TechAmber,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+            }
         }
     }
 }
@@ -1124,6 +1168,7 @@ private fun HudMetricsListCard(
                     MetricItemDef("m_fps", "Tốc độ khung hình (FPS)", "Hiển thị real-time FPS đo chính xác 0.1", Icons.Default.Speed),
                     MetricItemDef("m_frametime", "Thời gian khung hình (ms)", "Frame-time mượt hóa 8 mẫu gần nhất (16.7ms)", Icons.Default.Speed),
                     MetricItemDef("m_watt", "Công suất điện (Watt)", "Điện năng tiêu thụ phần cứng tức thời (W)", Icons.Default.BatteryChargingFull),
+                    MetricItemDef("m_cpu_load", "Mức tải CPU (%)", "Tổng phần trăm tải các nhân CPU (/proc/stat)", Icons.Default.DeveloperBoard),
                     MetricItemDef("m_gpu", "Mức tải GPU (%)", "Tỷ lệ chiếm dụng nhân đồ họa GPU", Icons.Default.DeveloperBoard),
                     MetricItemDef("m_vram", "Bộ nhớ đồ họa VRAM (MB)", "Dung lượng VRAM buffer đang dùng", Icons.Default.Memory),
                     MetricItemDef("m_cpu_freq", "Xung nhịp CPU (GHz)", "Tần số xung nhịp cụm nhân CPU", Icons.Default.Speed),
@@ -1141,6 +1186,7 @@ private fun HudMetricsListCard(
                     MetricItemDef("m_fps", "Frame Rate (FPS)", "Real-time 0.1 precise frame rate", Icons.Default.Speed),
                     MetricItemDef("m_frametime", "Frame-Time (ms)", "8-frame rolling average frame pacing (ms)", Icons.Default.Speed),
                     MetricItemDef("m_watt", "Power Consumption (Watt)", "Instant hardware electrical draw (W)", Icons.Default.BatteryChargingFull),
+                    MetricItemDef("m_cpu_load", "CPU Utilization (%)", "Total CPU core load percentage (/proc/stat)", Icons.Default.DeveloperBoard),
                     MetricItemDef("m_gpu", "GPU Utilization (%)", "GPU graphics core utilization percentage", Icons.Default.DeveloperBoard),
                     MetricItemDef("m_vram", "GPU VRAM Buffer (MB)", "Current allocated VRAM memory", Icons.Default.Memory),
                     MetricItemDef("m_cpu_freq", "CPU Frequency (GHz)", "CPU core cluster clock speed", Icons.Default.Speed),
