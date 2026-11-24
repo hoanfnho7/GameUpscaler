@@ -63,8 +63,16 @@ object ShizukuHelper {
         }
     }
 
+    @Volatile
+    private var lastFpsCapPkg: String = ""
+
     fun resetDisplay() {
-        runAsync("wm size reset; wm density reset")
+        val fpsResetCmd = if (lastFpsCapPkg.isNotEmpty()) {
+            val pkg = lastFpsCapPkg
+            lastFpsCapPkg = ""
+            "; cmd game reset $pkg >/dev/null 2>&1 || true; device_config delete game_overlay $pkg >/dev/null 2>&1 || true"
+        } else ""
+        runAsync("wm size reset; wm density reset$fpsResetCmd")
     }
 
     fun fetchPhysicalDisplay(onResult: (w: Int, h: Int, density: Int) -> Unit) {
@@ -120,21 +128,68 @@ object ShizukuHelper {
         }
     }
 
-    fun launchGameWithUpscale(pkg: String, factor: Int) {
+    fun launchGameWithUpscale(pkg: String, factor: Int, fpsCap: Int = 0, refreshRate: Int = 0) {
         val dl = "$"
-        val script = "PHYS_RES=" + dl + "(wm size | grep 'Physical size' | cut -d: -f2 | tr -d ' \\r'); " +
-                "PHYS_DEN=" + dl + "(wm density | grep 'Physical density' | cut -d: -f2 | tr -d ' \\r'); " +
-                "W=" + dl + "(echo " + dl + "PHYS_RES | cut -dx -f1); " +
-                "H=" + dl + "(echo " + dl + "PHYS_RES | cut -dx -f2); " +
-                "NEW_W=" + dl + "(( W * " + factor + " / 100 )); " +
-                "NEW_H=" + dl + "(( H * " + factor + " / 100 )); " +
-                "NEW_DEN=" + dl + "(( PHYS_DEN * " + factor + " / 100 )); " +
-                "wm size " + dl + "{NEW_W}x" + dl + "{NEW_H}; " +
-                "wm density " + dl + "{NEW_DEN}; " +
-                "sleep 1; " +
-                "ACT=" + dl + "(cmd package resolve-activity --brief " + pkg + " | tr -d '\\r' | tail -n 1); " +
-                "am start --user 0 -n \"" + dl + "ACT\" > /dev/null 2>&1; " +
-                "nohup sh -c 'sleep 8; while pidof " + pkg + " > /dev/null; do sleep 3; done; wm size reset; wm density reset' >/dev/null 2>&1 &"
-        runAsync(script)
+        val sb = StringBuilder()
+
+        // 1. SSAA wm size / density override (skip if factor == 100 Native)
+        if (factor != 100 && factor > 0) {
+            sb.append("PHYS_RES=").append(dl).append("(wm size | grep 'Physical size' | cut -d: -f2 | tr -d ' \\r'); ")
+            sb.append("PHYS_DEN=").append(dl).append("(wm density | grep 'Physical density' | cut -d: -f2 | tr -d ' \\r'); ")
+            sb.append("W=").append(dl).append("(echo ").append(dl).append("PHYS_RES | cut -dx -f1); ")
+            sb.append("H=").append(dl).append("(echo ").append(dl).append("PHYS_RES | cut -dx -f2); ")
+            sb.append("NEW_W=").append(dl).append("(( W * ").append(factor).append(" / 100 )); ")
+            sb.append("NEW_H=").append(dl).append("(( H * ").append(factor).append(" / 100 )); ")
+            sb.append("NEW_DEN=").append(dl).append("(( PHYS_DEN * ").append(factor).append(" / 100 )); ")
+            sb.append("wm size ").append(dl).append("{NEW_W}x").append(dl).append("{NEW_H}; ")
+            sb.append("wm density ").append(dl).append("{NEW_DEN}; ")
+        }
+
+        // 2. Per-game FPS Cap via Android 12+ GameManager (cmd game set --fps + device_config fallback)
+        if (fpsCap > 0) {
+            lastFpsCapPkg = pkg
+            sb.append("(cmd game set --mode performance --fps ").append(fpsCap).append(" ").append(pkg)
+                .append(" >/dev/null 2>&1 || device_config put game_overlay ").append(pkg)
+                .append(" mode=2,fps=").append(fpsCap).append(":mode=3,fps=").append(fpsCap)
+                .append(" >/dev/null 2>&1 || true); cmd game mode performance ").append(pkg).append(" >/dev/null 2>&1 || true; ")
+        }
+
+        // 3. Per-game Refresh Rate Lock (saves previous peak/min values to restore on exit)
+        if (refreshRate > 0) {
+            sb.append("OLD_PEAK=").append(dl).append("(settings get system peak_refresh_rate 2>/dev/null | tr -d ' \\r'); ")
+            sb.append("OLD_MIN=").append(dl).append("(settings get system min_refresh_rate 2>/dev/null | tr -d ' \\r'); ")
+            sb.append("settings put system peak_refresh_rate ").append(refreshRate).append(" >/dev/null 2>&1 || true; ")
+            sb.append("settings put system min_refresh_rate ").append(refreshRate).append(" >/dev/null 2>&1 || true; ")
+        }
+
+        // 4. Launch game activity
+        sb.append("sleep 1; ")
+        sb.append("ACT=").append(dl).append("(cmd package resolve-activity --brief ").append(pkg).append(" | tr -d '\\r' | tail -n 1); ")
+        sb.append("am start --user 0 -n \"").append(dl).append("ACT\" > /dev/null 2>&1; ")
+
+        // 5. Auto-restore watcher in background when game process exits
+        val restoreCmd = StringBuilder()
+        if (factor != 100 && factor > 0) {
+            restoreCmd.append("wm size reset; wm density reset; ")
+        }
+        if (fpsCap > 0) {
+            restoreCmd.append("cmd game reset ").append(pkg).append(" >/dev/null 2>&1 || true; device_config delete game_overlay ").append(pkg).append(" >/dev/null 2>&1 || true; ")
+        }
+        if (refreshRate > 0) {
+            restoreCmd.append("if [ -n \"\$OLD_PEAK\" ] && [ \"\$OLD_PEAK\" != \"null\" ]; then settings put system peak_refresh_rate \"\$OLD_PEAK\" >/dev/null 2>&1; else settings delete system peak_refresh_rate >/dev/null 2>&1; fi; ")
+            restoreCmd.append("if [ -n \"\$OLD_MIN\" ] && [ \"\$OLD_MIN\" != \"null\" ]; then settings put system min_refresh_rate \"\$OLD_MIN\" >/dev/null 2>&1; else settings delete system min_refresh_rate >/dev/null 2>&1; fi; ")
+        }
+
+        if (restoreCmd.isNotEmpty()) {
+            // Pass OLD_PEAK and OLD_MIN into subshell via env vars so single quotes don't break
+            val envPrefix = if (refreshRate > 0) "OLD_PEAK=\"${dl}OLD_PEAK\" OLD_MIN=\"${dl}OLD_MIN\" " else ""
+            sb.append(envPrefix)
+                .append("nohup sh -c 'sleep 8; while pidof ").append(pkg)
+                .append(" > /dev/null; do sleep 3; done; ")
+                .append(restoreCmd.toString())
+                .append("' >/dev/null 2>&1 &")
+        }
+
+        runAsync(sb.toString())
     }
 }

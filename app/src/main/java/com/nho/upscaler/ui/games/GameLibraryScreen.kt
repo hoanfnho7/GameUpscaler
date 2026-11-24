@@ -24,8 +24,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoFixHigh
@@ -68,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nho.upscaler.ui.theme.TechAmber
+import com.nho.upscaler.ui.theme.TechBlue
 import com.nho.upscaler.ui.theme.TechEmerald
 import com.nho.upscaler.ui.theme.VoltLime
 import java.util.Locale
@@ -448,28 +451,32 @@ fun GameLibraryScreen(
         }
     }
 
-    // Modal Dialog: Game Custom Scale Lock
+    // Modal Dialog: Game Profile Config (SSAA Scale + FPS Cap + Refresh Rate)
     uiState.selectedGameForScale?.let { game ->
         GameScaleLockDialog(
             game = game,
             currentScale = game.customScale,
+            currentFpsCap = game.fpsCap,
+            currentRefreshRate = game.refreshRate,
             globalScale = uiState.globalScale,
             lang = lang,
             onDismiss = { viewModel.closeGameScaleDialog() },
-            onSelectScale = { scale ->
-                viewModel.setGameCustomScale(game.pkg, scale, context)
+            onSaveConfig = { scale, fpsCap, refreshRate ->
+                viewModel.setGameProfileConfig(game.pkg, scale, fpsCap, refreshRate, context)
             }
         )
     }
 
-    // Modal Dialog: App Picker
+    // Modal Dialog: App Picker (with Smart Engine Detection filter)
     if (uiState.isAppPickerOpen) {
         AppPickerDialog(
             allApps = uiState.allInstalledApps,
+            detectedGameCount = uiState.detectedGameCount,
             existingPkgs = uiState.games.map { it.pkg }.toSet(),
             lang = lang,
             onDismiss = { viewModel.closeAppPicker() },
             onAddGame = { pkg -> viewModel.addCustomGame(pkg, context) },
+            onAddAllDetected = { viewModel.addAllDetectedGames(context) },
             onRemoveGame = { pkg -> viewModel.removeCustomGame(pkg, context) }
         )
     }
@@ -613,11 +620,17 @@ private fun GameListItem(
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
+                        val isNativeLocked = Math.abs(game.customScale - 1.0f) < 0.01f
+                        val scaleBadgeText = when {
+                            isNativeLocked -> "1.00x"
+                            game.customScale > 0f -> String.format(Locale.US, "%.2fx", game.customScale)
+                            else -> String.format(Locale.US, "%.2fx", globalScale)
+                        }
                         Box(
                             modifier = Modifier
                                 .clip(CircleShape)
@@ -625,16 +638,63 @@ private fun GameListItem(
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = if (game.customScale > 0f) {
-                                    String.format(Locale.US, "%.2fx (%s)", game.customScale, if (lang == "VI") "Khóa" else "Locked")
-                                } else {
-                                    String.format(Locale.US, "%.2fx (%s)", globalScale, if (lang == "VI") "Mặc định" else "Default")
-                                },
+                                text = scaleBadgeText,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (game.customScale > 0f) TechAmber else MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1
                             )
+                        }
+
+                        if (game.fpsCap > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(TechEmerald.copy(alpha = 0.18f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "${game.fpsCap} FPS",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TechEmerald,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        if (game.refreshRate > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(TechBlue.copy(alpha = 0.18f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "${game.refreshRate}Hz",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TechBlue,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        if (game.detectedEngine.isNotEmpty() && game.fpsCap == 0 && game.refreshRate == 0) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = game.detectedEngine,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
@@ -682,37 +742,35 @@ private fun GameListItem(
 private fun GameScaleLockDialog(
     game: GameProfileItem,
     currentScale: Float,
+    currentFpsCap: Int,
+    currentRefreshRate: Int,
     globalScale: Float,
     lang: String,
     onDismiss: () -> Unit,
-    onSelectScale: (Float) -> Unit
+    onSaveConfig: (Float, Int, Int) -> Unit
 ) {
-    var selectedVal by remember { mutableStateOf(currentScale) }
+    var selectedScale by remember { mutableStateOf(currentScale) }
+    var selectedFps by remember { mutableStateOf(currentFpsCap) }
+    var selectedHz by remember { mutableStateOf(currentRefreshRate) }
 
-    val options = if (lang == "VI") {
-        listOf(
-            Pair(0f, "Mặc định chung (Theo tỉ lệ toàn cục ${globalScale}x)"),
-            Pair(1.10f, "Khóa 1.10x (Tiết kiệm pin, nhẹ nhàng)"),
-            Pair(1.15f, "Khóa 1.15x (Cân bằng độ nét và nhiệt độ)"),
-            Pair(1.20f, "Khóa 1.20x (Sắc nét, khử răng cưa cao)"),
-            Pair(1.25f, "Khóa 1.25x (Chuẩn Esports, tối đa GPU)")
-        )
-    } else {
-        listOf(
-            Pair(0f, "Global Default (Follow global ${globalScale}x)"),
-            Pair(1.10f, "Lock 1.10x (Battery saver, cool)"),
-            Pair(1.15f, "Lock 1.15x (Balanced clarity & thermals)"),
-            Pair(1.20f, "Lock 1.20x (Sharp, detailed SSAA)"),
-            Pair(1.25f, "Lock 1.25x (Esports grade, max GPU)")
-        )
-    }
+    val scaleOptions = listOf(
+        Pair(0f, if (lang == "VI") "Mặc định (${globalScale}x)" else "Default (${globalScale}x)"),
+        Pair(1.00f, "1.00x (Native)"),
+        Pair(1.10f, "1.10x"),
+        Pair(1.15f, "1.15x"),
+        Pair(1.20f, "1.20x"),
+        Pair(1.25f, "1.25x")
+    )
+
+    val fpsOptions = listOf(0, 30, 45, 60, 90, 120)
+    val hzOptions = listOf(0, 60, 90, 120, 144)
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Column {
                 Text(
-                    text = if (lang == "VI") "KHÓA TỶ LỆ RIÊNG" else "CUSTOM SCALE LOCK",
+                    text = if (lang == "VI") "CẤU HÌNH RIÊNG CHO GAME" else "PER-GAME PROFILE CONFIG",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.secondary
                 )
@@ -720,43 +778,163 @@ private fun GameScaleLockDialog(
                     text = game.name,
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                options.forEach { (value, label) ->
-                    val isChecked = Math.abs(value - selectedVal) < 0.01f
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { selectedVal = value }
-                            .padding(vertical = 6.dp, horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        RadioButton(
-                            selected = isChecked,
-                            onClick = { selectedVal = value },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = MaterialTheme.colorScheme.primary,
-                                unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        )
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                        )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // 1. SSAA Scale Section
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = if (lang == "VI") "1. TỶ LỆ PHÂN GIẢI (SSAA)" else "1. RESOLUTION SCALE (SSAA)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
+                    scaleOptions.chunked(2).forEach { rowItems ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            rowItems.forEach { (value, label) ->
+                                val isSel = Math.abs(value - selectedScale) < 0.01f
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                    border = BorderStroke(1.dp, if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable { selectedScale = value }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (isSel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
+                }
+
+                // 2. FPS Cap Section (Android 12+ GameManager)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = if (lang == "VI") "2. KHÓA FPS (ANDROID 12+ SHIZUKU)" else "2. FPS CAP (ANDROID 12+ SHIZUKU)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
+                    fpsOptions.chunked(3).forEach { rowItems ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            rowItems.forEach { fps ->
+                                val isSel = selectedFps == fps
+                                val label = if (fps == 0) (if (lang == "VI") "Mặc định" else "Auto") else "$fps FPS"
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (isSel) TechEmerald else MaterialTheme.colorScheme.surfaceVariant,
+                                    border = BorderStroke(1.dp, if (isSel) TechEmerald else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable { selectedFps = fps }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (isSel) Color(0xFF032215) else MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3. Refresh Rate Lock Section
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = if (lang == "VI") "3. TẦN SỐ QUÉT MÀN HÌNH (HZ)" else "3. DISPLAY REFRESH RATE (HZ)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
+                    hzOptions.chunked(3).forEach { rowItems ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            rowItems.forEach { hz ->
+                                val isSel = selectedHz == hz
+                                val label = if (hz == 0) (if (lang == "VI") "Mặc định" else "Auto") else "${hz}Hz"
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (isSel) TechBlue else MaterialTheme.colorScheme.surfaceVariant,
+                                    border = BorderStroke(1.dp, if (isSel) TechBlue else MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable { selectedHz = hz }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (isSel) Color(0xFF041D2E) else MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                            if (rowItems.size < 3) {
+                                Spacer(modifier = Modifier.weight((3 - rowItems.size).toFloat()))
+                            }
+                        }
+                    }
+                    Text(
+                        text = if (lang == "VI")
+                            "Tự động khôi phục độ phân giải, FPS & Hz về gốc ngay khi thoát game."
+                        else
+                            "Automatically restores resolution, FPS cap & refresh rate when game exits.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp
+                    )
                 }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onSelectScale(selectedVal) },
+                onClick = { onSaveConfig(selectedScale, selectedFps, selectedHz) },
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -780,17 +958,26 @@ private fun GameScaleLockDialog(
 @Composable
 private fun AppPickerDialog(
     allApps: List<GameProfileItem>,
+    detectedGameCount: Int,
     existingPkgs: Set<String>,
     lang: String,
     onDismiss: () -> Unit,
     onAddGame: (String) -> Unit,
+    onAddAllDetected: () -> Unit,
     onRemoveGame: (String) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
-    val filtered = remember(query, allApps) {
-        if (query.isBlank()) allApps else {
+    var showDetectedOnly by remember { mutableStateOf(detectedGameCount > 0) }
+
+    val filtered = remember(query, allApps, showDetectedOnly) {
+        val base = if (showDetectedOnly) allApps.filter { it.isDetectedGame } else allApps
+        if (query.isBlank()) base else {
             val q = query.trim().lowercase(Locale.ROOT)
-            allApps.filter { it.name.lowercase(Locale.ROOT).contains(q) || it.pkg.lowercase(Locale.ROOT).contains(q) }
+            base.filter {
+                it.name.lowercase(Locale.ROOT).contains(q) ||
+                it.pkg.lowercase(Locale.ROOT).contains(q) ||
+                it.detectedEngine.lowercase(Locale.ROOT).contains(q)
+            }
         }
     }
 
@@ -799,12 +986,12 @@ private fun AppPickerDialog(
         title = {
             Column {
                 Text(
-                    text = if (lang == "VI") "CHỌN GAME / ỨNG DỤNG" else "SELECT APP / GAME",
+                    text = if (lang == "VI") "QUÉT ENGINE GAME THÔNG MINH" else "SMART GAME ENGINE SCANNER",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = if (lang == "VI") "Thêm ứng dụng vào danh sách" else "Add apps to your library",
+                    text = if (lang == "VI") "Thêm game vào danh sách" else "Add games to your library",
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
@@ -815,16 +1002,85 @@ private fun AppPickerDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(400.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .height(430.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // Filter tabs: Detected Games vs All Apps
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = if (showDetectedOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(CircleShape)
+                            .clickable { showDetectedOnly = true }
+                    ) {
+                        Box(modifier = Modifier.padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = if (lang == "VI") "Game ($detectedGameCount)" else "Games ($detectedGameCount)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (showDetectedOnly) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Surface(
+                        shape = CircleShape,
+                        color = if (!showDetectedOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(CircleShape)
+                            .clickable { showDetectedOnly = false }
+                    ) {
+                        Box(modifier = Modifier.padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = if (lang == "VI") "Tất cả (${allApps.size})" else "All (${allApps.size})",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (!showDetectedOnly) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                // Quick add all detected games button
+                if (showDetectedOnly && detectedGameCount > 0) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = TechEmerald.copy(alpha = 0.14f),
+                        border = BorderStroke(1.dp, TechEmerald.copy(alpha = 0.4f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onAddAllDetected() }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.AutoFixHigh, contentDescription = null, tint = TechEmerald, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (lang == "VI") "Thêm nhanh tất cả $detectedGameCount game phát hiện" else "Quick-add all $detectedGameCount detected games",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TechEmerald,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
                 // Search box
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    placeholder = { Text(if (lang == "VI") "Tìm ứng dụng..." else "Search apps...", style = MaterialTheme.typography.bodySmall) },
+                    placeholder = { Text(if (lang == "VI") "Tìm game hoặc engine (Unity, Unreal)..." else "Search app or engine...", style = MaterialTheme.typography.bodySmall) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -866,18 +1122,43 @@ private fun AppPickerDialog(
                                         .background(MaterialTheme.colorScheme.surface)
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = app.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                    ) {
+                                        Text(
+                                            text = app.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        )
+                                        if (app.detectedEngine.isNotEmpty()) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(CircleShape)
+                                                    .background(TechEmerald.copy(alpha = 0.18f))
+                                                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                                            ) {
+                                                Text(
+                                                    text = app.detectedEngine,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = TechEmerald,
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
+                                    }
                                     Text(
                                         text = app.pkg,
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 }
                             }

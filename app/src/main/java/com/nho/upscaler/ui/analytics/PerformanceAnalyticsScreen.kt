@@ -333,6 +333,45 @@ fun PerformanceAnalyticsScreen(
                     }
                 }
 
+                // Smoothness & Frame-time KPI Cards Row (Stability, Frame-time, Energy)
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // KPI 4: Stability & Stutters
+                        KpiCard(
+                            modifier = Modifier.weight(1f),
+                            label = if (lang == "VI") "ĐỘ ỔN ĐỊNH" else "STABILITY",
+                            primaryVal = String.format(Locale.US, "%.1f%%", session.stabilityPct),
+                            secondaryVal = if (lang == "VI") "Giật: ${session.stutterCount} lần" else "Stutters: ${session.stutterCount}",
+                            accentColor = if (session.stabilityPct >= 90f) TechEmerald else TechAmber
+                        )
+
+                        // KPI 5: Avg Frame-time & Jitter
+                        KpiCard(
+                            modifier = Modifier.weight(1f),
+                            label = "FRAME-TIME",
+                            primaryVal = String.format(Locale.US, "%.1fms", session.avgFrameTimeMs),
+                            secondaryVal = String.format(Locale.US, "Jitter: ±%.1fms", session.frameTimeJitterMs),
+                            accentColor = TechAmber
+                        )
+
+                        // KPI 6: Energy Consumed
+                        KpiCard(
+                            modifier = Modifier.weight(1f),
+                            label = if (lang == "VI") "TIÊU HAO" else "ENERGY",
+                            primaryVal = String.format(Locale.US, "%.0fmWh", session.energyMwh),
+                            secondaryVal = if (session.avgCpuMhz > 0) {
+                                String.format(Locale.US, "CPU: %.1fGHz", session.avgCpuMhz / 1000f)
+                            } else {
+                                String.format(Locale.US, "Min: %.1f FPS", session.minFps)
+                            },
+                            accentColor = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                }
+
                 // Scrub Readout Banner (Real-time dynamic cursor values)
                 item {
                     val scrub = uiState.scrubSample ?: session.samples.firstOrNull()
@@ -374,12 +413,18 @@ fun PerformanceAnalyticsScreen(
 
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
                                     Text(
                                         text = String.format(Locale.US, "%.1f FPS", scrub.fps),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = String.format(Locale.US, "%.1fms", scrub.frameTimeMs),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = TechAmber,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
@@ -389,7 +434,7 @@ fun PerformanceAnalyticsScreen(
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                        text = String.format(Locale.US, "SoC %.1f°", scrub.socTemp),
+                                        text = String.format(Locale.US, "SoC %.0f°", scrub.socTemp),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = TechRed,
                                         fontWeight = FontWeight.Bold
@@ -416,6 +461,22 @@ fun PerformanceAnalyticsScreen(
                         minVal = 0f,
                         maxVal = 144f,
                         lineColor = MaterialTheme.colorScheme.primary,
+                        scrubIndex = uiState.scrubIndex,
+                        onScrubFraction = { viewModel.onScrubFractionChange(it) }
+                    )
+                }
+
+                // Chart 2: Frame-time Curve (ms) - Spikes reveal stutters
+                item {
+                    val peakFt = (session.samples.maxOfOrNull { it.frameTimeMs } ?: 33f).coerceIn(25f, 120f)
+                    TimeseriesChartCard(
+                        title = if (lang == "VI") "THỜI GIAN KHUNG HÌNH (FRAME-TIME MS)" else "FRAME-TIME PACING (MS)",
+                        badgeText = String.format(Locale.US, "%.1f ms", uiState.scrubSample?.frameTimeMs ?: session.avgFrameTimeMs),
+                        samples = session.samples,
+                        valueExtractor = { it.frameTimeMs.coerceAtMost(peakFt * 1.15f) },
+                        minVal = 0f,
+                        maxVal = peakFt * 1.15f,
+                        lineColor = TechAmber,
                         scrubIndex = uiState.scrubIndex,
                         onScrubFraction = { viewModel.onScrubFractionChange(it) }
                     )

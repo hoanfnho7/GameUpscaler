@@ -102,6 +102,34 @@ class PrefsManager(context: Context) {
     fun getAppCustomScale(pkg: String): Int = getGameScale(pkg)
     fun setAppCustomScale(pkg: String, scale: Int) = setGameScale(pkg, scale)
 
+    // Per-game FPS Cap (Android 12+ via cmd game set --fps) & Refresh Rate Lock (Hz)
+    fun getGameFpsCap(pkg: String): Int = prefs.getInt("fps_cap_$pkg", 0)
+    fun setGameFpsCap(pkg: String, fps: Int) {
+        prefs.edit().putInt("fps_cap_$pkg", fps).apply()
+    }
+
+    fun getGameRefreshRate(pkg: String): Int = prefs.getInt("refresh_rate_$pkg", 0)
+    fun setGameRefreshRate(pkg: String, hz: Int) {
+        prefs.edit().putInt("refresh_rate_$pkg", hz).apply()
+    }
+
+    // Thermal Guard (Sensor Rules inspired by Scene)
+    var thermalGuardEnabled: Boolean
+        get() = prefs.getBoolean("thermal_guard_enabled", true)
+        set(value) = prefs.edit().putBoolean("thermal_guard_enabled", value).apply()
+
+    var thermalGuardTempLimit: Int
+        get() = prefs.getInt("thermal_guard_temp_limit", 44)
+        set(value) = prefs.edit().putInt("thermal_guard_temp_limit", value.coerceIn(40, 48)).apply()
+
+    var thermalGuardBatMin: Int
+        get() = prefs.getInt("thermal_guard_bat_min", 15)
+        set(value) = prefs.edit().putInt("thermal_guard_bat_min", value.coerceIn(5, 30)).apply()
+
+    var thermalGuardAutoReset: Boolean
+        get() = prefs.getBoolean("thermal_guard_auto_reset", false)
+        set(value) = prefs.edit().putBoolean("thermal_guard_auto_reset", value).apply()
+
     fun getCustomGames(): Set<String> {
         return prefs.getStringSet("custom_games", emptySet()) ?: emptySet()
     }

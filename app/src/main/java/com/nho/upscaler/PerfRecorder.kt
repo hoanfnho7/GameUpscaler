@@ -7,6 +7,8 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.sqrt
 
 data class PerfSample(
     val sec: Int,
@@ -16,7 +18,10 @@ data class PerfSample(
     val socTemp: Float,
     val vramMb: Int,
     val cpuMhz: Int
-)
+) {
+    val frameTimeMs: Float
+        get() = if (fps > 1f) (1000f / fps).coerceIn(4f, 500f) else 0f
+}
 
 data class PerfSession(
     val fileName: String,
@@ -36,7 +41,11 @@ data class PerfSession(
     val peakSocTemp: Float,
     val avgVramMb: Int,
     val avgCpuMhz: Int,
-    val samples: List<PerfSample>
+    val samples: List<PerfSample>,
+    val avgFrameTimeMs: Float = 0f,
+    val frameTimeJitterMs: Float = 0f,
+    val stabilityPct: Float = 0f,
+    val stutterCount: Int = 0
 )
 
 object PerfLogManager {
@@ -131,6 +140,8 @@ object PerfLogManager {
         val validCpu = snapshot.map { it.cpuMhz }.filter { it > 0 }
         val avgCpu = if (validCpu.isNotEmpty()) validCpu.average().toInt() else 0
 
+        val (avgFt, jitterMs, stabilityPct, stutters) = computeSmoothnessMetrics(snapshot, avgFps)
+
         val dir = File(context.filesDir, "perf_logs").apply { if (!exists()) mkdirs() }
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(started))
         val fileName = "session_${stamp}.json"
@@ -152,6 +163,10 @@ object PerfLogManager {
             put("peakSocTemp", peakSoc.toDouble())
             put("avgVramMb", avgVram)
             put("avgCpuMhz", avgCpu)
+            put("avgFrameTimeMs", avgFt.toDouble())
+            put("frameTimeJitterMs", jitterMs.toDouble())
+            put("stabilityPct", stabilityPct.toDouble())
+            put("stutterCount", stutters)
 
             val arr = JSONArray()
             for (s in snapshot) {
@@ -177,8 +192,50 @@ object PerfLogManager {
         return PerfSession(
             fileName, gName, pkg, scale, started, durationSec,
             avgFps, low1Fps, minFps, maxFps, avgWatts, maxWatts,
-            energyMwh, peakBat, peakSoc, avgVram, avgCpu, snapshot
+            energyMwh, peakBat, peakSoc, avgVram, avgCpu, snapshot,
+            avgFt, jitterMs, stabilityPct, stutters
         )
+    }
+
+    private data class SmoothnessMetrics(
+        val avgFrameTimeMs: Float,
+        val jitterMs: Float,
+        val stabilityPct: Float,
+        val stutterCount: Int
+    )
+
+    private fun computeSmoothnessMetrics(samples: List<PerfSample>, avgFps: Float): SmoothnessMetrics {
+        val validFps = samples.map { it.fps }.filter { it > 1f }
+        if (validFps.isEmpty() || avgFps <= 1f) {
+            return SmoothnessMetrics(0f, 0f, 0f, 0)
+        }
+        val frameTimes = validFps.map { (1000f / it).coerceIn(4f, 500f) }
+        val avgFt = frameTimes.average().toFloat()
+
+        // Frame-time pacing jitter: mean absolute difference between consecutive samples
+        var diffSum = 0.0
+        for (i in 1 until frameTimes.size) {
+            diffSum += abs(frameTimes[i] - frameTimes[i - 1])
+        }
+        val jitterMs = if (frameTimes.size > 1) (diffSum / (frameTimes.size - 1)).toFloat() else 0f
+
+        // Stability score (%): 100 - Coefficient of Variation of FPS (inspired by Scene FAS variance)
+        var sqSum = 0.0
+        for (f in validFps) {
+            val d = f - avgFps
+            sqSum += d * d
+        }
+        val stdDev = sqrt(sqSum / validFps.size).toFloat()
+        val stabilityPct = ((1f - (stdDev / avgFps)) * 100f).coerceIn(0f, 100f)
+
+        // Stutter count: severe frame drops (>20% below avg FPS or >45% frame-time spike)
+        var stutters = 0
+        for (i in validFps.indices) {
+            if (validFps[i] < avgFps * 0.80f || frameTimes[i] > avgFt * 1.45f) {
+                stutters++
+            }
+        }
+        return SmoothnessMetrics(avgFt, jitterMs, stabilityPct, stutters)
     }
 
     fun listSessions(context: Context): List<PerfSession> {
@@ -213,6 +270,13 @@ object PerfLogManager {
                     )
                 )
             }
+            val loadedAvgFps = obj.optDouble("avgFps", 0.0).toFloat()
+            val computed = computeSmoothnessMetrics(list, loadedAvgFps)
+            val loadedAvgFt = if (obj.has("avgFrameTimeMs")) obj.optDouble("avgFrameTimeMs", computed.avgFrameTimeMs.toDouble()).toFloat() else computed.avgFrameTimeMs
+            val loadedJitter = if (obj.has("frameTimeJitterMs")) obj.optDouble("frameTimeJitterMs", computed.jitterMs.toDouble()).toFloat() else computed.jitterMs
+            val loadedStability = if (obj.has("stabilityPct")) obj.optDouble("stabilityPct", computed.stabilityPct.toDouble()).toFloat() else computed.stabilityPct
+            val loadedStutters = if (obj.has("stutterCount")) obj.optInt("stutterCount", computed.stutterCount) else computed.stutterCount
+
             PerfSession(
                 fileName = file.name,
                 gameName = obj.optString("gameName", "Game"),
@@ -220,7 +284,7 @@ object PerfLogManager {
                 scaleLabel = obj.optString("scaleLabel", "Native"),
                 timestampMs = obj.optLong("timestampMs", file.lastModified()),
                 durationSec = obj.optInt("durationSec", list.size),
-                avgFps = obj.optDouble("avgFps", 0.0).toFloat(),
+                avgFps = loadedAvgFps,
                 low1Fps = obj.optDouble("low1Fps", 0.0).toFloat(),
                 minFps = obj.optDouble("minFps", 0.0).toFloat(),
                 maxFps = obj.optDouble("maxFps", 0.0).toFloat(),
@@ -231,7 +295,11 @@ object PerfLogManager {
                 peakSocTemp = obj.optDouble("peakSocTemp", 0.0).toFloat(),
                 avgVramMb = obj.optInt("avgVramMb", 0),
                 avgCpuMhz = obj.optInt("avgCpuMhz", 0),
-                samples = list
+                samples = list,
+                avgFrameTimeMs = loadedAvgFt,
+                frameTimeJitterMs = loadedJitter,
+                stabilityPct = loadedStability,
+                stutterCount = loadedStutters
             )
         } catch (_: Exception) {
             null

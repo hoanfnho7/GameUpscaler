@@ -84,9 +84,19 @@ class FpsOverlayService : Service() {
     @Volatile private var shellReader: BufferedReader? = null
 
     private var lastFps = -1f
+    private val frameTimeWindow = ArrayDeque<Float>(10)
+    private var lastFrameTimeMs = -1f
     @Volatile private var cachedBatTemp = 0f
+    @Volatile private var cachedBatPct = 100
     @Volatile private var cachedVoltMv = 0
     @Volatile private var isChargingNow = false
+
+    // Idle polling & Thermal Guard states (inspired by Scene)
+    private var idleStartTimeMs = 0L
+    private var isIdleMode = false
+    @Volatile private var thermalAlertState = 0 // 0 = OK, 1 = Overheat, 2 = Low Battery
+    private var lastGuardToastMs = 0L
+    private var guardAutoResetDone = false
 
     private var lastSocTemp = 0f
     private var lastCpuTemp = 0f
@@ -134,6 +144,9 @@ class FpsOverlayService : Service() {
         if (v > 0) cachedVoltMv = v
         val t = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0)
         if (t > 0) cachedBatTemp = t / 10f
+        val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+        if (level >= 0 && scale > 0) cachedBatPct = (level * 100) / scale
         val st = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
         isChargingNow = (st == BatteryManager.BATTERY_STATUS_CHARGING || st == BatteryManager.BATTERY_STATUS_FULL)
     }
@@ -792,6 +805,7 @@ class FpsOverlayService : Service() {
         val isConcise = prefsMgr.hudHideLabels
 
         val showFps = prefsMgr.getMetric("m_fps", true)
+        val showFrameTime = prefsMgr.getMetric("m_frametime", false)
         val showWatt = prefsMgr.getMetric("m_watt", true)
         val showGpu = prefsMgr.getMetric("m_gpu", true)
         val showVram = prefsMgr.getMetric("m_vram", false)
@@ -806,6 +820,7 @@ class FpsOverlayService : Service() {
         val showRam = prefsMgr.getMetric("m_ram", false)
 
         val fpsVal = if (lastFps >= 0f) String.format(Locale.US, "%.1f", lastFps) else "--.-"
+        val ftVal = if (lastFrameTimeMs > 0f) String.format(Locale.US, "%.1fms", lastFrameTimeMs) else "--ms"
         val prefix = if (isChargingNow) "+" else ""
         val wVal = if (lastWatts > 0f) String.format(Locale.US, "%s%.1fW", prefix, lastWatts) else if (cachedVoltMv > 0) "${(cachedVoltMv / 1000f).toInt()}V" else "--W"
         val hasValidGpu = showGpu && (lastGpuLoadPct in 0..100)
@@ -835,15 +850,23 @@ class FpsOverlayService : Service() {
         val ramVal = lastRamText.ifEmpty { "--%" }
         val ramConcise = lastRamText.replace("RAM:", "").replace("RAM", "").trim().ifEmpty { "--" }
 
+        val guardBadge = when (thermalAlertState) {
+            1 -> "🔥 HOT"
+            2 -> "🪫 LOW"
+            else -> ""
+        }
+
         val newText = when (layoutMode) {
             2 -> { // Mini Dot
-                "● $fpsVal"
+                if (guardBadge.isNotEmpty()) "$guardBadge $fpsVal" else "● $fpsVal"
             }
             1 -> { // Vertical Column (Aligned monospace labels)
                 val lines = mutableListOf<String>()
                 if (PerfLogManager.isRecording) lines.add("● REC")
+                if (guardBadge.isNotEmpty()) lines.add(guardBadge)
                 if (isConcise) {
                     if (showFps) lines.add(fpsVal)
+                    if (showFrameTime) lines.add(ftVal)
                     if (showBatTemp) lines.add(batConcise)
                     if (showSocTemp) lines.add(socConcise)
                     if (showCpuTemp) lines.add(cpuTempConcise)
@@ -859,6 +882,7 @@ class FpsOverlayService : Service() {
                     if (lines.isEmpty()) lines.add(fpsVal)
                 } else {
                     if (showFps) lines.add("FPS  $fpsVal")
+                    if (showFrameTime) lines.add("FT   $ftVal")
                     if (showBatTemp) lines.add("PIN  $batVal")
                     if (showSocTemp) lines.add("SOC  $socVal")
                     if (showCpuTemp) lines.add("CPU  $cpuTempVal")
@@ -878,8 +902,10 @@ class FpsOverlayService : Service() {
             else -> { // Horizontal Pill / Multi-line Wrap
                 val items = mutableListOf<String>()
                 if (PerfLogManager.isRecording) items.add("● REC")
+                if (guardBadge.isNotEmpty()) items.add(guardBadge)
                 if (isConcise) {
                     if (showFps) items.add(fpsVal)
+                    if (showFrameTime) items.add(ftVal)
                     if (showWatt) items.add(wVal)
                     if (hasValidGpu) items.add(gpuVal)
                     if (hasValidVram) items.add(vramConciseVal)
@@ -895,6 +921,7 @@ class FpsOverlayService : Service() {
                     if (items.isEmpty()) items.add(fpsVal)
                 } else {
                     if (showFps) items.add("$fpsVal FPS")
+                    if (showFrameTime) items.add(ftVal)
                     if (showBatTemp) items.add("Pin $batVal")
                     if (showSocTemp) items.add("SoC $socVal")
                     if (showCpuTemp) items.add("CPU $cpuTempVal")
@@ -939,10 +966,11 @@ class FpsOverlayService : Service() {
             2 -> Color.parseColor("#38BDF8") // Blue / Cyan
             else -> Color.parseColor("#FACC15") // Amber / Yellow
         }
+        val guardRedLimit = if (prefsMgr.thermalGuardEnabled) prefsMgr.thermalGuardTempLimit.toFloat() else 43.0f
         val color = when {
             PerfLogManager.isRecording -> UiTheme.ACCENT_RED_ALERT
-            cachedBatTemp >= 43.0f || maxChipTemp >= 85.0f -> UiTheme.ACCENT_RED_BRIGHT
-            cachedBatTemp >= 41.0f || maxChipTemp >= 75.0f -> UiTheme.ACCENT_GOLD
+            thermalAlertState == 1 || cachedBatTemp >= guardRedLimit || maxChipTemp >= 85.0f -> UiTheme.ACCENT_RED_BRIGHT
+            thermalAlertState == 2 || cachedBatTemp >= (guardRedLimit - 2.0f) || maxChipTemp >= 75.0f -> UiTheme.ACCENT_GOLD
             else -> baseAccent
         }
         if (color != lastRenderedColor) {
@@ -1060,7 +1088,11 @@ class FpsOverlayService : Service() {
             1 -> 150L
             2 -> 300L
             3 -> 1000L
-            else -> if (targetPkg.isNotEmpty() || detectedPkg.isNotEmpty() || isLandscapeMode() || lastFps > 1f) 250L else 500L
+            else -> when {
+                isIdleMode -> 1200L
+                targetPkg.isNotEmpty() || detectedPkg.isNotEmpty() || isLandscapeMode() || lastFps > 1f -> 250L
+                else -> 500L
+            }
         }
     }
 
@@ -1107,6 +1139,8 @@ class FpsOverlayService : Service() {
 
                     val activePkg = targetPkg.ifBlank { detectedPkg }
                     val showFps = prefsMgr.getMetric("m_fps", true)
+                    val showFrameTime = prefsMgr.getMetric("m_frametime", false)
+                    val needFrameStats = showFps || showFrameTime
                     val showWatt = prefsMgr.getMetric("m_watt", true)
                     val showGpu = prefsMgr.getMetric("m_gpu", true)
                     val showVram = prefsMgr.getMetric("m_vram", false)
@@ -1171,7 +1205,7 @@ class FpsOverlayService : Service() {
                     }
 
                     // Chu kỳ nhanh: SurfaceFlinger Timestats và DRM FPS node
-                    if (showFps) {
+                    if (needFrameStats) {
                         if (initializedStatsForPkg != activePkg) {
                             sb.append("dumpsys SurfaceFlinger --timestats -clear -enable >/dev/null 2>&1; ")
                             initializedStatsForPkg = activePkg
@@ -1201,10 +1235,38 @@ class FpsOverlayService : Service() {
                             }
                         }
 
-                        if (showFps) {
+                        if (needFrameStats) {
                             val currentMeasurePkg = targetPkg.ifBlank { detectedPkg }
                             lastFps = parseRealFps(currentMeasurePkg, timeStatsSection, drmFpsFallback)
+                            // Rolling 8-sample frame-time window (Scene recent_frames = 6~12)
+                            if (lastFps > 1f) {
+                                val instFt = (1000f / lastFps).coerceIn(4f, 500f)
+                                if (frameTimeWindow.size >= 8) frameTimeWindow.removeFirst()
+                                frameTimeWindow.addLast(instFt)
+                                lastFrameTimeMs = frameTimeWindow.average().toFloat()
+                            } else if (lastFps <= 0f) {
+                                frameTimeWindow.clear()
+                                lastFrameTimeMs = -1f
+                            }
                         }
+                    }
+
+                    // Idle Detection (Scene idle_delay = 5s): slow polling when screen is static & not gaming
+                    val staticIdleCandidate = (pollMode == 0 && targetPkg.isEmpty() && !PerfLogManager.isRecording && !isLandscapeMode() && lastFps <= 2f)
+                    if (staticIdleCandidate) {
+                        if (idleStartTimeMs == 0L) {
+                            idleStartTimeMs = nowMs
+                        } else if (nowMs - idleStartTimeMs >= 5000L) {
+                            isIdleMode = true
+                        }
+                    } else {
+                        idleStartTimeMs = 0L
+                        isIdleMode = false
+                    }
+
+                    // Thermal Guard Rules (evaluated every 1s)
+                    if (is1sTick) {
+                        evaluateThermalGuard(nowMs)
                     }
 
                     if (PerfLogManager.isRecording && is1sTick) {
@@ -1217,6 +1279,64 @@ class FpsOverlayService : Service() {
                     Thread.sleep(computeNextIntervalMs())
                 } catch (_: InterruptedException) {}
             }
+        }
+    }
+
+    private fun evaluateThermalGuard(nowMs: Long) {
+        if (!prefsMgr.thermalGuardEnabled) {
+            thermalAlertState = 0
+            return
+        }
+        val tempLimit = prefsMgr.thermalGuardTempLimit.toFloat()
+        val batMin = prefsMgr.thermalGuardBatMin
+        val isOverheat = cachedBatTemp >= tempLimit
+        val isLowBat = cachedBatPct in 1..batMin && !isChargingNow
+
+        thermalAlertState = when {
+            isOverheat -> 1
+            isLowBat -> 2
+            else -> 0
+        }
+
+        if (thermalAlertState != 0) {
+            val shouldAutoReset = prefsMgr.thermalGuardAutoReset && !guardAutoResetDone && (targetPkg.isNotEmpty() || scaleLabel != "Native")
+            if (shouldAutoReset) {
+                guardAutoResetDone = true
+                ShizukuHelper.resetDisplay()
+                scaleLabel = "Native"
+            }
+
+            if (nowMs - lastGuardToastMs >= 60_000L || shouldAutoReset) {
+                lastGuardToastMs = nowMs
+                val isEn = prefsMgr.appLang == 2
+                val msg = when {
+                    isOverheat && shouldAutoReset -> if (isEn) {
+                        String.format(Locale.US, "🔥 Thermal Guard: Battery %.1f°C! Auto-reset SSAA to Native.", cachedBatTemp)
+                    } else {
+                        String.format(Locale.US, "🔥 Thermal Guard: Pin %.1f°C quá nóng! Đã tự hạ SSAA về gốc.", cachedBatTemp)
+                    }
+                    isOverheat -> if (isEn) {
+                        String.format(Locale.US, "🔥 Thermal Guard: Battery %.1f°C exceeded %d°C limit!", cachedBatTemp, prefsMgr.thermalGuardTempLimit)
+                    } else {
+                        String.format(Locale.US, "🔥 Thermal Guard: Pin %.1f°C vượt ngưỡng %d°C!", cachedBatTemp, prefsMgr.thermalGuardTempLimit)
+                    }
+                    isLowBat && shouldAutoReset -> if (isEn) {
+                        "🪫 Thermal Guard: Low battery $cachedBatPct%! Auto-reset SSAA to Native."
+                    } else {
+                        "🪫 Thermal Guard: Pin yếu $cachedBatPct%! Đã tự hạ SSAA về gốc."
+                    }
+                    else -> if (isEn) {
+                        "🪫 Thermal Guard: Battery low ($cachedBatPct% <= $batMin%)!"
+                    } else {
+                        "🪫 Thermal Guard: Pin yếu ($cachedBatPct% <= $batMin%)!"
+                    }
+                }
+                mainHandler.post {
+                    Toast.makeText(this@FpsOverlayService, msg, Toast.LENGTH_LONG).show()
+                }
+            }
+        } else if (cachedBatTemp <= tempLimit - 2.0f && (cachedBatPct > batMin + 3 || isChargingNow)) {
+            guardAutoResetDone = false
         }
     }
 

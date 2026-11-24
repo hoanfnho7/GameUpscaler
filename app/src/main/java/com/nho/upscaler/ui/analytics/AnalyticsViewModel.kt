@@ -149,9 +149,10 @@ class AnalyticsViewModel : ViewModel() {
                 val safeName = session.gameName.replace(Regex("[^a-zA-Z0-9_-]"), "_")
                 val file = File(dir, "GameUpscaler_${safeName}_${session.timestampMs}.csv")
                 file.bufferedWriter().use { writer ->
-                    writer.write("Timestamp_s,FPS,Power_W,BatteryTemp_C,SocTemp_C,Vram_MB,Cpu_MHz\n")
+                    writer.write("Timestamp_s,FPS,FrameTime_ms,Power_W,BatteryTemp_C,SocTemp_C,Vram_MB,Cpu_MHz\n")
                     for (s in session.samples) {
-                        writer.write("${s.sec},${s.fps},${s.watts},${s.batTemp},${s.socTemp},${s.vramMb},${s.cpuMhz}\n")
+                        val ftStr = String.format(java.util.Locale.US, "%.1f", s.frameTimeMs)
+                        writer.write("${s.sec},${s.fps},$ftStr,${s.watts},${s.batTemp},${s.socTemp},${s.vramMb},${s.cpuMhz}\n")
                     }
                 }
                 withContext(Dispatchers.Main) {

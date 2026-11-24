@@ -188,7 +188,22 @@ fun HudSettingsScreen(
                 )
             }
 
-            // 13 Telemetry Metrics Toggles
+            // Thermal Guard Protection Card (Scene Sensor Rules)
+            item {
+                ThermalGuardCard(
+                    enabled = uiState.thermalGuardEnabled,
+                    tempLimit = uiState.thermalGuardTempLimit,
+                    batMin = uiState.thermalGuardBatMin,
+                    autoReset = uiState.thermalGuardAutoReset,
+                    lang = lang,
+                    onToggleEnabled = { viewModel.setThermalGuardEnabled(it, context) },
+                    onSelectTempLimit = { viewModel.setThermalGuardTempLimit(it, context) },
+                    onSelectBatMin = { viewModel.setThermalGuardBatMin(it, context) },
+                    onToggleAutoReset = { viewModel.setThermalGuardAutoReset(it, context) }
+                )
+            }
+
+            // 14 Telemetry Metrics Toggles
             item {
                 HudMetricsListCard(
                     metricsMap = uiState.metricsMap,
@@ -307,6 +322,7 @@ private fun LiveHudPreviewCanvas(
                         val items = mutableListOf<String>()
                         if (isConcise) {
                             if (uiState.metricsMap["m_fps"] != false) items.add("59.8")
+                            if (uiState.metricsMap["m_frametime"] == true) items.add("16.7ms")
                             if (uiState.metricsMap["m_watt"] != false) items.add("4.8W")
                             if (uiState.metricsMap["m_gpu"] != false) items.add("65%")
                             if (uiState.metricsMap["m_vram"] == true) items.add("650M")
@@ -316,6 +332,7 @@ private fun LiveHudPreviewCanvas(
                             if (items.isEmpty()) items.add("59.8")
                         } else {
                             if (uiState.metricsMap["m_fps"] != false) items.add("59.8 FPS")
+                            if (uiState.metricsMap["m_frametime"] == true) items.add("16.7ms")
                             if (uiState.metricsMap["m_bat_temp"] != false) items.add("Pin 36.2°C")
                             if (uiState.metricsMap["m_soc_temp"] != false) items.add("SoC 41.5°C")
                             if (uiState.metricsMap["m_watt"] != false) items.add("4.8W")
@@ -355,6 +372,7 @@ private fun LiveHudPreviewCanvas(
                         val lines = mutableListOf<String>()
                         if (isConcise) {
                             if (uiState.metricsMap["m_fps"] != false) lines.add("59.8")
+                            if (uiState.metricsMap["m_frametime"] == true) lines.add("16.7ms")
                             if (uiState.metricsMap["m_bat_temp"] != false) lines.add("36°")
                             if (uiState.metricsMap["m_soc_temp"] != false) lines.add("42°")
                             if (uiState.metricsMap["m_watt"] != false) lines.add("4.8W")
@@ -364,6 +382,7 @@ private fun LiveHudPreviewCanvas(
                             if (lines.isEmpty()) lines.add("59.8")
                         } else {
                             if (uiState.metricsMap["m_fps"] != false) lines.add("FPS  59.8")
+                            if (uiState.metricsMap["m_frametime"] == true) lines.add("FT   16.7ms")
                             if (uiState.metricsMap["m_bat_temp"] != false) lines.add("PIN  36.2°C")
                             if (uiState.metricsMap["m_soc_temp"] != false) lines.add("SOC  41.5°C")
                             if (uiState.metricsMap["m_watt"] != false) lines.add("PWR  4.8W")
@@ -727,6 +746,208 @@ private fun HudAppearanceCard(
 }
 
 @Composable
+private fun ThermalGuardCard(
+    enabled: Boolean,
+    tempLimit: Int,
+    batMin: Int,
+    autoReset: Boolean,
+    lang: String,
+    onToggleEnabled: (Boolean) -> Unit,
+    onSelectTempLimit: (Int) -> Unit,
+    onSelectBatMin: (Int) -> Unit,
+    onToggleAutoReset: (Boolean) -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, if (enabled) TechAmber.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(if (enabled) TechAmber.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AddModerator,
+                            contentDescription = null,
+                            tint = if (enabled) TechAmber else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (lang == "VI") "Thermal Guard (Bảo vệ Nhiệt & Pin)" else "Thermal Guard (Temp & Battery Rules)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (lang == "VI") "Cảnh báo nóng máy / pin yếu & tự bảo vệ khi chơi game" else "Alert on overheating / low battery & auto-protect",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = onToggleEnabled,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color(0xFF1F1600),
+                        checkedTrackColor = TechAmber,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+            }
+
+            if (enabled) {
+                // Battery Temp Limit Chips
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (lang == "VI") "Ngưỡng nhiệt độ Pin cảnh báo" else "Battery Temperature Limit",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "${tempLimit}°C",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TechRed,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(42, 43, 44, 45, 46).forEach { deg ->
+                            val isSel = tempLimit == deg
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSel) TechRed else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { onSelectTempLimit(deg) }
+                            ) {
+                                Box(modifier = Modifier.padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "${deg}°",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Low Battery Threshold Chips
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (lang == "VI") "Ngưỡng Pin yếu (khi không sạc)" else "Low Battery Threshold (unplugged)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "${batMin}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TechAmber,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(10, 15, 20, 25).forEach { pct ->
+                            val isSel = batMin == pct
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSel) TechAmber else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { onSelectBatMin(pct) }
+                            ) {
+                                Box(modifier = Modifier.padding(vertical = 7.dp), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "${pct}%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (isSel) Color(0xFF1F1600) else MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Auto-reset SSAA switch
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(
+                            text = if (lang == "VI") "Tự động hạ SSAA về gốc" else "Auto-Reset SSAA to Native",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (lang == "VI") "Tự chạy wm reset khi chạm ngưỡng nóng / pin yếu" else "Automatically resets resolution on trigger",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = autoReset,
+                        onCheckedChange = onToggleAutoReset,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = TechRed,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun HudMetricsListCard(
     metricsMap: Map<String, Boolean>,
     lang: String,
@@ -754,17 +975,18 @@ private fun HudMetricsListCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = if (lang == "VI") "$enabledCount/13 Kích hoạt" else "$enabledCount/13 Enabled",
+                    text = if (lang == "VI") "$enabledCount/14 Kích hoạt" else "$enabledCount/14 Enabled",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            // 13 Items
+            // 14 Items
             val metricsList = if (lang == "VI") {
                 listOf(
                     MetricItemDef("m_fps", "Tốc độ khung hình (FPS)", "Hiển thị real-time FPS đo chính xác 0.1", Icons.Default.Speed),
+                    MetricItemDef("m_frametime", "Thời gian khung hình (ms)", "Frame-time mượt hóa 8 mẫu gần nhất (16.7ms)", Icons.Default.Speed),
                     MetricItemDef("m_watt", "Công suất điện (Watt)", "Điện năng tiêu thụ phần cứng tức thời (W)", Icons.Default.BatteryChargingFull),
                     MetricItemDef("m_gpu", "Mức tải GPU (%)", "Tỷ lệ chiếm dụng nhân đồ họa GPU", Icons.Default.DeveloperBoard),
                     MetricItemDef("m_vram", "Bộ nhớ đồ họa VRAM (MB)", "Dung lượng VRAM buffer đang dùng", Icons.Default.Memory),
@@ -781,6 +1003,7 @@ private fun HudMetricsListCard(
             } else {
                 listOf(
                     MetricItemDef("m_fps", "Frame Rate (FPS)", "Real-time 0.1 precise frame rate", Icons.Default.Speed),
+                    MetricItemDef("m_frametime", "Frame-Time (ms)", "8-frame rolling average frame pacing (ms)", Icons.Default.Speed),
                     MetricItemDef("m_watt", "Power Consumption (Watt)", "Instant hardware electrical draw (W)", Icons.Default.BatteryChargingFull),
                     MetricItemDef("m_gpu", "GPU Utilization (%)", "GPU graphics core utilization percentage", Icons.Default.DeveloperBoard),
                     MetricItemDef("m_vram", "GPU VRAM Buffer (MB)", "Current allocated VRAM memory", Icons.Default.Memory),

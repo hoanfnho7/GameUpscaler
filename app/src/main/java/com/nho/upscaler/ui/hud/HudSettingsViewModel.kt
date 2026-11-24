@@ -43,6 +43,7 @@ data class HudSettingsUiState(
     val pollingRate: PollingRatePreset = PollingRatePreset.AUTO,
     val metricsMap: Map<String, Boolean> = mapOf(
         "m_fps" to true,
+        "m_frametime" to false,
         "m_watt" to true,
         "m_gpu" to true,
         "m_vram" to false,
@@ -59,7 +60,11 @@ data class HudSettingsUiState(
     val thermalSensors: List<Pair<String, Float>> = emptyList(),
     val isThermalDialogOpen: Boolean = false,
     val isQsTileDialogOpen: Boolean = false,
-    val hideLabels: Boolean = false
+    val hideLabels: Boolean = false,
+    val thermalGuardEnabled: Boolean = true,
+    val thermalGuardTempLimit: Int = 44,
+    val thermalGuardBatMin: Int = 15,
+    val thermalGuardAutoReset: Boolean = false
 )
 
 class HudSettingsViewModel : ViewModel() {
@@ -101,7 +106,7 @@ class HudSettingsViewModel : ViewModel() {
 
         val map = mutableMapOf<String, Boolean>()
         listOf(
-            "m_fps", "m_watt", "m_gpu", "m_vram", "m_cpu_freq",
+            "m_fps", "m_frametime", "m_watt", "m_gpu", "m_vram", "m_cpu_freq",
             "m_bat_temp", "m_soc_temp", "m_cpu_temp", "m_gpu_temp",
             "m_ddr_temp", "m_cam_temp", "m_skin_temp", "m_ram"
         ).forEach { key ->
@@ -117,7 +122,11 @@ class HudSettingsViewModel : ViewModel() {
                 bgOpacity = opacityVal,
                 colorAccentIdx = p.hudColorAccent,
                 pollingRate = poll,
-                metricsMap = map
+                metricsMap = map,
+                thermalGuardEnabled = p.thermalGuardEnabled,
+                thermalGuardTempLimit = p.thermalGuardTempLimit,
+                thermalGuardBatMin = p.thermalGuardBatMin,
+                thermalGuardAutoReset = p.thermalGuardAutoReset
             )
         }
     }
@@ -185,6 +194,30 @@ class HudSettingsViewModel : ViewModel() {
     fun setHideLabels(enabled: Boolean, context: Context) {
         prefsMgr?.hudHideLabels = enabled
         _uiState.update { it.copy(hideLabels = enabled) }
+        notifyStyleChanged(context)
+    }
+
+    fun setThermalGuardEnabled(enabled: Boolean, context: Context) {
+        prefsMgr?.thermalGuardEnabled = enabled
+        _uiState.update { it.copy(thermalGuardEnabled = enabled) }
+        notifyStyleChanged(context)
+    }
+
+    fun setThermalGuardTempLimit(tempC: Int, context: Context) {
+        prefsMgr?.thermalGuardTempLimit = tempC
+        _uiState.update { it.copy(thermalGuardTempLimit = tempC) }
+        notifyStyleChanged(context)
+    }
+
+    fun setThermalGuardBatMin(pct: Int, context: Context) {
+        prefsMgr?.thermalGuardBatMin = pct
+        _uiState.update { it.copy(thermalGuardBatMin = pct) }
+        notifyStyleChanged(context)
+    }
+
+    fun setThermalGuardAutoReset(enabled: Boolean, context: Context) {
+        prefsMgr?.thermalGuardAutoReset = enabled
+        _uiState.update { it.copy(thermalGuardAutoReset = enabled) }
         notifyStyleChanged(context)
     }
 
