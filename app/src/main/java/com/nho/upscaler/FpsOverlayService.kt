@@ -21,6 +21,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import android.os.SystemClock
 import android.provider.Settings
 import android.service.quicksettings.TileService
 import android.util.DisplayMetrics
@@ -94,6 +95,7 @@ class FpsOverlayService : Service() {
     private var lastCamTemp = 0f
     private var lastSkinTemp = 0f
     private var lastWatts = 0f
+    private var lastGpuLoadPct = -1
     private var lastGpuVramMb = -1
     private var lastCpuKhz = 0L
     private var lastRamText = ""
@@ -806,7 +808,9 @@ class FpsOverlayService : Service() {
         val fpsVal = if (lastFps >= 0f) String.format(Locale.US, "%.1f", lastFps) else "--.-"
         val prefix = if (isChargingNow) "+" else ""
         val wVal = if (lastWatts > 0f) String.format(Locale.US, "%s%.1fW", prefix, lastWatts) else if (cachedVoltMv > 0) "${(cachedVoltMv / 1000f).toInt()}V" else "--W"
-        val gpuVal = if (lastGpuVramMb >= 0) "${lastGpuVramMb}%" else "--%"
+        val hasValidGpu = showGpu && (lastGpuLoadPct in 0..100)
+        val gpuVal = if (hasValidGpu) "${lastGpuLoadPct}%" else ""
+        val hasValidVram = showVram && (lastGpuVramMb >= 0)
         val vramVal = if (lastGpuVramMb >= 0) "${lastGpuVramMb}MB" else "--MB"
         val vramConciseVal = if (lastGpuVramMb >= 0) "${lastGpuVramMb}M" else "--M"
         val cpuFreqVal = if (lastCpuKhz > 0) String.format(Locale.US, "%.2fGHz", lastCpuKhz / 1_000_000f) else "--GHz"
@@ -848,8 +852,8 @@ class FpsOverlayService : Service() {
                     if (showCamTemp) lines.add(camTempConcise)
                     if (showSkinTemp) lines.add(skinTempConcise)
                     if (showWatt) lines.add(wVal)
-                    if (showGpu) lines.add(gpuVal)
-                    if (showVram) lines.add(vramConciseVal)
+                    if (hasValidGpu) lines.add(gpuVal)
+                    if (hasValidVram) lines.add(vramConciseVal)
                     if (showCpuFreq) lines.add(cpuFreqConciseVal)
                     if (showRam) lines.add(ramConcise)
                     if (lines.isEmpty()) lines.add(fpsVal)
@@ -863,8 +867,8 @@ class FpsOverlayService : Service() {
                     if (showCamTemp) lines.add("CAM  $camTempVal")
                     if (showSkinTemp) lines.add("SKN  $skinTempVal")
                     if (showWatt) lines.add("PWR  $wVal")
-                    if (showGpu) lines.add("GPU  $gpuVal")
-                    if (showVram) lines.add("VRM  $vramVal")
+                    if (hasValidGpu) lines.add("GPU  $gpuVal")
+                    if (hasValidVram) lines.add("VRM  $vramVal")
                     if (showCpuFreq) lines.add("CLK  $cpuFreqVal")
                     if (showRam) lines.add("RAM  $ramVal")
                     if (lines.isEmpty()) lines.add("FPS  $fpsVal")
@@ -877,8 +881,8 @@ class FpsOverlayService : Service() {
                 if (isConcise) {
                     if (showFps) items.add(fpsVal)
                     if (showWatt) items.add(wVal)
-                    if (showGpu) items.add(gpuVal)
-                    if (showVram) items.add(vramConciseVal)
+                    if (hasValidGpu) items.add(gpuVal)
+                    if (hasValidVram) items.add(vramConciseVal)
                     if (showCpuFreq) items.add(cpuFreqConciseVal)
                     if (showBatTemp) items.add(batConcise)
                     if (showSocTemp) items.add(socConcise)
@@ -899,8 +903,8 @@ class FpsOverlayService : Service() {
                     if (showCamTemp) items.add("CAM $camTempVal")
                     if (showSkinTemp) items.add("SKN $skinTempVal")
                     if (showWatt) items.add(wVal)
-                    if (showGpu) items.add("GPU $gpuVal")
-                    if (showVram) items.add("VRAM $vramVal")
+                    if (hasValidGpu) items.add("GPU $gpuVal")
+                    if (hasValidVram) items.add("VRAM $vramVal")
                     if (showCpuFreq) items.add(cpuFreqVal)
                     if (showRam) items.add("RAM $ramVal")
                     if (items.isEmpty()) items.add("$fpsVal FPS")
@@ -991,14 +995,13 @@ class FpsOverlayService : Service() {
                     "for z in /sys/class/thermal/thermal_zone*; do " +
                     "[ -r \"\$z/temp\" ] || continue; " +
                     "read -r t < \"\$z/type\" 2>/dev/null || continue; " +
-                    "t=\$(printf \"%s\" \"\$t\" | tr 'A-Z' 'a-z'); " +
                     "case \"\$t\" in " +
-                    "*gpu*) GPU_ZONES=\"\$GPU_ZONES \$z/temp\" ;; " +
-                    "*ddr*|*llcc*|*dram*|*lpddr*) DDR_ZONES=\"\$DDR_ZONES \$z/temp\" ;; " +
-                    "*cam*|*ois*|*actuator*|*tof*) CAM_ZONES=\"\$CAM_ZONES \$z/temp\" ;; " +
-                    "*skin*|*quiet*|*xo-therm*|*sys-therm*|*board*|*msm-therm*|*shell*|*sub-therm*|*main-therm*|*vivo*) SKIN_ZONES=\"\$SKIN_ZONES \$z/temp\" ;; " +
-                    "*npu*|*nspss*|*modem*|*pa*|*bat*|*wlan*|*usb*|*flash*|*chg*) ;; " +
-                    "*cpu*|*cpuss*|*apc*|*tsens*|*ap*|*soc*) CPU_ZONES=\"\$CPU_ZONES \$z/temp\" ;; " +
+                    "*[Gg][Pp][Uu]*|*[Kk][Gg][Ss][Ll]*|*[Mm][Aa][Ll][Ii]*) GPU_ZONES=\"\$GPU_ZONES \$z/temp\" ;; " +
+                    "*[Dd][Dd][Rr]*|*[Ll][Ll][Cc][Cc]*|*[Dd][Rr][Aa][Mm]*|*[Ll][Pp][Dd][Dd][Rr]*) DDR_ZONES=\"\$DDR_ZONES \$z/temp\" ;; " +
+                    "*[Cc][Aa][Mm]*|*[Oo][Ii][Ss]*|*[Aa][Cc][Tt][Uu][Aa][Tt][Oo][Rr]*|*[Tt][Oo][Ff]*) CAM_ZONES=\"\$CAM_ZONES \$z/temp\" ;; " +
+                    "*[Ss][Kk][Ii][Nn]*|*[Qq][Uu][Ii][Ee][Tt]*|*[Xx][Oo]-[Tt][Hh][Ee][Rr][Mm]*|*[Ss][Yy][Ss]-[Tt][Hh][Ee][Rr][Mm]*|*[Bb][Oo][Aa][Rr][Dd]*|*[Mm][Ss][Mm]-[Tt][Hh][Ee][Rr][Mm]*|*[Ss][Hh][Ee][Ll][Ll]*|*[Ss][Uu][Bb]-[Tt][Hh][Ee][Rr][Mm]*|*[Mm][Aa][Ii][Nn]-[Tt][Hh][Ee][Rr][Mm]*|*[Vv][Ii][Vv][Oo]*) SKIN_ZONES=\"\$SKIN_ZONES \$z/temp\" ;; " +
+                    "*[Nn][Pp][Uu]*|*[Nn][Ss][Pp][Ss][Ss]*|*[Mm][Oo][Dd][Ee][Mm]*|*[Pp][Aa]*|*[Bb][Aa][Tt]*|*[Ww][Ll][Aa][Nn]*|*[Uu][Ss][Bb]*|*[Ff][Ll][Aa][Ss][Hh]*|*[Cc][Hh][Gg]*) ;; " +
+                    "*[Cc][Pp][Uu]*|*[Ss][Oo][Cc]*|*[Aa][Pp][Cc]*|*[Tt][Ss][Ee][Nn][Ss]*|*[Cc][Oo][Rr][Ee]*|*[Cc][Ll][Uu][Ss][Tt][Ee][Rr]*|*[Ss][Ii][Ll][Vv][Ee][Rr]*|*[Gg][Oo][Ll][Dd]*|*[Pp][Rr][Ii][Mm][Ee]*|*[Tt][Ii][Tt][Aa][Nn][Ii][Uu][Mm]*|*[Kk][Rr][Yy][Oo]*|*[Oo][Rr][Yy][Oo][Nn]*|*[Aa][Pp]*) CPU_ZONES=\"\$CPU_ZONES \$z/temp\" ;; " +
                     "esac; done; " +
                     "FREQ_FILES=\"\"; for f in /sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq; do [ -r \"\$f\" ] && FREQ_FILES=\"\$FREQ_FILES \$f\"; done; " +
                     "DRM_NODE=\"\"; for f in /sys/class/drm/sde-crtc-0/measured_fps /sys/class/drm/card0/sde-crtc-0/measured_fps; do if [ -r \"\$f\" ]; then DRM_NODE=\"\$f\"; break; fi; done\n"
@@ -1084,7 +1087,9 @@ class FpsOverlayService : Service() {
     private fun startTelemetryLoop() {
         telemetryThread = thread(name = "HudTelemetryLoop") {
             var graceTicks = 0
-            val sb = StringBuilder(420)
+            val sb = StringBuilder(512)
+            var last1sTickTime = 0L
+            var last3sTickTime = 0L
 
             while (isRunning) {
                 if (!isScreenOn) {
@@ -1094,66 +1099,78 @@ class FpsOverlayService : Service() {
 
                 try {
                     tickCounter++
-                    val intervalMs = computeNextIntervalMs()
-                    val slowMod = (1000L / intervalMs).toInt().coerceAtLeast(1)
-                    val isSlowTick = (tickCounter % slowMod == 1)
-                    val vramMod = (3000L / intervalMs).toInt().coerceAtLeast(1)
-                    val isVramTick = (tickCounter % vramMod == 1)
+                    val nowMs = SystemClock.uptimeMillis()
+                    val is1sTick = (nowMs - last1sTickTime >= 1000L)
+                    val is3sTick = (nowMs - last3sTickTime >= 3000L)
+                    if (is1sTick) last1sTickTime = nowMs
+                    if (is3sTick) last3sTickTime = nowMs
 
                     val activePkg = targetPkg.ifBlank { detectedPkg }
                     val showFps = prefsMgr.getMetric("m_fps", true)
+                    val showWatt = prefsMgr.getMetric("m_watt", true)
+                    val showGpu = prefsMgr.getMetric("m_gpu", true)
+                    val showVram = prefsMgr.getMetric("m_vram", false)
+                    val showCpuFreq = prefsMgr.getMetric("m_cpu_freq", false)
                     val showSocTemp = prefsMgr.getMetric("m_soc_temp", true)
                     val showCpuTemp = prefsMgr.getMetric("m_cpu_temp", false)
                     val showGpuTemp = prefsMgr.getMetric("m_gpu_temp", false)
                     val showDdrTemp = prefsMgr.getMetric("m_ddr_temp", false)
                     val showCamTemp = prefsMgr.getMetric("m_cam_temp", false)
                     val showSkinTemp = prefsMgr.getMetric("m_skin_temp", false)
-                    val showWatt = prefsMgr.getMetric("m_watt", true)
-                    val showGpu = prefsMgr.getMetric("m_gpu", true)
-                    val showCpuFreq = prefsMgr.getMetric("m_cpu_freq", false)
                     val showRam = prefsMgr.getMetric("m_ram", false)
 
+                    // Chu kỳ nhanh (150ms-300ms, mỗi tick): Đo công suất điện tiêu thụ tức thời
                     if (showWatt) {
                         readInstantWattage()
                     }
 
                     sb.setLength(0)
-                    // Khi mở HUD từ Control Center (targetPkg rỗng), tự dò ứng dụng/game đang hiển thị trên màn hình
-                    if (targetPkg.isEmpty() && (isVramTick || detectedPkg.isEmpty())) {
-                        sb.append("printf \"FG_ACT=\"; dumpsys activity activities | grep -m 1 -E 'topResumedActivity|mResumedActivity'; ")
+
+                    // Chu kỳ nhanh: Đọc trực tiếp mức tải GPU (%) từ node sysfs (~0.1ms, không fork, không vỡ pipe)
+                    if (showGpu) {
+                        sb.append("gload=-1; if [ -r /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage ]; then read -r gload < /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage 2>/dev/null; elif [ -r /sys/class/misc/mali0/device/utilization ]; then read -r gload < /sys/class/misc/mali0/device/utilization 2>/dev/null; fi; printf \"GPU_LOAD=%s\\n\" \"\$gload\"; ")
                     }
-                    if (targetPkg.isNotEmpty() && isSlowTick) {
+
+                    // Chu kỳ trung bình (1 giây / 1000ms): Kiểm tra PID tiến trình, xung nhịp CPU và nhiệt độ phần cứng
+                    if (targetPkg.isNotEmpty() && is1sTick) {
                         sb.append("printf \"PID=\"; pidof ").append(targetPkg).append("; ")
-                    } else if (detectedPkg.isNotEmpty() && isSlowTick) {
+                    } else if (detectedPkg.isNotEmpty() && is1sTick) {
                         sb.append("printf \"DPID=\"; pidof ").append(detectedPkg).append("; ")
                     }
-                    if (showGpu && (isVramTick || lastGpuVramMb < 0)) {
-                        sb.append("dumpsys gpu | head -n 45; ")
-                    }
-                    if (showCpuFreq && isSlowTick) {
+                    if (showCpuFreq && is1sTick) {
                         sb.append("printf \"CPU_KHZ=\"; _rdz \"\$FREQ_FILES\"; ")
                     }
-                    if ((showCpuTemp || showSocTemp) && isSlowTick) {
+                    if ((showCpuTemp || showSocTemp) && is1sTick) {
                         sb.append("printf \"CPU_T=\"; _rdz \"\$CPU_ZONES\"; ")
                     }
-                    if ((showGpuTemp || showSocTemp) && isSlowTick) {
+                    if ((showGpuTemp || showSocTemp) && is1sTick) {
                         sb.append("printf \"GPU_T=\"; _rdz \"\$GPU_ZONES\"; ")
                     }
-                    if (showDdrTemp && isSlowTick) {
+                    if (showDdrTemp && is1sTick) {
                         sb.append("printf \"DDR_T=\"; _rdz \"\$DDR_ZONES\"; ")
                     }
-                    if (showCamTemp && isSlowTick) {
+                    if (showCamTemp && is1sTick) {
                         sb.append("printf \"CAM_T=\"; _rdz \"\$CAM_ZONES\"; ")
                     }
-                    if (showSkinTemp && isSlowTick) {
+                    if (showSkinTemp && is1sTick) {
                         sb.append("printf \"SKIN_T=\"; _rdz \"\$SKIN_ZONES\"; ")
                     }
-                    if (showRam && (isVramTick || lastRamText.isEmpty())) {
+
+                    // Chu kỳ chậm (3 giây / 3000ms): Dò app foreground, bộ nhớ đệm VRAM và dung lượng RAM hệ thống
+                    if (targetPkg.isEmpty() && (is3sTick || detectedPkg.isEmpty())) {
+                        sb.append("printf \"FG_ACT=\"; dumpsys activity activities | grep -m 1 -E 'topResumedActivity|mResumedActivity'; ")
+                    }
+                    if (showVram && (is3sTick || lastGpuVramMb < 0)) {
+                        sb.append("dumpsys gpu 2>/dev/null | grep -E 'Global total|Proc '; ")
+                    }
+                    if (showRam && (is3sTick || lastRamText.isEmpty())) {
                         if (activePkg.isNotEmpty()) {
                             sb.append("printf \"APP_PSS=\"; dumpsys meminfo ").append(activePkg).append(" 2>/dev/null | grep 'TOTAL PSS:' | awk '{print \$3}'; ")
                         }
                         sb.append("{ read -r m1; read -r m2; read -r m3; printf \"%s\\n%s\\n%s\\n\" \"\$m1\" \"\$m2\" \"\$m3\"; } < /proc/meminfo; ")
                     }
+
+                    // Chu kỳ nhanh: SurfaceFlinger Timestats và DRM FPS node
                     if (showFps) {
                         if (initializedStatsForPkg != activePkg) {
                             sb.append("dumpsys SurfaceFlinger --timestats -clear -enable >/dev/null 2>&1; ")
@@ -1190,7 +1207,7 @@ class FpsOverlayService : Service() {
                         }
                     }
 
-                    if (PerfLogManager.isRecording && isSlowTick) {
+                    if (PerfLogManager.isRecording && is1sTick) {
                         PerfLogManager.addSample(lastFps, lastWatts, cachedBatTemp, lastSocTemp, lastGpuVramMb, lastCpuKhz)
                     }
                     mainHandler.post { renderTelemetryText() }
@@ -1249,6 +1266,11 @@ class FpsOverlayService : Service() {
                             }
                         }
                     }
+                }
+                l.startsWith("GPU_LOAD=") -> {
+                    val rawVal = l.substring(9).replace("%", "").trim()
+                    val pct = rawVal.toIntOrNull() ?: -1
+                    lastGpuLoadPct = if (pct in 0..100) pct else -1
                 }
                 l.startsWith("PID=") -> {
                     val rawPids = l.substring(4).trim()

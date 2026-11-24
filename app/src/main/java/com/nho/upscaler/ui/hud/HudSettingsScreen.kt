@@ -309,6 +309,7 @@ private fun LiveHudPreviewCanvas(
                             if (uiState.metricsMap["m_fps"] != false) items.add("59.8")
                             if (uiState.metricsMap["m_watt"] != false) items.add("4.8W")
                             if (uiState.metricsMap["m_gpu"] != false) items.add("65%")
+                            if (uiState.metricsMap["m_vram"] == true) items.add("650M")
                             if (uiState.metricsMap["m_ram"] != false) items.add("4.2G")
                             if (uiState.metricsMap["m_bat_temp"] != false) items.add("36°")
                             if (uiState.metricsMap["m_soc_temp"] != false) items.add("42°")
@@ -319,6 +320,7 @@ private fun LiveHudPreviewCanvas(
                             if (uiState.metricsMap["m_soc_temp"] != false) items.add("SoC 41.5°C")
                             if (uiState.metricsMap["m_watt"] != false) items.add("4.8W")
                             if (uiState.metricsMap["m_gpu"] != false) items.add("GPU 65%")
+                            if (uiState.metricsMap["m_vram"] == true) items.add("VRAM 650MB")
                             if (uiState.metricsMap["m_ram"] != false) items.add("RAM 4.2G")
                             if (items.isEmpty()) items.add("59.8 FPS")
                         }
@@ -351,13 +353,25 @@ private fun LiveHudPreviewCanvas(
                     } else {
                         // Vertical layout: Perfectly aligned monospace columns matching FpsOverlayService
                         val lines = mutableListOf<String>()
-                        if (uiState.metricsMap["m_fps"] != false) lines.add("FPS  59.8")
-                        if (uiState.metricsMap["m_bat_temp"] != false) lines.add("PIN  36.2°C")
-                        if (uiState.metricsMap["m_soc_temp"] != false) lines.add("SOC  41.5°C")
-                        if (uiState.metricsMap["m_watt"] != false) lines.add("PWR  4.8W")
-                        if (uiState.metricsMap["m_gpu"] != false) lines.add("GPU  65%")
-                        if (uiState.metricsMap["m_ram"] != false) lines.add("RAM  4.2G")
-                        if (lines.isEmpty()) lines.add("FPS  59.8")
+                        if (isConcise) {
+                            if (uiState.metricsMap["m_fps"] != false) lines.add("59.8")
+                            if (uiState.metricsMap["m_bat_temp"] != false) lines.add("36°")
+                            if (uiState.metricsMap["m_soc_temp"] != false) lines.add("42°")
+                            if (uiState.metricsMap["m_watt"] != false) lines.add("4.8W")
+                            if (uiState.metricsMap["m_gpu"] != false) lines.add("65%")
+                            if (uiState.metricsMap["m_vram"] == true) lines.add("650M")
+                            if (uiState.metricsMap["m_ram"] != false) lines.add("4.2G")
+                            if (lines.isEmpty()) lines.add("59.8")
+                        } else {
+                            if (uiState.metricsMap["m_fps"] != false) lines.add("FPS  59.8")
+                            if (uiState.metricsMap["m_bat_temp"] != false) lines.add("PIN  36.2°C")
+                            if (uiState.metricsMap["m_soc_temp"] != false) lines.add("SOC  41.5°C")
+                            if (uiState.metricsMap["m_watt"] != false) lines.add("PWR  4.8W")
+                            if (uiState.metricsMap["m_gpu"] != false) lines.add("GPU  65%")
+                            if (uiState.metricsMap["m_vram"] == true) lines.add("VRM  650MB")
+                            if (uiState.metricsMap["m_ram"] != false) lines.add("RAM  4.2G")
+                            if (lines.isEmpty()) lines.add("FPS  59.8")
+                        }
 
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             lines.forEach { line ->
