@@ -16,7 +16,7 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
-        <activity android:name=".PerfChartActivity" android:exported="false" />
+
 
         <activity
             android:name=".MainActivity"

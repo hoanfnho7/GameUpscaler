@@ -575,20 +575,12 @@ class FpsOverlayService : Service() {
                 private var initialTouchY = 0f
                 private var downTimeMs = 0L
                 private var isDragging = false
+                private var wasCentered = false
 
                 override fun onTouch(v: View, event: MotionEvent): Boolean {
                     when (event.action) {
                         MotionEvent.ACTION_DOWN -> {
-                            if ((params.gravity and Gravity.CENTER_HORIZONTAL) == Gravity.CENTER_HORIZONTAL) {
-                                val loc = IntArray(2)
-                                v.getLocationOnScreen(loc)
-                                params.gravity = Gravity.TOP or Gravity.START
-                                params.x = loc[0]
-                                params.y = loc[1]
-                                try {
-                                    windowManager?.updateViewLayout(v, params)
-                                } catch (_: Exception) {}
-                            }
+                            wasCentered = (params.gravity and Gravity.CENTER_HORIZONTAL) == Gravity.CENTER_HORIZONTAL
                             initialX = params.x
                             initialY = params.y
                             initialTouchX = event.rawX
@@ -606,15 +598,23 @@ class FpsOverlayService : Service() {
                             if (dist > touchSlop) {
                                 if (!isDragging) {
                                     isDragging = true
+                                    if (wasCentered) {
+                                        val loc = IntArray(2)
+                                        v.getLocationOnScreen(loc)
+                                        params.gravity = Gravity.TOP or Gravity.START
+                                        initialX = loc[0]
+                                        initialY = loc[1]
+                                        wasCentered = false
+                                    }
                                     closeTargetView?.visibility = View.VISIBLE
                                 }
                                 params.x = initialX + dx
                                 params.y = initialY + dy
                                 windowManager?.updateViewLayout(overlayView, params)
 
-                                val dm = resources.displayMetrics
-                                val targetCenterX = dm.widthPixels / 2f
-                                val targetCenterY = dm.heightPixels - 90f - 68f
+                                val (sw, sh) = getScreenDimensions()
+                                val targetCenterX = sw / 2f
+                                val targetCenterY = sh - 90f - 68f
                                 val distToZone = hypot(event.rawX - targetCenterX, event.rawY - targetCenterY)
                                 val insideZone = distToZone < 145f
 
@@ -934,15 +934,15 @@ class FpsOverlayService : Service() {
 
         val maxChipTemp = maxOf(lastCpuTemp, lastGpuTemp, lastSocTemp)
         val baseAccent = when (prefsMgr.hudColorAccent) {
-            0 -> Color.parseColor("#D0EF65") // Neon Lime
-            1 -> Color.parseColor("#6DFE9C") // Cyber Cyan / Emerald
-            2 -> Color.parseColor("#EEC14A") // Amber
-            else -> Color.WHITE
+            0 -> Color.parseColor("#D4F469") // Volt Lime
+            1 -> Color.WHITE                 // White
+            2 -> Color.parseColor("#38BDF8") // Blue / Cyan
+            else -> Color.parseColor("#FACC15") // Amber / Yellow
         }
         val color = when {
             PerfLogManager.isRecording -> UiTheme.ACCENT_RED_ALERT
-            cachedBatTemp >= 45.0f || maxChipTemp >= 85.0f -> UiTheme.ACCENT_RED_BRIGHT
-            cachedBatTemp >= 42.0f || maxChipTemp >= 75.0f -> UiTheme.ACCENT_GOLD
+            cachedBatTemp >= 43.0f || maxChipTemp >= 85.0f -> UiTheme.ACCENT_RED_BRIGHT
+            cachedBatTemp >= 41.0f || maxChipTemp >= 75.0f -> UiTheme.ACCENT_GOLD
             else -> baseAccent
         }
         if (color != lastRenderedColor) {
@@ -1133,9 +1133,9 @@ class FpsOverlayService : Service() {
 
                     // Chu kỳ trung bình (1 giây / 1000ms): Kiểm tra PID tiến trình, xung nhịp CPU và nhiệt độ phần cứng
                     if (targetPkg.isNotEmpty() && is1sTick) {
-                        sb.append("printf \"PID=\"; pidof ").append(targetPkg).append("; ")
+                        sb.append("printf \"PID=%s\\n\" \"\$(pidof ").append(targetPkg).append(" 2>/dev/null)\"; ")
                     } else if (detectedPkg.isNotEmpty() && is1sTick) {
-                        sb.append("printf \"DPID=\"; pidof ").append(detectedPkg).append("; ")
+                        sb.append("printf \"DPID=%s\\n\" \"\$(pidof ").append(detectedPkg).append(" 2>/dev/null)\"; ")
                     }
                     if (showCpuFreq && is1sTick) {
                         sb.append("printf \"CPU_KHZ=\"; _rdz \"\$FREQ_FILES\"; ")
@@ -1158,14 +1158,14 @@ class FpsOverlayService : Service() {
 
                     // Chu kỳ chậm (3 giây / 3000ms): Dò app foreground, bộ nhớ đệm VRAM và dung lượng RAM hệ thống
                     if (targetPkg.isEmpty() && (is3sTick || detectedPkg.isEmpty())) {
-                        sb.append("printf \"FG_ACT=\"; dumpsys activity activities | grep -m 1 -E 'topResumedActivity|mResumedActivity'; ")
+                        sb.append("printf \"FG_ACT=%s\\n\" \"\$(dumpsys activity activities 2>/dev/null | grep -m 1 -E 'topResumedActivity|mResumedActivity')\"; ")
                     }
                     if (showVram && (is3sTick || lastGpuVramMb < 0)) {
                         sb.append("dumpsys gpu 2>/dev/null | grep -E 'Global total|Proc '; ")
                     }
                     if (showRam && (is3sTick || lastRamText.isEmpty())) {
                         if (activePkg.isNotEmpty()) {
-                            sb.append("printf \"APP_PSS=\"; dumpsys meminfo ").append(activePkg).append(" 2>/dev/null | grep 'TOTAL PSS:' | awk '{print \$3}'; ")
+                            sb.append("printf \"APP_PSS=%s\\n\" \"\$(dumpsys meminfo ").append(activePkg).append(" 2>/dev/null | grep 'TOTAL PSS:' | awk '{print \$3}')\"; ")
                         }
                         sb.append("{ read -r m1; read -r m2; read -r m3; printf \"%s\\n%s\\n%s\\n\" \"\$m1\" \"\$m2\" \"\$m3\"; } < /proc/meminfo; ")
                     }

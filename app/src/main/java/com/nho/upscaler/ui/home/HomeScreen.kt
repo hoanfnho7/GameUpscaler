@@ -120,7 +120,7 @@ fun HomeScreen(
                         Text(
                             text = if (uiState.currentLang == "VI") "THÔNG TIN HỆ THỐNG & TRẠNG THÁI" else "SYSTEM TELEMETRY & STATUS",
                             style = MaterialTheme.typography.labelSmall,
-                            color = TechAmber,
+                            color = MaterialTheme.colorScheme.secondary,
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
@@ -190,13 +190,13 @@ fun HomeScreen(
                             Icon(
                                 imageVector = Icons.Default.Sensors,
                                 contentDescription = null,
-                                tint = TechEmerald,
+                                tint = MaterialTheme.colorScheme.tertiary,
                                 modifier = Modifier.size(13.dp)
                             )
                             Text(
                                 text = "POLLING 1s",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = TechEmerald
+                                color = MaterialTheme.colorScheme.tertiary
                             )
                         }
                     }
@@ -289,7 +289,7 @@ private fun HeroStatusCard(
                         Text(
                             text = "ADB Daemon",
                             style = MaterialTheme.typography.labelSmall,
-                            color = TechEmerald
+                            color = MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }
@@ -336,7 +336,7 @@ private fun HeroStatusCard(
                         Icon(
                             imageVector = Icons.Default.RestartAlt,
                             contentDescription = null,
-                            tint = TechAmber,
+                            tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -355,15 +355,15 @@ private fun HeroStatusCard(
                         shape = CircleShape,
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = VoltLime,
-                            contentColor = Color(0xFF171E00)
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         modifier = Modifier.weight(1.1f).height(44.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.SportsEsports,
                             contentDescription = null,
-                            tint = Color(0xFF171E00),
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -468,7 +468,7 @@ private fun RamStorageCard(uiState: HomeUiState) {
                 Text(
                     text = String.format(Locale.US, "%s: %d GB", if (uiState.currentLang == "VI") "Trống" else "Free", uiState.freeUfsGb),
                     style = MaterialTheme.typography.labelMedium,
-                    color = TechEmerald
+                    color = MaterialTheme.colorScheme.tertiary
                 )
             }
         }
@@ -505,7 +505,7 @@ private fun BatteryTempCard(uiState: HomeUiState) {
                     Icon(
                         imageVector = Icons.Default.Thermostat,
                         contentDescription = null,
-                        tint = TechAmber,
+                        tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -615,7 +615,7 @@ private fun DisplaySocCard(uiState: HomeUiState) {
                     Text(
                         text = "Vulkan API",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TechEmerald,
+                        color = MaterialTheme.colorScheme.tertiary,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1
                     )
@@ -722,7 +722,7 @@ private fun HistoryLogsCard(
                     Icon(
                         imageVector = Icons.Default.ShowChart,
                         contentDescription = null,
-                        tint = TechAmber,
+                        tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -748,7 +748,7 @@ private fun HistoryLogsCard(
                             Text(
                                 text = "$sessionCount " + (if (lang == "VI") "phiên" else "sessions"),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = TechAmber,
+                                color = MaterialTheme.colorScheme.secondary,
                                 maxLines = 1
                             )
                         }

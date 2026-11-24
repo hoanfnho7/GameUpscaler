@@ -223,7 +223,7 @@ fun PerformanceAnalyticsScreen(
                                     Text(
                                         text = filterLabel,
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = if (isSelected) Color(0xFF171E00) else MaterialTheme.colorScheme.onSurface,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                                     )
@@ -310,7 +310,7 @@ fun PerformanceAnalyticsScreen(
                             label = if (lang == "VI") "ĐỘ MƯỢT FPS" else "AVG FPS",
                             primaryVal = String.format(Locale.US, "%.1f", session.avgFps),
                             secondaryVal = String.format(Locale.US, "1%% Low: %.1f", session.low1Fps),
-                            accentColor = VoltLime
+                            accentColor = MaterialTheme.colorScheme.primary
                         )
 
                         // KPI 2: Power
@@ -319,7 +319,7 @@ fun PerformanceAnalyticsScreen(
                             label = if (lang == "VI") "CÔNG SUẤT" else "POWER",
                             primaryVal = String.format(Locale.US, "%.1fW", session.avgWatts),
                             secondaryVal = String.format(Locale.US, if (lang == "VI") "Đỉnh: %.1fW" else "Peak: %.1fW", session.maxWatts),
-                            accentColor = TechAmber
+                            accentColor = MaterialTheme.colorScheme.secondary
                         )
 
                         // KPI 3: Peak Temp
@@ -385,7 +385,7 @@ fun PerformanceAnalyticsScreen(
                                     Text(
                                         text = String.format(Locale.US, "%.1fW", scrub.watts),
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = TechAmber,
+                                        color = MaterialTheme.colorScheme.secondary,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
@@ -397,7 +397,7 @@ fun PerformanceAnalyticsScreen(
                                     Text(
                                         text = String.format(Locale.US, "Pin %.1f°", scrub.batTemp),
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = TechEmerald,
+                                        color = MaterialTheme.colorScheme.tertiary,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -415,7 +415,7 @@ fun PerformanceAnalyticsScreen(
                         valueExtractor = { it.fps },
                         minVal = 0f,
                         maxVal = 144f,
-                        lineColor = VoltLime,
+                        lineColor = MaterialTheme.colorScheme.primary,
                         scrubIndex = uiState.scrubIndex,
                         onScrubFraction = { viewModel.onScrubFractionChange(it) }
                     )
@@ -431,7 +431,7 @@ fun PerformanceAnalyticsScreen(
                         valueExtractor = { it.watts },
                         minVal = 0f,
                         maxVal = peakW * 1.2f,
-                        lineColor = TechAmber,
+                        lineColor = MaterialTheme.colorScheme.secondary,
                         scrubIndex = uiState.scrubIndex,
                         onScrubFraction = { viewModel.onScrubFractionChange(it) }
                     )
@@ -559,7 +559,7 @@ fun PerformanceAnalyticsScreen(
                 Button(
                     onClick = { viewModel.dismissExportDialog() },
                     shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(containerColor = VoltLime, contentColor = Color(0xFF171E00))
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                 ) {
                     Text(if (lang == "VI") "Đóng" else "Close", fontWeight = FontWeight.Bold)
                 }
@@ -664,6 +664,7 @@ private fun TimeseriesChartCard(
             }
 
             // Canvas Chart
+            val scrubLineColor = MaterialTheme.colorScheme.onSurface
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -737,7 +738,7 @@ private fun TimeseriesChartCard(
                         val scrubY = h - ((scrubVal - minVal) / range) * h
 
                         drawLine(
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = scrubLineColor.copy(alpha = 0.6f),
                             start = Offset(scrubX, 0f),
                             end = Offset(scrubX, h),
                             strokeWidth = 1.5.dp.toPx(),
@@ -745,7 +746,7 @@ private fun TimeseriesChartCard(
                         )
 
                         drawCircle(
-                            color = Color.White,
+                            color = scrubLineColor,
                             radius = 4.5.dp.toPx(),
                             center = Offset(scrubX, scrubY)
                         )
@@ -801,13 +802,15 @@ private fun DualSeriesTempChartCard(
                         Text(String.format(Locale.US, "SoC %.1f°C", socTemp), style = MaterialTheme.typography.labelSmall, color = TechRed, fontWeight = FontWeight.Bold)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(TechEmerald))
-                        Text(String.format(Locale.US, "Pin %.1f°C", batTemp), style = MaterialTheme.typography.labelSmall, color = TechEmerald, fontWeight = FontWeight.Bold)
+                        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiary))
+                        Text(String.format(Locale.US, "Pin %.1f°C", batTemp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
             // Canvas Chart Dual Lines
+            val scrubLineColor = MaterialTheme.colorScheme.onSurface
+            val batLineColor = MaterialTheme.colorScheme.tertiary
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -864,7 +867,7 @@ private fun DualSeriesTempChartCard(
                     // Draw Battery Line (Emerald)
                     drawPath(
                         path = batPath,
-                        color = TechEmerald,
+                        color = batLineColor,
                         style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
                     )
 
@@ -876,7 +879,7 @@ private fun DualSeriesTempChartCard(
                         val batY = h - ((s.batTemp.coerceIn(minVal, maxVal) - minVal) / range) * h
 
                         drawLine(
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = scrubLineColor.copy(alpha = 0.6f),
                             start = Offset(scrubX, 0f),
                             end = Offset(scrubX, h),
                             strokeWidth = 1.5.dp.toPx(),
@@ -884,7 +887,7 @@ private fun DualSeriesTempChartCard(
                         )
 
                         drawCircle(color = TechRed, radius = 3.5.dp.toPx(), center = Offset(scrubX, socY))
-                        drawCircle(color = TechEmerald, radius = 3.5.dp.toPx(), center = Offset(scrubX, batY))
+                        drawCircle(color = batLineColor, radius = 3.5.dp.toPx(), center = Offset(scrubX, batY))
                     }
                 }
             }

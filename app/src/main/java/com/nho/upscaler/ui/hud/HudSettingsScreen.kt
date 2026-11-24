@@ -149,7 +149,7 @@ fun HudSettingsScreen(
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (uiState.isHudActive) TechRed else MaterialTheme.colorScheme.primary,
-                        contentColor = if (uiState.isHudActive) Color.White else Color(0xFF171E00)
+                        contentColor = if (uiState.isHudActive) Color.White else MaterialTheme.colorScheme.onPrimary
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -637,7 +637,7 @@ private fun HudAppearanceCard(
                         Text(
                             text = if (lang == "VI") "Tự chuyển đỏ khi Pin ≥ 43°C hoặc SoC ≥ 85°C" else "Turns red if Bat ≥ 43°C or SoC ≥ 85°C",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TechAmber
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
 
@@ -713,7 +713,7 @@ private fun HudAppearanceCard(
                                 Text(
                                     text = pLabel,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = if (isSel) Color(0xFF171E00) else MaterialTheme.colorScheme.onSurface,
+                                    color = if (isSel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1
                                 )
@@ -849,7 +849,7 @@ private fun HudMetricsListCard(
                         checked = isChecked,
                         onCheckedChange = { onToggleMetric(item.key) },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFF171E00),
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                             checkedTrackColor = MaterialTheme.colorScheme.primary,
                             uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             uncheckedTrackColor = MaterialTheme.colorScheme.surface
@@ -897,7 +897,7 @@ private fun HudUtilityActionsRow(
                 Icon(
                     imageVector = Icons.Default.AddModerator,
                     contentDescription = null,
-                    tint = TechAmber,
+                    tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
@@ -995,7 +995,7 @@ private fun ThermalSensorsDialog(
                     Text(
                         text = if (lang == "VI") "Đang đo thời gian thực (1s/lần)..." else "Real-time reading (1s/tick)...",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TechEmerald
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                 }
                 IconButton(onClick = onDismiss) {
@@ -1051,7 +1051,7 @@ private fun ThermalSensorsDialog(
             Button(
                 onClick = onDismiss,
                 shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(containerColor = VoltLime, contentColor = Color(0xFF171E00))
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
             ) {
                 Text(if (lang == "VI") "Đóng" else "Close", fontWeight = FontWeight.Bold)
             }
@@ -1101,7 +1101,7 @@ private fun QsTileGuideDialog(
             Button(
                 onClick = onDismiss,
                 shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(containerColor = VoltLime, contentColor = Color(0xFF171E00))
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
             ) {
                 Text(if (lang == "VI") "Đã hiểu" else "Got it", fontWeight = FontWeight.Bold)
             }

@@ -175,7 +175,7 @@ fun GameLibraryScreen(
                             checked = uiState.autoLaunchHud,
                             onCheckedChange = { viewModel.toggleAutoLaunchHud(it) },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color(0xFF171E00),
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primary,
                                 uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
@@ -284,7 +284,7 @@ fun GameLibraryScreen(
                             Text(
                                 text = if (lang == "VI") "${uiState.games.size} Đã thêm" else "${uiState.games.size} Added",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = TechEmerald,
+                                color = MaterialTheme.colorScheme.tertiary,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -293,7 +293,7 @@ fun GameLibraryScreen(
                     // Add game button
                     TextButton(
                         onClick = { viewModel.openAppPicker() },
-                        colors = ButtonDefaults.textButtonColors(contentColor = VoltLime)
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
@@ -385,8 +385,8 @@ fun GameLibraryScreen(
                                 onClick = { viewModel.openAppPicker() },
                                 shape = CircleShape,
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = VoltLime,
-                                    contentColor = Color(0xFF171E00)
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
                                 )
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -714,7 +714,7 @@ private fun GameScaleLockDialog(
                 Text(
                     text = if (lang == "VI") "KHÓA TỶ LỆ RIÊNG" else "CUSTOM SCALE LOCK",
                     style = MaterialTheme.typography.labelSmall,
-                    color = TechAmber
+                    color = MaterialTheme.colorScheme.secondary
                 )
                 Text(
                     text = game.name,
@@ -759,8 +759,8 @@ private fun GameScaleLockDialog(
                 onClick = { onSelectScale(selectedVal) },
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = VoltLime,
-                    contentColor = Color(0xFF171E00)
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
                 Text(if (lang == "VI") "Lưu cấu hình" else "Save Config", fontWeight = FontWeight.Bold)
@@ -900,8 +900,8 @@ private fun AppPickerDialog(
                                     onClick = { onAddGame(app.pkg) },
                                     shape = CircleShape,
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = VoltLime,
-                                        contentColor = Color(0xFF171E00)
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
                                     ),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                                     modifier = Modifier.height(32.dp)
@@ -919,8 +919,8 @@ private fun AppPickerDialog(
                 onClick = onDismiss,
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = VoltLime,
-                    contentColor = Color(0xFF171E00)
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
                 Text(if (lang == "VI") "Xong" else "Done", fontWeight = FontWeight.Bold)

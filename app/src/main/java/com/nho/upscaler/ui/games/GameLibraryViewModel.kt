@@ -242,20 +242,20 @@ class GameLibraryViewModel : ViewModel() {
     fun launchGame(context: Context, game: GameProfileItem) {
         val custom = prefsMgr?.getAppCustomScale(game.pkg) ?: 0
         val effectiveFactor = if (custom > 0) custom else (prefsMgr?.targetScaleFactor ?: 115)
+        val scaleLabel = String.format(Locale.US, "%.2fx", effectiveFactor / 100f)
         ShizukuHelper.launchGameWithUpscale(game.pkg, effectiveFactor)
 
         // Auto launch HUD if enabled
         if (prefsMgr?.enableFpsOverlay == true && Settings.canDrawOverlays(context)) {
-            if (!FpsOverlayService.isServiceRunning) {
-                val intent = Intent(context, FpsOverlayService::class.java).apply {
-                    putExtra("target_pkg", game.pkg)
-                    putExtra("game_name", game.name)
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
+            val intent = Intent(context, FpsOverlayService::class.java).apply {
+                putExtra("target_pkg", game.pkg)
+                putExtra("game_name", game.name)
+                putExtra("scale_label", scaleLabel)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
             }
         }
     }

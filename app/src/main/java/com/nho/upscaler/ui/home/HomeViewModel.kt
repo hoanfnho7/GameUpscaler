@@ -17,6 +17,7 @@ import androidx.lifecycle.viewModelScope
 import com.nho.upscaler.PerfLogManager
 import com.nho.upscaler.PrefsManager
 import com.nho.upscaler.ShizukuHelper
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,22 +59,30 @@ class HomeViewModel : ViewModel() {
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private var prefsMgr: PrefsManager? = null
+    private var pollingJob: Job? = null
+    @Volatile private var physicalDisplayLoaded = false
 
     fun init(context: Context) {
+        val appCtx = context.applicationContext
         if (prefsMgr == null) {
-            prefsMgr = PrefsManager(context.applicationContext)
+            prefsMgr = PrefsManager(appCtx)
+            val dm = appCtx.resources.displayMetrics
             _uiState.update {
                 it.copy(
                     isDarkTheme = (prefsMgr?.themeMode ?: 0) != 2,
-                    currentLang = if ((prefsMgr?.appLang ?: 1) == 2) "EN" else "VI"
+                    currentLang = if ((prefsMgr?.appLang ?: 1) == 2) "EN" else "VI",
+                    nativeW = minOf(dm.widthPixels, dm.heightPixels),
+                    nativeH = maxOf(dm.widthPixels, dm.heightPixels),
+                    nativeDen = dm.densityDpi
                 )
             }
         }
-        startPolling(context.applicationContext)
+        startPolling(appCtx)
     }
 
     private fun startPolling(context: Context) {
-        viewModelScope.launch {
+        if (pollingJob?.isActive == true) return
+        pollingJob = viewModelScope.launch {
             while (isActive) {
                 updateTelemetry(context)
                 delay(1000)
@@ -84,6 +93,22 @@ class HomeViewModel : ViewModel() {
     fun updateTelemetry(context: Context) {
         // Shizuku
         val shizukuReady = ShizukuHelper.isBinderAlive()
+        if (shizukuReady && !physicalDisplayLoaded) {
+            physicalDisplayLoaded = true
+            ShizukuHelper.fetchPhysicalDisplay { w, h, den ->
+                _uiState.update { state ->
+                    val factor = (prefsMgr?.targetScaleFactor ?: 115) / 100f
+                    state.copy(
+                        nativeW = w,
+                        nativeH = h,
+                        nativeDen = den,
+                        targetW = (w * factor).toInt(),
+                        targetH = (h * factor).toInt(),
+                        targetDen = (den * factor).toInt()
+                    )
+                }
+            }
+        }
 
         // Permissions
         val overlayGranted = Settings.canDrawOverlays(context)
