@@ -289,7 +289,7 @@ private fun LiveHudPreviewCanvas(
                 val pillBg = Color(0xFF0C0E11).copy(alpha = bgAlpha)
                 val pillBorder = accentColor.copy(alpha = 0.4f)
 
-                val isConcise = uiState.hideLabels || uiState.scaleLevel <= 0.75f
+                val isConcise = uiState.hideLabels
                 val separator = if (isConcise) "·" else "|"
 
                 Box(
