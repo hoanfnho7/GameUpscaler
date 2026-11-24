@@ -1,9 +1,12 @@
 package com.nho.upscaler.ui.games
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.hardware.display.DisplayManager
+import android.view.Display
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -738,6 +741,27 @@ private fun GameListItem(
     }
 }
 
+private fun getSupportedRefreshRates(context: Context): List<Int> {
+    return try {
+        val dm = context.getSystemService(DisplayManager::class.java)
+        val display = dm?.getDisplay(Display.DEFAULT_DISPLAY) ?: return listOf(60, 90, 120)
+        val currentMode = display.mode
+        val allModes = display.supportedModes ?: return listOf(60, 90, 120)
+        val sameResModes = allModes.filter {
+            it.physicalWidth == currentMode.physicalWidth && it.physicalHeight == currentMode.physicalHeight
+        }
+        val targetModes = if (sameResModes.isNotEmpty()) sameResModes else allModes.toList()
+        val rates = targetModes
+            .map { Math.round(it.refreshRate) }
+            .filter { it >= 60 }
+            .distinct()
+            .sorted()
+        if (rates.isNotEmpty()) rates else listOf(60)
+    } catch (_: Exception) {
+        listOf(60, 90, 120)
+    }
+}
+
 @Composable
 private fun GameScaleLockDialog(
     game: GameProfileItem,
@@ -749,6 +773,10 @@ private fun GameScaleLockDialog(
     onDismiss: () -> Unit,
     onSaveConfig: (Float, Int, Int) -> Unit
 ) {
+    val context = LocalContext.current
+    val supportedRates = remember(context) { getSupportedRefreshRates(context) }
+    val maxHz = remember(supportedRates) { supportedRates.maxOrNull() ?: 60 }
+
     var selectedScale by remember { mutableStateOf(currentScale) }
     var selectedFps by remember { mutableStateOf(currentFpsCap) }
     var selectedHz by remember { mutableStateOf(currentRefreshRate) }
@@ -762,8 +790,12 @@ private fun GameScaleLockDialog(
         Pair(1.25f, "1.25x")
     )
 
-    val fpsOptions = listOf(0, 30, 45, 60, 90, 120)
-    val hzOptions = listOf(0, 60, 90, 120, 144)
+    val fpsOptions = remember(maxHz) {
+        listOf(0) + listOf(30, 45, 60, 90, 120, 144, 165).filter { it <= maxHz }
+    }
+    val hzOptions = remember(supportedRates) {
+        listOf(0) + supportedRates
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -872,6 +904,9 @@ private fun GameScaleLockDialog(
                                     }
                                 }
                             }
+                            if (rowItems.size < 3) {
+                                Spacer(modifier = Modifier.weight((3 - rowItems.size).toFloat()))
+                            }
                         }
                     }
                 }
@@ -879,7 +914,7 @@ private fun GameScaleLockDialog(
                 // 3. Refresh Rate Lock Section
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = if (lang == "VI") "3. TẦN SỐ QUÉT MÀN HÌNH (HZ)" else "3. DISPLAY REFRESH RATE (HZ)",
+                        text = if (lang == "VI") "3. TẦN SỐ QUÉT MÀN HÌNH (TỐI ĐA ${maxHz}HZ)" else "3. DISPLAY REFRESH RATE (MAX ${maxHz}HZ)",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold
