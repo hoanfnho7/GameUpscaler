@@ -84,13 +84,7 @@ class HudSettingsViewModel : ViewModel() {
     private fun loadConfig() {
         val p = prefsMgr ?: return
         val layout = if (p.hudLayoutMode == 1 || p.overlayVertical) HudLayoutPreset.VERTICAL else HudLayoutPreset.HORIZONTAL
-        val scaleVal = when (p.overlaySizeLevel) {
-            0 -> 0.5f
-            1 -> 0.7f
-            2 -> 1.0f
-            3 -> 1.25f
-            else -> 1.5f
-        }
+        val scaleVal = p.hudScaleFloat
         val opacityVal = when (p.overlayBgMode) {
             0 -> 100
             1 -> 85
@@ -179,15 +173,17 @@ class HudSettingsViewModel : ViewModel() {
     }
 
     fun setScale(scale: Float, context: Context) {
+        val clamped = scale.coerceIn(0.30f, 1.50f)
         val level = when {
-            scale <= 0.55f -> 0
-            scale <= 0.75f -> 1
-            scale <= 1.05f -> 2
-            scale <= 1.25f -> 3
+            clamped <= 0.55f -> 0
+            clamped <= 0.75f -> 1
+            clamped <= 1.05f -> 2
+            clamped <= 1.25f -> 3
             else -> 4
         }
+        prefsMgr?.hudScaleFloat = clamped
         prefsMgr?.overlaySizeLevel = level
-        _uiState.update { it.copy(scaleLevel = scale) }
+        _uiState.update { it.copy(scaleLevel = clamped) }
         notifyStyleChanged(context)
     }
 

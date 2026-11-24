@@ -36,6 +36,21 @@ class PrefsManager(context: Context) {
         get() = prefs.getInt("overlay_size_level", 1)
         set(value) = prefs.edit().putInt("overlay_size_level", value).apply()
 
+    var hudScaleFloat: Float
+        get() {
+            if (prefs.contains("hud_scale_float")) {
+                return prefs.getFloat("hud_scale_float", 0.70f).coerceIn(0.30f, 1.50f)
+            }
+            return when (overlaySizeLevel) {
+                0 -> 0.50f
+                1 -> 0.70f
+                2 -> 1.00f
+                3 -> 1.25f
+                else -> 1.45f
+            }
+        }
+        set(value) = prefs.edit().putFloat("hud_scale_float", value.coerceIn(0.30f, 1.50f)).apply()
+
     var overlayBgMode: Int
         get() = prefs.getInt("overlay_bg_mode", 1)
         set(value) = prefs.edit().putInt("overlay_bg_mode", value).apply()

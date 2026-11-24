@@ -91,6 +91,7 @@ class FpsOverlayService : Service() {
     @Volatile private var detectedAppName = ""
 
     private var sizeLevel = 1
+    private var hudScale = 0.70f
     private var bgMode = 1
     private var pollMode = 0
     private var isVertical = false
@@ -377,6 +378,7 @@ class FpsOverlayService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         sizeLevel = prefsMgr.overlaySizeLevel
+        hudScale = prefsMgr.hudScaleFloat
         bgMode = prefsMgr.overlayBgMode
         pollMode = prefsMgr.hudPollMode
         isVertical = prefsMgr.overlayVertical
@@ -399,6 +401,7 @@ class FpsOverlayService : Service() {
             "UPDATE_STYLE", "STYLE_CHANGED" -> {
                 if (overlayView != null) {
                     sizeLevel = prefsMgr.overlaySizeLevel
+                    hudScale = prefsMgr.hudScaleFloat
                     bgMode = prefsMgr.overlayBgMode
                     isVertical = (prefsMgr.hudLayoutMode == 1)
                     lastRenderedText = ""
@@ -756,12 +759,19 @@ class FpsOverlayService : Service() {
     }
 
     private fun resolveBaseTextSizeSp(isLand: Boolean): Float {
-        val idx = sizeLevel.coerceIn(0, 4)
-        return if (isLand) {
-            floatArrayOf(7.5f, 9.0f, 10.5f, 12.0f, 14.0f)[idx]
-        } else {
-            floatArrayOf(8.0f, 9.5f, 11.0f, 12.5f, 14.5f)[idx]
-        }
+        val s = hudScale.coerceIn(0.30f, 1.50f)
+        val baseAt1x = if (isLand) 10.0f else 10.5f
+        return (baseAt1x * s).coerceIn(3.5f, 16.0f)
+    }
+
+    private fun scaledPx(baseDpAt1x: Float, minPx: Int = 1): Int {
+        val s = hudScale.coerceIn(0.30f, 1.50f)
+        return UiTheme.dp(this, baseDpAt1x * s).toInt().coerceAtLeast(minPx)
+    }
+
+    private fun scaledDpF(baseDpAt1x: Float, minDp: Float = 2f): Float {
+        val s = hudScale.coerceIn(0.30f, 1.50f)
+        return (baseDpAt1x * s).coerceAtLeast(minDp)
     }
 
     private fun withAlpha(color: Int, alpha: Int): Int {
@@ -769,7 +779,7 @@ class FpsOverlayService : Service() {
     }
 
     private fun makeCircleDot(sizeDp: Float, color: Int): View {
-        val px = UiTheme.dp(this, sizeDp).toInt().coerceAtLeast(4)
+        val px = scaledPx(sizeDp, minPx = 3)
         return View(this).apply {
             layoutParams = LinearLayout.LayoutParams(px, px)
             background = GradientDrawable().apply {
@@ -922,29 +932,29 @@ class FpsOverlayService : Service() {
             else -> withAlpha(accent, if (bIdx == 2) 0x45 else 0x73)
         }
 
-        val padH = if (isLand) intArrayOf(7, 9, 12, 15, 18)[idx] else intArrayOf(8, 10, 13, 16, 19)[idx]
-        val padV = if (isLand) intArrayOf(3, 4, 6, 7, 9)[idx] else intArrayOf(4, 5, 7, 8, 10)[idx]
+        val padH = scaledPx(if (isLand) 11f else 12f, minPx = 4)
+        val padV = scaledPx(if (isLand) 5.5f else 6.5f, minPx = 2)
 
         when (layoutMode) {
             2 -> { // Mini Dot Capsule
                 root.orientation = LinearLayout.HORIZONTAL
                 root.gravity = Gravity.CENTER_VERTICAL
-                root.setPadding(UiTheme.dp(this, padH), UiTheme.dp(this, padV), UiTheme.dp(this, padH), UiTheme.dp(this, padV))
+                root.setPadding(padH, padV, padH, padV)
                 root.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 999f, 1f, strokeColor)
             }
-            1 -> { // Vertical Monospace Column (14dp radius)
+            1 -> { // Vertical Monospace Column (scaled corner radius)
                 root.orientation = LinearLayout.VERTICAL
                 root.gravity = if (isConcise) Gravity.CENTER_HORIZONTAL else Gravity.START
-                val vPadH = if (isConcise) (padH - 2).coerceAtLeast(6) else padH
-                val vPadV = (padV + 3)
-                root.setPadding(UiTheme.dp(this, vPadH), UiTheme.dp(this, vPadV), UiTheme.dp(this, vPadH), UiTheme.dp(this, vPadV))
-                root.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 14f, 1f, strokeColor)
+                val vPadH = scaledPx(if (isConcise) 8f else 11f, minPx = 4)
+                val vPadV = scaledPx(8f, minPx = 3)
+                root.setPadding(vPadH, vPadV, vPadH, vPadV)
+                root.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], scaledDpF(14f, 6f), 1f, strokeColor)
             }
-            else -> { // Horizontal HUD Pill (12dp radius)
+            else -> { // Horizontal HUD Pill (scaled corner radius)
                 root.orientation = LinearLayout.VERTICAL
                 root.gravity = if (isLand) Gravity.CENTER else Gravity.START
-                root.setPadding(UiTheme.dp(this, padH), UiTheme.dp(this, padV), UiTheme.dp(this, padH), UiTheme.dp(this, padV))
-                root.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 12f, 1f, strokeColor)
+                root.setPadding(padH, padV, padH, padV)
+                root.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], scaledDpF(12f, 5f), 1f, strokeColor)
             }
         }
 
@@ -1074,10 +1084,11 @@ class FpsOverlayService : Service() {
             entries.add(HudMetricEntry("FPS", "FPS", isSuffixLabel = true, fullValue = fpsVal, conciseValue = fpsVal, valueColor = accent, isProminent = true))
         }
 
+        val scaleInt = (hudScale * 100f).toInt()
         // Compute compact signature to avoid unnecessary view rebuilds
         val sig = buildString(128) {
             append(layoutMode).append('|').append(isConcise).append('|').append(isLand).append('|')
-            append(sizeLevel).append('|').append(bgMode).append('|').append(accent).append('|')
+            append(scaleInt).append('|').append(bgMode).append('|').append(accent).append('|')
             append(isRec).append(':').append(recSec).append('|').append(isOverheat).append('|').append(thermalAlertState).append('|')
             for (e in entries) {
                 append(e.vLabel).append('=').append(if (isConcise) e.conciseValue else e.fullValue).append(':').append(e.valueColor).append(';')
@@ -1086,8 +1097,8 @@ class FpsOverlayService : Service() {
         if (sig == lastRenderedText) return
         lastRenderedText = sig
 
-        // Update border/alert tint if state changed
-        val stateCode = (if (isOverheat) 2 else if (isRec) 1 else 0) + (layoutMode * 10) + (if (isConcise) 100 else 0)
+        // Update border/alert tint if state or scale changed
+        val stateCode = (if (isOverheat) 2 else if (isRec) 1 else 0) + (layoutMode * 10) + (if (isConcise) 100 else 0) + (scaleInt * 1000)
         if (stateCode != lastRenderedColor) {
             lastRenderedColor = stateCode
             applyOverlayStyle(config)
@@ -1117,13 +1128,13 @@ class FpsOverlayService : Service() {
             }
 
             1 -> { // Vertical Monospace Column (Variant 2A Labeled / Variant 2B Ultra-Compact)
-                val rowGapPx = UiTheme.dp(this, 3)
+                val rowGapPx = scaledPx(3f, minPx = 1)
                 if (isConcise) {
                     // Variant 2B: Narrow centered column with top dot + prominent FPS + divider + values
                     val dotColor = if (isOverheat || isRec) UiTheme.TECH_RED else accent
                     val topDot = makeCircleDot(5.5f, dotColor).apply {
                         val lp = layoutParams as LinearLayout.LayoutParams
-                        lp.bottomMargin = UiTheme.dp(this@FpsOverlayService, 4)
+                        lp.bottomMargin = scaledPx(3.5f, minPx = 1)
                         if (isRec) alpha = if (recSec % 2 == 0) 1.0f else 0.35f
                     }
                     root.addView(topDot)
@@ -1131,7 +1142,7 @@ class FpsOverlayService : Service() {
                     if (isRec) {
                         val recTv = makeMonoText("REC", textSizeSp * 0.78f, UiTheme.TECH_RED, true).apply {
                             val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                            lp.bottomMargin = UiTheme.dp(this@FpsOverlayService, 2)
+                            lp.bottomMargin = scaledPx(2f, minPx = 1)
                             layoutParams = lp
                         }
                         root.addView(recTv)
@@ -1149,11 +1160,11 @@ class FpsOverlayService : Service() {
 
                         // Subtle divider right under FPS
                         if (idxEntry == 0 && entries.size > 1) {
-                            val conciseDivW = UiTheme.dp(this, intArrayOf(28, 34, 40, 48, 56)[sizeLevel.coerceIn(0, 4)])
+                            val conciseDivW = scaledPx(38f, minPx = 14)
                             val div = View(this).apply {
                                 val lp = LinearLayout.LayoutParams(conciseDivW, 1)
-                                lp.topMargin = UiTheme.dp(this@FpsOverlayService, 3)
-                                lp.bottomMargin = UiTheme.dp(this@FpsOverlayService, 1)
+                                lp.topMargin = scaledPx(3f, minPx = 1)
+                                lp.bottomMargin = scaledPx(1f, minPx = 1)
                                 layoutParams = lp
                                 setBackgroundColor(UiTheme.HUD_DIVIDER_LIGHT)
                             }
@@ -1161,16 +1172,16 @@ class FpsOverlayService : Service() {
                         }
                     }
                 } else {
-                    // Variant 2A: Labeled Vertical Card with compact fixed content width (matches mockup w-44, never stretches full-screen)
-                    val cardContentWidthPx = UiTheme.dp(
-                        this,
-                        intArrayOf(86, 102, 118, 136, 156)[sizeLevel.coerceIn(0, 4)]
-                    )
+                    // Variant 2A: Labeled Vertical Card — Fixed-width label column + tight gap + crisp aligned values
+                    val labelColWidthPx = scaledPx(32f, minPx = 12)
+                    val colGapPx = scaledPx(9f, minPx = 3)
+                    val divWidthPx = scaledPx(86f, minPx = 30)
+
                     val headerRow = LinearLayout(this).apply {
                         orientation = LinearLayout.HORIZONTAL
                         gravity = Gravity.CENTER_VERTICAL
                         layoutParams = LinearLayout.LayoutParams(
-                            cardContentWidthPx,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
                             ViewGroup.LayoutParams.WRAP_CONTENT
                         )
                     }
@@ -1194,9 +1205,9 @@ class FpsOverlayService : Service() {
                         if (isRec || isOverheat) UiTheme.TECH_RED else UiTheme.HUD_LABEL_MUTED,
                         true
                     ).apply {
-                        val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-                        lp.marginStart = UiTheme.dp(this@FpsOverlayService, 5)
-                        lp.marginEnd = UiTheme.dp(this@FpsOverlayService, 6)
+                        val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                        lp.marginStart = scaledPx(4.5f, minPx = 2)
+                        lp.marginEnd = scaledPx(7f, minPx = 3)
                         layoutParams = lp
                     }
                     headerRow.addView(headerTv)
@@ -1205,36 +1216,39 @@ class FpsOverlayService : Service() {
 
                     // Hairline divider
                     val divider = View(this).apply {
-                        val lp = LinearLayout.LayoutParams(cardContentWidthPx, 1)
-                        lp.topMargin = UiTheme.dp(this@FpsOverlayService, 4)
-                        lp.bottomMargin = UiTheme.dp(this@FpsOverlayService, 4)
+                        val lp = LinearLayout.LayoutParams(divWidthPx, 1)
+                        lp.topMargin = scaledPx(3.5f, minPx = 1)
+                        lp.bottomMargin = scaledPx(3.5f, minPx = 1)
                         layoutParams = lp
                         setBackgroundColor(UiTheme.HUD_DIVIDER_LIGHT)
                     }
                     root.addView(divider)
 
-                    val colGapPx = UiTheme.dp(this, 6)
                     entries.forEachIndexed { idxEntry, entry ->
                         val row = LinearLayout(this).apply {
                             orientation = LinearLayout.HORIZONTAL
                             gravity = Gravity.CENTER_VERTICAL
                             val lp = LinearLayout.LayoutParams(
-                                cardContentWidthPx,
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
                                 ViewGroup.LayoutParams.WRAP_CONTENT
                             )
                             if (idxEntry > 0) lp.topMargin = rowGapPx
                             layoutParams = lp
                         }
                         val lblTv = makeMonoText(entry.vLabel, textSizeSp * 0.90f, UiTheme.HUD_LABEL_MUTED, true).apply {
-                            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                            gravity = Gravity.START
+                            val lp = LinearLayout.LayoutParams(labelColWidthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
                             lp.marginEnd = colGapPx
                             layoutParams = lp
                         }
                         val valText = if (entry.isWarningPill) "⚠ ${entry.fullValue}" else entry.fullValue
                         val valSize = if (entry.isProminent) textSizeSp * 1.10f else textSizeSp * 0.96f
                         val valTv = makeMonoText(valText, valSize, entry.valueColor, true).apply {
-                            gravity = Gravity.END
-                            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                            gravity = Gravity.START
+                            layoutParams = LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT
+                            )
                         }
                         row.addView(lblTv)
                         row.addView(valTv)
@@ -1246,7 +1260,7 @@ class FpsOverlayService : Service() {
             else -> { // Horizontal HUD Pill (Variant 1A Full / 1B Concise / 1C REC / 1D Thermal Alert)
                 val sepChar = if (isConcise) "·" else "|"
                 val sepColor = if (isConcise) UiTheme.HUD_DOT_SEPARATOR else UiTheme.HUD_SEPARATOR
-                val sepMarginPx = UiTheme.dp(this, if (isConcise) 5 else 7)
+                val sepMarginPx = scaledPx(if (isConcise) 4.5f else 6.5f, minPx = 2)
 
                 val itemViews = mutableListOf<View>()
                 if (isRec) {

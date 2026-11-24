@@ -356,8 +356,8 @@ private fun LiveHudPreviewCanvas(
                 Box(
                     modifier = Modifier
                         .graphicsLayer(
-                            scaleX = uiState.scaleLevel.coerceIn(0.4f, 1.5f),
-                            scaleY = uiState.scaleLevel.coerceIn(0.4f, 1.5f)
+                            scaleX = uiState.scaleLevel.coerceIn(0.3f, 1.5f),
+                            scaleY = uiState.scaleLevel.coerceIn(0.3f, 1.5f)
                         )
                         .clip(RoundedCornerShape(cornerRadius))
                         .background(pillBg)
@@ -480,34 +480,28 @@ private fun LiveHudPreviewCanvas(
                             }
                         }
                     } else {
-                        // Variant 2A: Labeled Vertical Card with Header & Left/Right Grid
+                        // Variant 2A: Labeled Vertical Card — Fixed 36dp label width + 10dp gap + tight aligned values
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.width(132.dp)
+                            verticalArrangement = Arrangement.spacedBy(3.dp)
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(6.dp)
-                                            .clip(CircleShape)
-                                            .background(accentColor)
-                                    )
-                                    Text(
-                                        text = "HUD PRO",
-                                        fontSize = 9.sp,
-                                        color = mutedLabel,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(accentColor)
+                                )
+                                Text(
+                                    text = "HUD PRO",
+                                    fontSize = 9.sp,
+                                    color = mutedLabel,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "••",
                                     fontSize = 9.sp,
@@ -518,23 +512,23 @@ private fun LiveHudPreviewCanvas(
                             }
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
+                                    .width(92.dp)
                                     .height(1.dp)
                                     .background(Color(0x1FFFFFFF))
                             )
                             previewMetrics.forEach { item ->
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
                                         text = item.vLabel,
+                                        modifier = Modifier.width(36.dp),
                                         fontSize = 10.sp,
                                         color = mutedLabel,
                                         fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontWeight = FontWeight.Bold
                                     )
+                                    Spacer(modifier = Modifier.width(10.dp))
                                     Text(
                                         text = item.fullVal,
                                         fontSize = if (item.prominent) 13.sp else 11.sp,
@@ -682,9 +676,9 @@ private fun HudAppearanceCard(
                     )
                 }
                 Slider(
-                    value = uiState.scaleLevel,
+                    value = uiState.scaleLevel.coerceIn(0.3f, 1.5f),
                     onValueChange = onScaleChange,
-                    valueRange = 0.4f..1.5f,
+                    valueRange = 0.3f..1.5f,
                     colors = SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.primary,
                         activeTrackColor = MaterialTheme.colorScheme.primary,
