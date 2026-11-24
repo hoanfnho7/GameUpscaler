@@ -56,6 +56,11 @@ object PerfLogManager {
     var isRecording = false
         private set
 
+    fun getElapsedSec(): Int {
+        if (!isRecording || startTimeMs <= 0L) return 0
+        return ((System.currentTimeMillis() - startTimeMs) / 1000L).toInt().coerceAtLeast(0)
+    }
+
     private var activePkg = ""
     private var activeGameName = "Game"
     private var activeScale = "Native"

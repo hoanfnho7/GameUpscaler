@@ -242,6 +242,16 @@ fun HudSettingsScreen(
     }
 }
 
+private data class PreviewMetric(
+    val vLabel: String,
+    val hLabel: String,
+    val isSuffix: Boolean = false,
+    val fullVal: String,
+    val conciseVal: String,
+    val color: Color,
+    val prominent: Boolean = false
+)
+
 @Composable
 private fun LiveHudPreviewCanvas(
     uiState: HudSettingsUiState,
@@ -300,107 +310,239 @@ private fun LiveHudPreviewCanvas(
                     .padding(12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                val bgAlpha = (uiState.bgOpacity / 100f).coerceIn(0.1f, 1f)
-                val pillBg = Color(0xFF0C0E11).copy(alpha = bgAlpha)
-                val pillBorder = accentColor.copy(alpha = 0.4f)
-
+                val bgAlpha = (uiState.bgOpacity / 100f).coerceIn(0f, 1f)
+                val pillBg = if (bgAlpha <= 0.02f) Color.Transparent else Color(0xFF0C0E11).copy(alpha = bgAlpha)
+                val isVertical = uiState.layoutPreset == HudLayoutPreset.VERTICAL
                 val isConcise = uiState.hideLabels
+                val cornerRadius = if (isVertical) 14.dp else 12.dp
+                val pillBorder = when {
+                    bgAlpha <= 0.02f -> Color.Transparent
+                    isVertical && !isConcise -> Color(0x2EFFFFFF)
+                    else -> accentColor.copy(alpha = 0.45f)
+                }
+
+                val mutedLabel = Color(0xFF94A3B8)
+                val cyanColor = Color(0xFF22D3EE)
+                val slate300 = Color(0xFFCBD5E1)
+                val sepColor = if (isConcise) Color(0xFF64748B) else Color(0xFF475569)
                 val separator = if (isConcise) "·" else "|"
+
+                val previewMetrics = mutableListOf<PreviewMetric>()
+                if (uiState.metricsMap["m_fps"] != false) {
+                    previewMetrics.add(PreviewMetric("FPS", "FPS", isSuffix = true, fullVal = "59.8", conciseVal = "59.8", color = accentColor, prominent = true))
+                }
+                if (uiState.metricsMap["m_frametime"] == true) {
+                    previewMetrics.add(PreviewMetric("FT", "", fullVal = "16.7ms", conciseVal = "16.7ms", color = slate300))
+                }
+                if (isConcise && !isVertical) {
+                    if (uiState.metricsMap["m_watt"] != false) previewMetrics.add(PreviewMetric("PWR", "", fullVal = "4.8W", conciseVal = "4.8W", color = TechAmber))
+                    if (uiState.metricsMap["m_gpu"] != false) previewMetrics.add(PreviewMetric("GPU", "GPU", fullVal = "65%", conciseVal = "65%", color = cyanColor))
+                    if (uiState.metricsMap["m_vram"] == true) previewMetrics.add(PreviewMetric("VRM", "VRAM", fullVal = "650MB", conciseVal = "650M", color = slate300))
+                    if (uiState.metricsMap["m_bat_temp"] != false) previewMetrics.add(PreviewMetric("PIN", "Pin", fullVal = "36.2°C", conciseVal = "36°", color = TechEmerald))
+                    if (uiState.metricsMap["m_soc_temp"] != false) previewMetrics.add(PreviewMetric("SOC", "SoC", fullVal = "41.5°C", conciseVal = "42°", color = accentColor))
+                    if (uiState.metricsMap["m_ram"] != false) previewMetrics.add(PreviewMetric("RAM", "RAM", fullVal = "4.2G", conciseVal = "4.2G", color = Color.White))
+                } else {
+                    if (uiState.metricsMap["m_bat_temp"] != false) previewMetrics.add(PreviewMetric("PIN", "Pin", fullVal = "36.2°C", conciseVal = "36°", color = TechEmerald))
+                    if (uiState.metricsMap["m_soc_temp"] != false) previewMetrics.add(PreviewMetric("SOC", "SoC", fullVal = "41.5°C", conciseVal = "42°", color = accentColor))
+                    if (uiState.metricsMap["m_watt"] != false) previewMetrics.add(PreviewMetric("PWR", "", fullVal = "4.8W", conciseVal = "4.8W", color = TechAmber))
+                    if (uiState.metricsMap["m_gpu"] != false) previewMetrics.add(PreviewMetric("GPU", "GPU", fullVal = "65%", conciseVal = "65%", color = cyanColor))
+                    if (uiState.metricsMap["m_vram"] == true) previewMetrics.add(PreviewMetric("VRM", "VRAM", fullVal = "650MB", conciseVal = "650M", color = slate300))
+                    if (uiState.metricsMap["m_ram"] != false) previewMetrics.add(PreviewMetric("RAM", "RAM", fullVal = "4.2G", conciseVal = "4.2G", color = Color.White))
+                }
+                if (previewMetrics.isEmpty()) {
+                    previewMetrics.add(PreviewMetric("FPS", "FPS", isSuffix = true, fullVal = "59.8", conciseVal = "59.8", color = accentColor, prominent = true))
+                }
 
                 Box(
                     modifier = Modifier
                         .graphicsLayer(
-                            scaleX = uiState.scaleLevel.coerceIn(0.4f, 1.4f),
-                            scaleY = uiState.scaleLevel.coerceIn(0.4f, 1.4f)
+                            scaleX = uiState.scaleLevel.coerceIn(0.4f, 1.5f),
+                            scaleY = uiState.scaleLevel.coerceIn(0.4f, 1.5f)
                         )
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(cornerRadius))
                         .background(pillBg)
-                        .border(1.dp, pillBorder, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 10.dp, vertical = if (isConcise) 4.dp else 6.dp)
+                        .border(1.dp, pillBorder, RoundedCornerShape(cornerRadius))
+                        .padding(
+                            horizontal = if (isVertical && isConcise) 10.dp else 12.dp,
+                            vertical = if (isVertical) 10.dp else 7.dp
+                        )
                 ) {
-                    if (uiState.layoutPreset == HudLayoutPreset.HORIZONTAL) {
-                        val items = mutableListOf<String>()
-                        if (isConcise) {
-                            if (uiState.metricsMap["m_fps"] != false) items.add("59.8")
-                            if (uiState.metricsMap["m_frametime"] == true) items.add("16.7ms")
-                            if (uiState.metricsMap["m_watt"] != false) items.add("4.8W")
-                            if (uiState.metricsMap["m_gpu"] != false) items.add("65%")
-                            if (uiState.metricsMap["m_vram"] == true) items.add("650M")
-                            if (uiState.metricsMap["m_ram"] != false) items.add("4.2G")
-                            if (uiState.metricsMap["m_bat_temp"] != false) items.add("36°")
-                            if (uiState.metricsMap["m_soc_temp"] != false) items.add("42°")
-                            if (items.isEmpty()) items.add("59.8")
-                        } else {
-                            if (uiState.metricsMap["m_fps"] != false) items.add("59.8 FPS")
-                            if (uiState.metricsMap["m_frametime"] == true) items.add("16.7ms")
-                            if (uiState.metricsMap["m_bat_temp"] != false) items.add("Pin 36.2°C")
-                            if (uiState.metricsMap["m_soc_temp"] != false) items.add("SoC 41.5°C")
-                            if (uiState.metricsMap["m_watt"] != false) items.add("4.8W")
-                            if (uiState.metricsMap["m_gpu"] != false) items.add("GPU 65%")
-                            if (uiState.metricsMap["m_vram"] == true) items.add("VRAM 650MB")
-                            if (uiState.metricsMap["m_ram"] != false) items.add("RAM 4.2G")
-                            if (items.isEmpty()) items.add("59.8 FPS")
-                        }
-
+                    if (!isVertical) {
                         Column(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
-                            horizontalAlignment = Alignment.Start
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             val perRow = if (isConcise) 4 else 3
-                            items.chunked(perRow).forEach { rowItems ->
+                            previewMetrics.chunked(perRow).forEach { rowItems ->
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(7.dp)
                                 ) {
-                                    rowItems.forEachIndexed { i, text ->
+                                    rowItems.forEachIndexed { i, item ->
                                         if (i > 0) {
-                                            Text(separator, style = MaterialTheme.typography.labelSmall, color = Color(0x55FFFFFF))
+                                            Text(
+                                                text = separator,
+                                                fontSize = 11.sp,
+                                                color = sepColor,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.Bold
+                                            )
                                         }
-                                        Text(
-                                            text = text,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = accentColor,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        if (isConcise) {
+                                            Text(
+                                                text = item.conciseVal,
+                                                fontSize = if (item.prominent) 13.sp else 11.sp,
+                                                color = item.color,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.ExtraBold
+                                            )
+                                        } else if (item.isSuffix) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Text(
+                                                    text = item.fullVal,
+                                                    fontSize = 13.sp,
+                                                    color = item.color,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontWeight = FontWeight.ExtraBold
+                                                )
+                                                Text(
+                                                    text = item.hLabel,
+                                                    fontSize = 9.sp,
+                                                    color = mutedLabel,
+                                                    fontFamily = FontFamily.Monospace
+                                                )
+                                            }
+                                        } else if (item.hLabel.isNotEmpty()) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Text(
+                                                    text = item.hLabel,
+                                                    fontSize = 10.sp,
+                                                    color = mutedLabel,
+                                                    fontFamily = FontFamily.Monospace
+                                                )
+                                                Text(
+                                                    text = item.fullVal,
+                                                    fontSize = 11.sp,
+                                                    color = item.color,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        } else {
+                                            Text(
+                                                text = item.fullVal,
+                                                fontSize = 11.sp,
+                                                color = item.color,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
-                    } else {
-                        // Vertical layout: Perfectly aligned monospace columns matching FpsOverlayService
-                        val lines = mutableListOf<String>()
-                        if (isConcise) {
-                            if (uiState.metricsMap["m_fps"] != false) lines.add("59.8")
-                            if (uiState.metricsMap["m_frametime"] == true) lines.add("16.7ms")
-                            if (uiState.metricsMap["m_bat_temp"] != false) lines.add("36°")
-                            if (uiState.metricsMap["m_soc_temp"] != false) lines.add("42°")
-                            if (uiState.metricsMap["m_watt"] != false) lines.add("4.8W")
-                            if (uiState.metricsMap["m_gpu"] != false) lines.add("65%")
-                            if (uiState.metricsMap["m_vram"] == true) lines.add("650M")
-                            if (uiState.metricsMap["m_ram"] != false) lines.add("4.2G")
-                            if (lines.isEmpty()) lines.add("59.8")
-                        } else {
-                            if (uiState.metricsMap["m_fps"] != false) lines.add("FPS  59.8")
-                            if (uiState.metricsMap["m_frametime"] == true) lines.add("FT   16.7ms")
-                            if (uiState.metricsMap["m_bat_temp"] != false) lines.add("PIN  36.2°C")
-                            if (uiState.metricsMap["m_soc_temp"] != false) lines.add("SOC  41.5°C")
-                            if (uiState.metricsMap["m_watt"] != false) lines.add("PWR  4.8W")
-                            if (uiState.metricsMap["m_gpu"] != false) lines.add("GPU  65%")
-                            if (uiState.metricsMap["m_vram"] == true) lines.add("VRM  650MB")
-                            if (uiState.metricsMap["m_ram"] != false) lines.add("RAM  4.2G")
-                            if (lines.isEmpty()) lines.add("FPS  59.8")
-                        }
-
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            lines.forEach { line ->
+                    } else if (isConcise) {
+                        // Variant 2B: Narrow Centered Vertical Column
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                            modifier = Modifier.width(56.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(accentColor)
+                            )
+                            Spacer(modifier = Modifier.height(1.dp))
+                            previewMetrics.forEachIndexed { idx, item ->
                                 Text(
-                                    text = line,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = accentColor,
+                                    text = item.conciseVal,
+                                    fontSize = if (idx == 0 && item.prominent) 13.sp else 11.sp,
+                                    color = item.color,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = if (idx == 0 && item.prominent) FontWeight.Black else FontWeight.Bold
+                                )
+                                if (idx == 0 && previewMetrics.size > 1) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(1.dp)
+                                            .background(Color(0x1FFFFFFF))
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        // Variant 2A: Labeled Vertical Card with Header & Left/Right Grid
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.width(132.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(accentColor)
+                                    )
+                                    Text(
+                                        text = "HUD PRO",
+                                        fontSize = 9.sp,
+                                        color = mutedLabel,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Text(
+                                    text = "••",
+                                    fontSize = 9.sp,
+                                    color = Color(0xFF64748B),
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold
                                 )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(Color(0x1FFFFFFF))
+                            )
+                            previewMetrics.forEach { item ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = item.vLabel,
+                                        fontSize = 10.sp,
+                                        color = mutedLabel,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = item.fullVal,
+                                        fontSize = if (item.prominent) 13.sp else 11.sp,
+                                        color = item.color,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = if (item.prominent) FontWeight.Black else FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }

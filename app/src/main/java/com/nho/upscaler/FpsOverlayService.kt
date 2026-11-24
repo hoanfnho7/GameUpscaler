@@ -15,6 +15,7 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
@@ -24,6 +25,10 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
 import android.service.quicksettings.TileService
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
 import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -31,7 +36,9 @@ import android.view.MotionEvent
 import android.view.Surface
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import rikka.shizuku.Shizuku
@@ -54,8 +61,19 @@ class FpsOverlayService : Service() {
         private val FPS_REGEX = Regex("fps:\\s*([0-9.]+)")
     }
 
+    private data class HudMetricEntry(
+        val vLabel: String,
+        val hLabel: String,
+        val isSuffixLabel: Boolean = false,
+        val fullValue: String,
+        val conciseValue: String,
+        val valueColor: Int,
+        val isProminent: Boolean = false,
+        val isWarningPill: Boolean = false
+    )
+
     private var windowManager: WindowManager? = null
-    private var overlayView: TextView? = null
+    private var overlayView: LinearLayout? = null
     private var overlayParams: WindowManager.LayoutParams? = null
     private var closeTargetView: TextView? = null
     private lateinit var prefsMgr: PrefsManager
@@ -305,11 +323,19 @@ class FpsOverlayService : Service() {
         }
 
         val hasCustomLand = prefsMgr.hasCustomHudPosition(true)
-        if (isLand && !hasCustomLand) {
-            // Default auto-center in landscape:
+        val layoutMode = prefsMgr.hudLayoutMode
+        if (isLand && !hasCustomLand && layoutMode != 1) {
+            // Default auto-center in landscape for Horizontal & Mini Dot:
             params.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             params.x = 0
-            params.y = 4
+            params.y = UiTheme.dp(this, 4)
+            params.width = WindowManager.LayoutParams.WRAP_CONTENT
+            params.height = WindowManager.LayoutParams.WRAP_CONTENT
+        } else if (layoutMode == 1 && !prefsMgr.hasCustomHudPosition(isLand)) {
+            // Default Left Border Dock for Vertical Column (8dp margin per mockup spec)
+            params.gravity = Gravity.TOP or Gravity.START
+            params.x = UiTheme.dp(this, 8)
+            params.y = UiTheme.dp(this, if (isLand) 24 else 96)
             params.width = WindowManager.LayoutParams.WRAP_CONTENT
             params.height = WindowManager.LayoutParams.WRAP_CONTENT
         } else {
@@ -556,9 +582,11 @@ class FpsOverlayService : Service() {
             }
             windowManager?.addView(closeTv, closeParams)
 
-            val tv = TextView(this).apply {
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(UiTheme.ACCENT_GREEN)
+            val tv = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                clipChildren = false
+                clipToPadding = false
             }
             overlayView = tv
             applyOverlayStyle()
@@ -718,78 +746,213 @@ class FpsOverlayService : Service() {
         }
     }
 
-    private fun applyOverlayStyle(config: Configuration? = null) {
-        val tv = overlayView ?: return
-        val isLand = isLandscapeMode(config)
-        val idx = sizeLevel.coerceIn(0, 4)
-        val bIdx = bgMode.coerceIn(0, 3)
-        val layoutMode = prefsMgr.hudLayoutMode // 0: Horizontal, 1: Compact 2x2, 2: Mini Dot
-        val (screenW, _) = getScreenDimensions(config)
-
-        tv.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-
-        val textSizes = if (isLand) {
-            floatArrayOf(6.5f, 8.0f, 9.5f, 11.5f, 13.5f)
-        } else {
-            floatArrayOf(7.0f, 8.5f, 10.0f, 12.0f, 14.0f)
-        }
-        val padH = if (isLand) intArrayOf(6, 8, 11, 14, 18) else intArrayOf(8, 10, 13, 16, 20)
-        val padV = if (isLand) intArrayOf(1, 2, 3, 5, 7) else intArrayOf(2, 3, 5, 7, 9)
-
-        tv.textSize = textSizes[idx]
-
-        when (layoutMode) {
-            2 -> { // Mini Dot
-                tv.isSingleLine = true
-                tv.maxLines = 1
-                tv.maxWidth = screenW
-                tv.gravity = Gravity.CENTER
-                tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
-                tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 999f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
-            }
-            1 -> { // Vertical Monospace Column
-                tv.isSingleLine = false
-                tv.maxLines = 15
-                tv.maxWidth = screenW
-                tv.gravity = Gravity.START
-                tv.setLineSpacing(2f, 1.05f)
-                tv.setPadding(padH[idx], padV[idx] + 2, padH[idx], padV[idx] + 2)
-                tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 14f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
-            }
-            else -> { // Horizontal Mode
-                if (isLand) {
-                    // Landscape: Bung tu do tren 1 hang duy nhat; neu vuot 100% chieu ngang thi phan du tu rot dong 2/3 khong cat chu
-                    tv.isSingleLine = false
-                    tv.maxLines = 3
-                    tv.ellipsize = null
-                    val safeMargin = 32
-                    tv.maxWidth = (screenW - safeMargin).coerceAtLeast(300)
-                    tv.gravity = Gravity.CENTER
-                    tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
-                    tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 12f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
-                } else {
-                    // Portrait: Tu dong xuong dong, can deu le trai (Gravity.START)
-                    tv.isSingleLine = false
-                    tv.maxLines = 6
-                    tv.ellipsize = null
-                    val safeMargin = 24
-                    tv.maxWidth = (screenW - safeMargin).coerceAtLeast(200)
-                    tv.gravity = Gravity.START or Gravity.CENTER_VERTICAL
-                    tv.setPadding(padH[idx], padV[idx] + 2, padH[idx], padV[idx] + 2)
-                    tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 12f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
-                }
-            }
-        }
-
-        if (bIdx >= 2) {
-            tv.setShadowLayer(3.0f, 1.2f, 1.2f, UiTheme.TEXT_SHADOW)
-        } else {
-            tv.setShadowLayer(1.5f, 0.5f, 0.5f, UiTheme.TEXT_SHADOW)
+    private fun resolveAccentColor(): Int {
+        return when (prefsMgr.hudColorAccent) {
+            0 -> Color.parseColor("#D4F469") // Volt Lime
+            1 -> Color.WHITE                 // White
+            2 -> Color.parseColor("#38BDF8") // Blue / Cyan
+            else -> Color.parseColor("#EEC14A") // Amber / Yellow
         }
     }
 
+    private fun resolveBaseTextSizeSp(isLand: Boolean): Float {
+        val idx = sizeLevel.coerceIn(0, 4)
+        return if (isLand) {
+            floatArrayOf(7.5f, 9.0f, 10.5f, 12.0f, 14.0f)[idx]
+        } else {
+            floatArrayOf(8.0f, 9.5f, 11.0f, 12.5f, 14.5f)[idx]
+        }
+    }
+
+    private fun withAlpha(color: Int, alpha: Int): Int {
+        return Color.argb(alpha.coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))
+    }
+
+    private fun makeCircleDot(sizeDp: Float, color: Int): View {
+        val px = UiTheme.dp(this, sizeDp).toInt().coerceAtLeast(4)
+        return View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(px, px)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(color)
+            }
+        }
+    }
+
+    private fun makeMonoText(
+        text: CharSequence,
+        textSizeSp: Float,
+        color: Int,
+        bold: Boolean = true
+    ): TextView {
+        val bIdx = bgMode.coerceIn(0, 3)
+        return TextView(this).apply {
+            this.text = text
+            this.textSize = textSizeSp
+            this.typeface = Typeface.create(Typeface.MONOSPACE, if (bold) Typeface.BOLD else Typeface.NORMAL)
+            setTextColor(color)
+            includeFontPadding = false
+            isSingleLine = true
+            if (bIdx >= 2) {
+                setShadowLayer(3.0f, 1.0f, 1.0f, UiTheme.TEXT_SHADOW)
+            } else {
+                setShadowLayer(1.2f, 0.4f, 0.4f, UiTheme.TEXT_SHADOW)
+            }
+        }
+    }
+
+    private fun buildRecPillView(textSizeSp: Float, elapsedSec: Int, compact: Boolean): View {
+        val mm = elapsedSec / 60
+        val ss = elapsedSec % 60
+        val timeStr = String.format(Locale.US, "%02d:%02d", mm, ss)
+        val dotAlpha = if (elapsedSec % 2 == 0) 1.0f else 0.35f
+
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            val pH = UiTheme.dp(this@FpsOverlayService, if (compact) 4 else 6)
+            val pV = UiTheme.dp(this@FpsOverlayService, 2)
+            setPadding(pH, pV, pH, pV)
+            background = UiTheme.roundBoxDp(
+                this@FpsOverlayService,
+                UiTheme.HUD_REC_BG,
+                6f,
+                1f,
+                UiTheme.HUD_REC_STROKE
+            )
+
+            val dot = makeCircleDot(5.5f, UiTheme.TECH_RED).apply { alpha = dotAlpha }
+            addView(dot)
+
+            val recTv = makeMonoText(if (compact) "REC" else "REC", textSizeSp * 0.9f, UiTheme.TECH_RED, true).apply {
+                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                lp.marginStart = UiTheme.dp(this@FpsOverlayService, 4)
+                layoutParams = lp
+            }
+            addView(recTv)
+
+            if (!compact) {
+                val timeTv = makeMonoText(timeStr, textSizeSp * 0.82f, UiTheme.HUD_SLATE_300, false).apply {
+                    val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    lp.marginStart = UiTheme.dp(this@FpsOverlayService, 4)
+                    layoutParams = lp
+                }
+                addView(timeTv)
+            }
+        }
+    }
+
+    private fun buildHorizontalItemView(entry: HudMetricEntry, textSizeSp: Float, isConcise: Boolean): View {
+        if (!isConcise && entry.isWarningPill) {
+            return LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                val pH = UiTheme.dp(this@FpsOverlayService, 5)
+                val pV = UiTheme.dp(this@FpsOverlayService, 1)
+                setPadding(pH, pV, pH, pV)
+                background = UiTheme.roundBoxDp(
+                    this@FpsOverlayService,
+                    UiTheme.HUD_REC_BG,
+                    5f,
+                    1f,
+                    UiTheme.HUD_REC_STROKE
+                )
+                val labelText = if (entry.hLabel.isNotEmpty()) "⚠ ${entry.hLabel} ${entry.fullValue}" else "⚠ ${entry.fullValue}"
+                addView(makeMonoText(labelText, textSizeSp * 0.96f, UiTheme.TECH_RED, true))
+            }
+        }
+
+        val ssb = SpannableStringBuilder()
+        if (isConcise) {
+            ssb.append(entry.conciseValue)
+            ssb.setSpan(ForegroundColorSpan(entry.valueColor), 0, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            if (entry.isProminent) {
+                ssb.setSpan(RelativeSizeSpan(1.10f), 0, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        } else if (entry.isSuffixLabel && entry.hLabel.isNotEmpty()) {
+            // e.g. "59.8 FPS" -> bold prominent Volt value + muted smaller "FPS"
+            val valEnd = entry.fullValue.length
+            ssb.append(entry.fullValue)
+            ssb.setSpan(ForegroundColorSpan(entry.valueColor), 0, valEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            if (entry.isProminent) {
+                ssb.setSpan(RelativeSizeSpan(1.10f), 0, valEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            ssb.append(" ")
+            val lblStart = ssb.length
+            ssb.append(entry.hLabel)
+            ssb.setSpan(ForegroundColorSpan(UiTheme.HUD_LABEL_MUTED), lblStart, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            ssb.setSpan(RelativeSizeSpan(0.82f), lblStart, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        } else if (entry.hLabel.isNotEmpty()) {
+            // e.g. "Pin 36.2°C", "SoC 41.5°C", "GPU 65%", "RAM 4.2G"
+            ssb.append(entry.hLabel)
+            ssb.setSpan(ForegroundColorSpan(UiTheme.HUD_LABEL_MUTED), 0, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            ssb.setSpan(RelativeSizeSpan(0.84f), 0, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            ssb.append(" ")
+            val valStart = ssb.length
+            ssb.append(entry.fullValue)
+            ssb.setSpan(ForegroundColorSpan(entry.valueColor), valStart, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        } else {
+            // e.g. "4.8W", "16.7ms"
+            ssb.append(entry.fullValue)
+            ssb.setSpan(ForegroundColorSpan(entry.valueColor), 0, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+
+        return makeMonoText(ssb, textSizeSp, entry.valueColor, true)
+    }
+
+    private fun applyOverlayStyle(config: Configuration? = null) {
+        val root = overlayView ?: return
+        val isLand = isLandscapeMode(config)
+        val idx = sizeLevel.coerceIn(0, 4)
+        val bIdx = bgMode.coerceIn(0, 3)
+        val layoutMode = prefsMgr.hudLayoutMode // 0: Horizontal Pill, 1: Vertical Column, 2: Mini Dot
+        val isConcise = prefsMgr.hudHideLabels
+        val accent = resolveAccentColor()
+
+        val maxChipTemp = maxOf(lastCpuTemp, lastGpuTemp, lastSocTemp)
+        val guardRedLimit = if (prefsMgr.thermalGuardEnabled) prefsMgr.thermalGuardTempLimit.toFloat() else 43.0f
+        val isOverheat = (thermalAlertState == 1) || (cachedBatTemp >= guardRedLimit) || (maxChipTemp >= 85.0f)
+        val isRec = PerfLogManager.isRecording
+
+        val strokeColor = when {
+            bIdx == 3 -> Color.TRANSPARENT
+            isOverheat -> Color.parseColor("#E6FF5252")
+            isRec -> Color.parseColor("#B3FF5252")
+            layoutMode == 1 && !isConcise -> Color.parseColor("#2EFFFFFF")
+            else -> withAlpha(accent, if (bIdx == 2) 0x45 else 0x73)
+        }
+
+        val padH = if (isLand) intArrayOf(7, 9, 12, 15, 18)[idx] else intArrayOf(8, 10, 13, 16, 19)[idx]
+        val padV = if (isLand) intArrayOf(3, 4, 6, 7, 9)[idx] else intArrayOf(4, 5, 7, 8, 10)[idx]
+
+        when (layoutMode) {
+            2 -> { // Mini Dot Capsule
+                root.orientation = LinearLayout.HORIZONTAL
+                root.gravity = Gravity.CENTER_VERTICAL
+                root.setPadding(UiTheme.dp(this, padH), UiTheme.dp(this, padV), UiTheme.dp(this, padH), UiTheme.dp(this, padV))
+                root.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 999f, 1f, strokeColor)
+            }
+            1 -> { // Vertical Monospace Column (14dp radius)
+                root.orientation = LinearLayout.VERTICAL
+                root.gravity = if (isConcise) Gravity.CENTER_HORIZONTAL else Gravity.START
+                val vPadH = if (isConcise) (padH - 2).coerceAtLeast(6) else padH
+                val vPadV = (padV + 3)
+                root.setPadding(UiTheme.dp(this, vPadH), UiTheme.dp(this, vPadV), UiTheme.dp(this, vPadH), UiTheme.dp(this, vPadV))
+                root.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 14f, 1f, strokeColor)
+            }
+            else -> { // Horizontal HUD Pill (12dp radius)
+                root.orientation = LinearLayout.VERTICAL
+                root.gravity = if (isLand) Gravity.CENTER else Gravity.START
+                root.setPadding(UiTheme.dp(this, padH), UiTheme.dp(this, padV), UiTheme.dp(this, padH), UiTheme.dp(this, padV))
+                root.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 12f, 1f, strokeColor)
+            }
+        }
+
+        root.elevation = if (bIdx < 3) UiTheme.dpF(this, 6f) else 0f
+    }
+
     private fun renderTelemetryText(config: Configuration? = null) {
-        val tv = overlayView ?: return
+        val root = overlayView ?: return
         val isLand = isLandscapeMode(config)
         if (lastKnownIsLand != null && lastKnownIsLand != isLand) {
             lastKnownIsLand = isLand
@@ -801,8 +964,9 @@ class FpsOverlayService : Service() {
         }
 
         val layoutMode = prefsMgr.hudLayoutMode
-
         val isConcise = prefsMgr.hudHideLabels
+        val accent = resolveAccentColor()
+        val textSizeSp = resolveBaseTextSizeSp(isLand)
 
         val showFps = prefsMgr.getMetric("m_fps", true)
         val showFrameTime = prefsMgr.getMetric("m_frametime", false)
@@ -850,133 +1014,285 @@ class FpsOverlayService : Service() {
         val ramVal = lastRamText.ifEmpty { "--%" }
         val ramConcise = lastRamText.replace("RAM:", "").replace("RAM", "").trim().ifEmpty { "--" }
 
-        val guardBadge = when (thermalAlertState) {
-            1 -> "🔥 HOT"
-            2 -> "🪫 LOW"
-            else -> ""
+        val guardRedLimit = if (prefsMgr.thermalGuardEnabled) prefsMgr.thermalGuardTempLimit.toFloat() else 43.0f
+        val batHot = cachedBatTemp >= guardRedLimit
+        val batWarm = cachedBatTemp >= (guardRedLimit - 2.0f)
+        val batColor = when {
+            batHot -> UiTheme.TECH_RED
+            batWarm -> UiTheme.TECH_AMBER
+            else -> UiTheme.TECH_EMERALD
         }
-
-        val newText = when (layoutMode) {
-            2 -> { // Mini Dot
-                if (guardBadge.isNotEmpty()) "$guardBadge $fpsVal" else "● $fpsVal"
-            }
-            1 -> { // Vertical Column (Aligned monospace labels)
-                val lines = mutableListOf<String>()
-                if (PerfLogManager.isRecording) lines.add("● REC")
-                if (guardBadge.isNotEmpty()) lines.add(guardBadge)
-                if (isConcise) {
-                    if (showFps) lines.add(fpsVal)
-                    if (showFrameTime) lines.add(ftVal)
-                    if (showBatTemp) lines.add(batConcise)
-                    if (showSocTemp) lines.add(socConcise)
-                    if (showCpuTemp) lines.add(cpuTempConcise)
-                    if (showGpuTemp) lines.add(gpuTempConcise)
-                    if (showDdrTemp) lines.add(ddrTempConcise)
-                    if (showCamTemp) lines.add(camTempConcise)
-                    if (showSkinTemp) lines.add(skinTempConcise)
-                    if (showWatt) lines.add(wVal)
-                    if (hasValidGpu) lines.add(gpuVal)
-                    if (hasValidVram) lines.add(vramConciseVal)
-                    if (showCpuFreq) lines.add(cpuFreqConciseVal)
-                    if (showRam) lines.add(ramConcise)
-                    if (lines.isEmpty()) lines.add(fpsVal)
-                } else {
-                    if (showFps) lines.add("FPS  $fpsVal")
-                    if (showFrameTime) lines.add("FT   $ftVal")
-                    if (showBatTemp) lines.add("PIN  $batVal")
-                    if (showSocTemp) lines.add("SOC  $socVal")
-                    if (showCpuTemp) lines.add("CPU  $cpuTempVal")
-                    if (showGpuTemp) lines.add("GPU  $gpuTempVal")
-                    if (showDdrTemp) lines.add("DDR  $ddrTempVal")
-                    if (showCamTemp) lines.add("CAM  $camTempVal")
-                    if (showSkinTemp) lines.add("SKN  $skinTempVal")
-                    if (showWatt) lines.add("PWR  $wVal")
-                    if (hasValidGpu) lines.add("GPU  $gpuVal")
-                    if (hasValidVram) lines.add("VRM  $vramVal")
-                    if (showCpuFreq) lines.add("CLK  $cpuFreqVal")
-                    if (showRam) lines.add("RAM  $ramVal")
-                    if (lines.isEmpty()) lines.add("FPS  $fpsVal")
-                }
-                lines.joinToString("\n")
-            }
-            else -> { // Horizontal Pill / Multi-line Wrap
-                val items = mutableListOf<String>()
-                if (PerfLogManager.isRecording) items.add("● REC")
-                if (guardBadge.isNotEmpty()) items.add(guardBadge)
-                if (isConcise) {
-                    if (showFps) items.add(fpsVal)
-                    if (showFrameTime) items.add(ftVal)
-                    if (showWatt) items.add(wVal)
-                    if (hasValidGpu) items.add(gpuVal)
-                    if (hasValidVram) items.add(vramConciseVal)
-                    if (showCpuFreq) items.add(cpuFreqConciseVal)
-                    if (showBatTemp) items.add(batConcise)
-                    if (showSocTemp) items.add(socConcise)
-                    if (showCpuTemp) items.add(cpuTempConcise)
-                    if (showGpuTemp) items.add(gpuTempConcise)
-                    if (showDdrTemp) items.add(ddrTempConcise)
-                    if (showCamTemp) items.add(camTempConcise)
-                    if (showSkinTemp) items.add(skinTempConcise)
-                    if (showRam) items.add(ramConcise)
-                    if (items.isEmpty()) items.add(fpsVal)
-                } else {
-                    if (showFps) items.add("$fpsVal FPS")
-                    if (showFrameTime) items.add(ftVal)
-                    if (showBatTemp) items.add("Pin $batVal")
-                    if (showSocTemp) items.add("SoC $socVal")
-                    if (showCpuTemp) items.add("CPU $cpuTempVal")
-                    if (showGpuTemp) items.add("GPU $gpuTempVal")
-                    if (showDdrTemp) items.add("DDR $ddrTempVal")
-                    if (showCamTemp) items.add("CAM $camTempVal")
-                    if (showSkinTemp) items.add("SKN $skinTempVal")
-                    if (showWatt) items.add(wVal)
-                    if (hasValidGpu) items.add("GPU $gpuVal")
-                    if (hasValidVram) items.add("VRAM $vramVal")
-                    if (showCpuFreq) items.add(cpuFreqVal)
-                    if (showRam) items.add("RAM $ramVal")
-                    if (items.isEmpty()) items.add("$fpsVal FPS")
-                }
-
-                val separator = if (isConcise) " · " else "  |  "
-                if (isLand) {
-                    // Landscape: 100% tren 1 hang ngang duy nhat, KHONG BAO GIO ngat dong hay chunk!
-                    items.joinToString(separator)
-                } else {
-                    // Portrait: Tu dong xuong dong, can deu le trai
-                    val perRow = if (isConcise) 4 else 3
-                    if (items.size <= perRow) {
-                        items.joinToString(separator)
-                    } else {
-                        items.chunked(perRow).joinToString("\n") { row -> row.joinToString(separator) }
-                    }
-                }
-            }
-        }
-
-        if (newText != lastRenderedText) {
-            lastRenderedText = newText
-            tv.text = newText
-            ensureOverlayWithinBounds(config)
+        fun chipTempColor(t: Float, normalColor: Int): Int = when {
+            t >= 85.0f -> UiTheme.TECH_RED
+            t >= 75.0f -> UiTheme.TECH_AMBER
+            else -> normalColor
         }
 
         val maxChipTemp = maxOf(lastCpuTemp, lastGpuTemp, lastSocTemp)
-        val baseAccent = when (prefsMgr.hudColorAccent) {
-            0 -> Color.parseColor("#D4F469") // Volt Lime
-            1 -> Color.WHITE                 // White
-            2 -> Color.parseColor("#38BDF8") // Blue / Cyan
-            else -> Color.parseColor("#FACC15") // Amber / Yellow
+        val isOverheat = (thermalAlertState == 1) || batHot || (maxChipTemp >= 85.0f)
+        val isRec = PerfLogManager.isRecording
+        val recSec = if (isRec) PerfLogManager.getElapsedSec() else 0
+
+        // Build semantic metric list (ordering matches mockup for both full & concise)
+        val entries = mutableListOf<HudMetricEntry>()
+        if (showFps) {
+            entries.add(HudMetricEntry("FPS", "FPS", isSuffixLabel = true, fullValue = fpsVal, conciseValue = fpsVal, valueColor = accent, isProminent = true))
         }
-        val guardRedLimit = if (prefsMgr.thermalGuardEnabled) prefsMgr.thermalGuardTempLimit.toFloat() else 43.0f
-        val color = when {
-            PerfLogManager.isRecording -> UiTheme.ACCENT_RED_ALERT
-            thermalAlertState == 1 || cachedBatTemp >= guardRedLimit || maxChipTemp >= 85.0f -> UiTheme.ACCENT_RED_BRIGHT
-            thermalAlertState == 2 || cachedBatTemp >= (guardRedLimit - 2.0f) || maxChipTemp >= 75.0f -> UiTheme.ACCENT_GOLD
-            else -> baseAccent
+        if (showFrameTime) {
+            entries.add(HudMetricEntry("FT", "", fullValue = ftVal, conciseValue = ftVal, valueColor = UiTheme.HUD_SLATE_300))
         }
-        if (color != lastRenderedColor) {
-            lastRenderedColor = color
-            tv.setTextColor(color)
+        if (isConcise && layoutMode == 0) {
+            // Mockup 1B concise horizontal order: FPS · W · GPU% · Bat° · SoC° · RAM
+            if (showWatt) entries.add(HudMetricEntry("PWR", "", fullValue = wVal, conciseValue = wVal, valueColor = UiTheme.TECH_AMBER))
+            if (hasValidGpu) entries.add(HudMetricEntry("GPU", "GPU", fullValue = gpuVal, conciseValue = gpuVal, valueColor = UiTheme.HUD_CYAN))
+            if (hasValidVram) entries.add(HudMetricEntry("VRM", "VRAM", fullValue = vramVal, conciseValue = vramConciseVal, valueColor = UiTheme.HUD_SLATE_300))
+            if (showCpuFreq) entries.add(HudMetricEntry("CLK", "", fullValue = cpuFreqVal, conciseValue = cpuFreqConciseVal, valueColor = UiTheme.TECH_BLUE))
+            if (showBatTemp) entries.add(HudMetricEntry("PIN", "Pin", fullValue = batVal, conciseValue = batConcise, valueColor = batColor, isWarningPill = batHot))
+            if (showSocTemp) entries.add(HudMetricEntry("SOC", "SoC", fullValue = socVal, conciseValue = socConcise, valueColor = chipTempColor(lastSocTemp, accent)))
+            if (showCpuTemp) entries.add(HudMetricEntry("CPU", "CPU", fullValue = cpuTempVal, conciseValue = cpuTempConcise, valueColor = chipTempColor(lastCpuTemp, accent)))
+            if (showGpuTemp) entries.add(HudMetricEntry("GPUT", "GPU", fullValue = gpuTempVal, conciseValue = gpuTempConcise, valueColor = chipTempColor(lastGpuTemp, UiTheme.HUD_CYAN)))
+            if (showDdrTemp) entries.add(HudMetricEntry("DDR", "DDR", fullValue = ddrTempVal, conciseValue = ddrTempConcise, valueColor = chipTempColor(lastDdrTemp, UiTheme.HUD_SLATE_300)))
+            if (showCamTemp) entries.add(HudMetricEntry("CAM", "CAM", fullValue = camTempVal, conciseValue = camTempConcise, valueColor = chipTempColor(lastCamTemp, UiTheme.HUD_SLATE_300)))
+            if (showSkinTemp) entries.add(HudMetricEntry("SKN", "SKN", fullValue = skinTempVal, conciseValue = skinTempConcise, valueColor = chipTempColor(lastSkinTemp, UiTheme.TECH_EMERALD)))
+            if (showRam) entries.add(HudMetricEntry("RAM", "RAM", fullValue = ramVal, conciseValue = ramConcise, valueColor = Color.WHITE))
+        } else {
+            // Mockup 1A / 2A / 2B order: FPS, Pin, SoC, ..., PWR, GPU, VRAM, CLK, RAM
+            if (showBatTemp) entries.add(HudMetricEntry("PIN", "Pin", fullValue = batVal, conciseValue = batConcise, valueColor = batColor, isWarningPill = batHot))
+            if (showSocTemp) entries.add(HudMetricEntry("SOC", "SoC", fullValue = socVal, conciseValue = socConcise, valueColor = chipTempColor(lastSocTemp, accent)))
+            if (showCpuTemp) entries.add(HudMetricEntry("CPU", "CPU", fullValue = cpuTempVal, conciseValue = cpuTempConcise, valueColor = chipTempColor(lastCpuTemp, accent)))
+            if (showGpuTemp) entries.add(HudMetricEntry("GPUT", "GPU", fullValue = gpuTempVal, conciseValue = gpuTempConcise, valueColor = chipTempColor(lastGpuTemp, UiTheme.HUD_CYAN)))
+            if (showDdrTemp) entries.add(HudMetricEntry("DDR", "DDR", fullValue = ddrTempVal, conciseValue = ddrTempConcise, valueColor = chipTempColor(lastDdrTemp, UiTheme.HUD_SLATE_300)))
+            if (showCamTemp) entries.add(HudMetricEntry("CAM", "CAM", fullValue = camTempVal, conciseValue = camTempConcise, valueColor = chipTempColor(lastCamTemp, UiTheme.HUD_SLATE_300)))
+            if (showSkinTemp) entries.add(HudMetricEntry("SKN", "SKN", fullValue = skinTempVal, conciseValue = skinTempConcise, valueColor = chipTempColor(lastSkinTemp, UiTheme.TECH_EMERALD)))
+            if (showWatt) entries.add(HudMetricEntry("PWR", "", fullValue = wVal, conciseValue = wVal, valueColor = UiTheme.TECH_AMBER))
+            if (hasValidGpu) entries.add(HudMetricEntry("GPU", "GPU", fullValue = gpuVal, conciseValue = gpuVal, valueColor = UiTheme.HUD_CYAN))
+            if (hasValidVram) entries.add(HudMetricEntry("VRM", "VRAM", fullValue = vramVal, conciseValue = vramConciseVal, valueColor = UiTheme.HUD_SLATE_300))
+            if (showCpuFreq) entries.add(HudMetricEntry("CLK", "", fullValue = cpuFreqVal, conciseValue = cpuFreqConciseVal, valueColor = UiTheme.TECH_BLUE))
+            if (showRam) entries.add(HudMetricEntry("RAM", "RAM", fullValue = ramVal, conciseValue = ramConcise, valueColor = Color.WHITE))
         }
+        if (entries.isEmpty()) {
+            entries.add(HudMetricEntry("FPS", "FPS", isSuffixLabel = true, fullValue = fpsVal, conciseValue = fpsVal, valueColor = accent, isProminent = true))
+        }
+
+        // Compute compact signature to avoid unnecessary view rebuilds
+        val sig = buildString(128) {
+            append(layoutMode).append('|').append(isConcise).append('|').append(isLand).append('|')
+            append(sizeLevel).append('|').append(bgMode).append('|').append(accent).append('|')
+            append(isRec).append(':').append(recSec).append('|').append(isOverheat).append('|').append(thermalAlertState).append('|')
+            for (e in entries) {
+                append(e.vLabel).append('=').append(if (isConcise) e.conciseValue else e.fullValue).append(':').append(e.valueColor).append(';')
+            }
+        }
+        if (sig == lastRenderedText) return
+        lastRenderedText = sig
+
+        // Update border/alert tint if state changed
+        val stateCode = (if (isOverheat) 2 else if (isRec) 1 else 0) + (layoutMode * 10) + (if (isConcise) 100 else 0)
+        if (stateCode != lastRenderedColor) {
+            lastRenderedColor = stateCode
+            applyOverlayStyle(config)
+        }
+
+        root.removeAllViews()
+
+        when (layoutMode) {
+            2 -> { // Mini Dot Capsule
+                val dotColor = when {
+                    isOverheat || isRec -> UiTheme.TECH_RED
+                    thermalAlertState == 2 -> UiTheme.TECH_AMBER
+                    else -> accent
+                }
+                root.addView(makeCircleDot(6f, dotColor))
+                val label = when {
+                    isOverheat -> "HOT $fpsVal"
+                    thermalAlertState == 2 -> "LOW $fpsVal"
+                    else -> fpsVal
+                }
+                val tv = makeMonoText(label, textSizeSp * 1.08f, if (isOverheat) UiTheme.TECH_RED else accent, true).apply {
+                    val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    lp.marginStart = UiTheme.dp(this@FpsOverlayService, 6)
+                    layoutParams = lp
+                }
+                root.addView(tv)
+            }
+
+            1 -> { // Vertical Monospace Column (Variant 2A Labeled / Variant 2B Ultra-Compact)
+                val rowGapPx = UiTheme.dp(this, 3)
+                if (isConcise) {
+                    // Variant 2B: Narrow centered column with top dot + prominent FPS + divider + values
+                    val dotColor = if (isOverheat || isRec) UiTheme.TECH_RED else accent
+                    val topDot = makeCircleDot(5.5f, dotColor).apply {
+                        val lp = layoutParams as LinearLayout.LayoutParams
+                        lp.bottomMargin = UiTheme.dp(this@FpsOverlayService, 4)
+                        if (isRec) alpha = if (recSec % 2 == 0) 1.0f else 0.35f
+                    }
+                    root.addView(topDot)
+
+                    if (isRec) {
+                        val recTv = makeMonoText("REC", textSizeSp * 0.78f, UiTheme.TECH_RED, true).apply {
+                            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                            lp.bottomMargin = UiTheme.dp(this@FpsOverlayService, 2)
+                            layoutParams = lp
+                        }
+                        root.addView(recTv)
+                    }
+
+                    entries.forEachIndexed { idxEntry, entry ->
+                        val itemSize = if (idxEntry == 0 && entry.isProminent) textSizeSp * 1.14f else textSizeSp * 0.96f
+                        val tv = makeMonoText(entry.conciseValue, itemSize, entry.valueColor, true).apply {
+                            gravity = Gravity.CENTER
+                            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                            if (idxEntry > 0) lp.topMargin = rowGapPx
+                            layoutParams = lp
+                        }
+                        root.addView(tv)
+
+                        // Subtle divider right under FPS
+                        if (idxEntry == 0 && entries.size > 1) {
+                            val div = View(this).apply {
+                                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
+                                lp.topMargin = UiTheme.dp(this@FpsOverlayService, 3)
+                                lp.bottomMargin = UiTheme.dp(this@FpsOverlayService, 1)
+                                layoutParams = lp
+                                setBackgroundColor(UiTheme.HUD_DIVIDER_LIGHT)
+                            }
+                            root.addView(div)
+                        }
+                    }
+                } else {
+                    // Variant 2A: Labeled Vertical Card with Header + Divider + Left/Right aligned rows
+                    val headerRow = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        layoutParams = LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
+                    }
+                    val dotColor = if (isOverheat || isRec) UiTheme.TECH_RED else accent
+                    headerRow.addView(makeCircleDot(5f, dotColor).apply {
+                        if (isRec) alpha = if (recSec % 2 == 0) 1.0f else 0.35f
+                    })
+                    val headerLabel = when {
+                        isRec -> {
+                            val mm = recSec / 60
+                            val ss = recSec % 60
+                            String.format(Locale.US, "REC %02d:%02d", mm, ss)
+                        }
+                        isOverheat -> "HOT ALERT"
+                        scaleLabel.isNotBlank() -> "HUD ${scaleLabel.uppercase(Locale.US)}"
+                        else -> "HUD PRO"
+                    }
+                    val headerTv = makeMonoText(
+                        headerLabel,
+                        textSizeSp * 0.78f,
+                        if (isRec || isOverheat) UiTheme.TECH_RED else UiTheme.HUD_LABEL_MUTED,
+                        true
+                    ).apply {
+                        val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                        lp.marginStart = UiTheme.dp(this@FpsOverlayService, 5)
+                        lp.marginEnd = UiTheme.dp(this@FpsOverlayService, 8)
+                        layoutParams = lp
+                    }
+                    headerRow.addView(headerTv)
+                    headerRow.addView(makeMonoText("••", textSizeSp * 0.75f, UiTheme.HUD_DOT_SEPARATOR, true))
+                    root.addView(headerRow)
+
+                    // Hairline divider
+                    val divider = View(this).apply {
+                        val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
+                        lp.topMargin = UiTheme.dp(this@FpsOverlayService, 4)
+                        lp.bottomMargin = UiTheme.dp(this@FpsOverlayService, 4)
+                        layoutParams = lp
+                        setBackgroundColor(UiTheme.HUD_DIVIDER_LIGHT)
+                    }
+                    root.addView(divider)
+
+                    val colGapPx = UiTheme.dp(this, 10)
+                    entries.forEachIndexed { idxEntry, entry ->
+                        val row = LinearLayout(this).apply {
+                            orientation = LinearLayout.HORIZONTAL
+                            gravity = Gravity.CENTER_VERTICAL
+                            val lp = LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT
+                            )
+                            if (idxEntry > 0) lp.topMargin = rowGapPx
+                            layoutParams = lp
+                        }
+                        val lblTv = makeMonoText(entry.vLabel, textSizeSp * 0.90f, UiTheme.HUD_LABEL_MUTED, true).apply {
+                            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                            lp.marginEnd = colGapPx
+                            layoutParams = lp
+                        }
+                        val valText = if (entry.isWarningPill) "⚠ ${entry.fullValue}" else entry.fullValue
+                        val valSize = if (entry.isProminent) textSizeSp * 1.10f else textSizeSp * 0.96f
+                        val valTv = makeMonoText(valText, valSize, entry.valueColor, true).apply {
+                            gravity = Gravity.END
+                            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                        }
+                        row.addView(lblTv)
+                        row.addView(valTv)
+                        root.addView(row)
+                    }
+                }
+            }
+
+            else -> { // Horizontal HUD Pill (Variant 1A Full / 1B Concise / 1C REC / 1D Thermal Alert)
+                val sepChar = if (isConcise) "·" else "|"
+                val sepColor = if (isConcise) UiTheme.HUD_DOT_SEPARATOR else UiTheme.HUD_SEPARATOR
+                val sepMarginPx = UiTheme.dp(this, if (isConcise) 5 else 7)
+
+                val itemViews = mutableListOf<View>()
+                if (isRec) {
+                    itemViews.add(buildRecPillView(textSizeSp, recSec, compact = isConcise))
+                }
+                if (thermalAlertState == 2) {
+                    itemViews.add(makeMonoText("🪫 LOW", textSizeSp * 0.92f, UiTheme.TECH_AMBER, true))
+                }
+                for (entry in entries) {
+                    itemViews.add(buildHorizontalItemView(entry, textSizeSp, isConcise))
+                }
+
+                val rows: List<List<View>> = if (isLand) {
+                    listOf(itemViews)
+                } else {
+                    val perRow = if (isConcise) 4 else 3
+                    itemViews.chunked(perRow)
+                }
+
+                rows.forEachIndexed { rowIdx, rowItems ->
+                    val rowLayout = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                        val lp = LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
+                        if (rowIdx > 0) lp.topMargin = UiTheme.dp(this@FpsOverlayService, 3)
+                        layoutParams = lp
+                    }
+                    rowItems.forEachIndexed { colIdx, child ->
+                        if (colIdx > 0) {
+                            val sepTv = makeMonoText(sepChar, textSizeSp * 0.92f, sepColor, true).apply {
+                                val lp = LinearLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT
+                                )
+                                lp.marginStart = sepMarginPx
+                                lp.marginEnd = sepMarginPx
+                                layoutParams = lp
+                            }
+                            rowLayout.addView(sepTv)
+                        }
+                        rowLayout.addView(child)
+                    }
+                    root.addView(rowLayout)
+                }
+            }
+        }
+
+        ensureOverlayWithinBounds(config)
     }
 
     private fun readInstantWattage() {

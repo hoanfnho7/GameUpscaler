@@ -28,19 +28,27 @@ object UiTheme {
     val CLOSE_ZONE_IDLE = Color.parseColor("#D91F242B")
     val CLOSE_ZONE_ACTIVE = Color.parseColor("#E6FF5252")
 
-    // Overlay Transparency Palettes
+    // Overlay Transparency Palettes (Mockup spec: #0C0E11 @ 85% default)
     val HUD_BG_OPACITY = intArrayOf(
-        Color.parseColor("#E60C0E11"), // Solid dark slate
-        Color.parseColor("#B30C0E11"), // Modern glass 85%
-        Color.parseColor("#590C0E11"), // Sheer 40%
-        Color.TRANSPARENT              // Text only
+        Color.parseColor("#EB0C0E11"), // Solid dark slate (92%)
+        Color.parseColor("#D90C0E11"), // Modern glass 85% (Default)
+        Color.parseColor("#730C0E11"), // Sheer 45%
+        Color.TRANSPARENT              // Text only (0%)
     )
     val HUD_STROKE_OPACITY = intArrayOf(
-        Color.parseColor("#66D0EF65"),
-        Color.parseColor("#40D0EF65"),
-        Color.parseColor("#26D0EF65"),
+        Color.parseColor("#80D4F469"),
+        Color.parseColor("#66D4F469"),
+        Color.parseColor("#38D4F469"),
         Color.TRANSPARENT
     )
+    val HUD_LABEL_MUTED = Color.parseColor("#94A3B8")
+    val HUD_SEPARATOR = Color.parseColor("#475569")
+    val HUD_DOT_SEPARATOR = Color.parseColor("#64748B")
+    val HUD_CYAN = Color.parseColor("#22D3EE")
+    val HUD_SLATE_300 = Color.parseColor("#CBD5E1")
+    val HUD_DIVIDER_LIGHT = Color.parseColor("#1FFFFFFF")
+    val HUD_REC_BG = Color.parseColor("#38FF5252")
+    val HUD_REC_STROKE = Color.parseColor("#80FF5252")
 
     fun isDark(ctx: Context): Boolean {
         val mode = ctx.getSharedPreferences("upscaler_prefs", Context.MODE_PRIVATE).getInt("theme_mode", 0)
