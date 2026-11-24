@@ -172,13 +172,21 @@ class FpsOverlayService : Service() {
         return conf.orientation == Configuration.ORIENTATION_LANDSCAPE
     }
 
-    private fun applyPositionForCurrentOrientation(config: Configuration? = null) {
-        val params = overlayParams ?: return
+    private fun getScreenDimensions(config: Configuration? = null): Pair<Int, Int> {
         val dm = resources.displayMetrics
         val isLand = isLandscapeMode(config)
+        val w = if (isLand) maxOf(dm.widthPixels, dm.heightPixels) else minOf(dm.widthPixels, dm.heightPixels)
+        val h = if (isLand) minOf(dm.widthPixels, dm.heightPixels) else maxOf(dm.widthPixels, dm.heightPixels)
+        return Pair(w, h)
+    }
+
+    private fun applyPositionForCurrentOrientation(config: Configuration? = null) {
+        val params = overlayParams ?: return
+        val isLand = isLandscapeMode(config)
+        val (screenW, screenH) = getScreenDimensions(config)
         val (rawX, rawY) = prefsMgr.getHudPosition(isLand)
-        val maxX = (dm.widthPixels - 80).coerceAtLeast(8)
-        val maxY = (dm.heightPixels - 60).coerceAtLeast(4)
+        val maxX = (screenW - 80).coerceAtLeast(8)
+        val maxY = (screenH - 60).coerceAtLeast(4)
         params.width = WindowManager.LayoutParams.WRAP_CONTENT
         params.height = WindowManager.LayoutParams.WRAP_CONTENT
         params.x = rawX.coerceIn(4, maxX)
@@ -232,6 +240,12 @@ class FpsOverlayService : Service() {
                     startAsForeground()
                     applyOverlayStyle()
                     renderTelemetryText()
+                    overlayView?.requestLayout()
+                    try {
+                        overlayParams?.width = WindowManager.LayoutParams.WRAP_CONTENT
+                        overlayParams?.height = WindowManager.LayoutParams.WRAP_CONTENT
+                        windowManager?.updateViewLayout(overlayView, overlayParams)
+                    } catch (_: Exception) {}
                     syncQuickSettingsTile()
                     telemetryThread?.interrupt()
                 } else {
@@ -540,16 +554,17 @@ class FpsOverlayService : Service() {
         val idx = sizeLevel.coerceIn(0, 4)
         val bIdx = bgMode.coerceIn(0, 3)
         val layoutMode = prefsMgr.hudLayoutMode // 0: Horizontal, 1: Compact 2x2, 2: Mini Dot
+        val (screenW, _) = getScreenDimensions(config)
 
         tv.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
 
         val textSizes = if (isLand) {
-            floatArrayOf(7.5f, 9.0f, 10.5f, 12.0f, 14.0f)
+            floatArrayOf(6.5f, 8.0f, 9.5f, 11.5f, 13.5f)
         } else {
-            floatArrayOf(8.0f, 10.0f, 11.5f, 13.0f, 15.0f)
+            floatArrayOf(7.0f, 8.5f, 10.0f, 12.0f, 14.0f)
         }
-        val padH = if (isLand) intArrayOf(8, 10, 14, 18, 22) else intArrayOf(10, 12, 16, 20, 24)
-        val padV = if (isLand) intArrayOf(2, 3, 5, 7, 9) else intArrayOf(3, 5, 7, 9, 11)
+        val padH = if (isLand) intArrayOf(6, 8, 11, 14, 18) else intArrayOf(8, 10, 13, 16, 20)
+        val padV = if (isLand) intArrayOf(1, 2, 3, 5, 7) else intArrayOf(2, 3, 5, 7, 9)
 
         tv.textSize = textSizes[idx]
 
@@ -557,6 +572,7 @@ class FpsOverlayService : Service() {
             2 -> { // Mini Dot
                 tv.isSingleLine = true
                 tv.maxLines = 1
+                tv.maxWidth = screenW
                 tv.gravity = Gravity.CENTER
                 tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
                 tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 999f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
@@ -564,18 +580,18 @@ class FpsOverlayService : Service() {
             1 -> { // Vertical Monospace Column
                 tv.isSingleLine = false
                 tv.maxLines = 15
+                tv.maxWidth = screenW
                 tv.gravity = Gravity.START
                 tv.setLineSpacing(2f, 1.05f)
-                tv.setPadding(padH[idx], padV[idx] + 3, padH[idx], padV[idx] + 3)
+                tv.setPadding(padH[idx], padV[idx] + 2, padH[idx], padV[idx] + 2)
                 tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 14f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
             }
             else -> { // Horizontal Mode
-                val dm = resources.displayMetrics
                 if (isLand) {
                     // Landscape: Bung het thanh 1 hang ngang duy nhat!
                     tv.isSingleLine = true
                     tv.maxLines = 1
-                    tv.maxWidth = (dm.widthPixels - 32).coerceAtLeast(600)
+                    tv.maxWidth = (screenW - 16).coerceAtLeast(1000)
                     tv.gravity = Gravity.CENTER_VERTICAL
                     tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
                     tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 999f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
@@ -583,7 +599,7 @@ class FpsOverlayService : Service() {
                     // Portrait: Tu dong xuong dong, can deu le trai (Gravity.START)
                     tv.isSingleLine = false
                     tv.maxLines = 6
-                    tv.maxWidth = (dm.widthPixels - 32).coerceAtLeast(200)
+                    tv.maxWidth = (screenW - 32).coerceAtLeast(200)
                     tv.gravity = Gravity.START or Gravity.CENTER_VERTICAL
                     tv.setPadding(padH[idx], padV[idx] + 2, padH[idx], padV[idx] + 2)
                     tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 12f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
@@ -601,6 +617,8 @@ class FpsOverlayService : Service() {
     private fun renderTelemetryText(config: Configuration? = null) {
         val tv = overlayView ?: return
         val layoutMode = prefsMgr.hudLayoutMode
+
+        val isConcise = prefsMgr.hudHideLabels || sizeLevel <= 1
 
         val showFps = prefsMgr.getMetric("m_fps", true)
         val showWatt = prefsMgr.getMetric("m_watt", true)
@@ -621,7 +639,9 @@ class FpsOverlayService : Service() {
         val wVal = if (lastWatts > 0f) String.format(Locale.US, "%s%.1fW", prefix, lastWatts) else if (cachedVoltMv > 0) "${(cachedVoltMv / 1000f).toInt()}V" else "--W"
         val gpuVal = if (lastGpuVramMb >= 0) "${lastGpuVramMb}%" else "--%"
         val vramVal = if (lastGpuVramMb >= 0) "${lastGpuVramMb}MB" else "--MB"
+        val vramConciseVal = if (lastGpuVramMb >= 0) "${lastGpuVramMb}M" else "--M"
         val cpuFreqVal = if (lastCpuKhz > 0) String.format(Locale.US, "%.2fGHz", lastCpuKhz / 1_000_000f) else "--GHz"
+        val cpuFreqConciseVal = if (lastCpuKhz > 0) String.format(Locale.US, "%.1fG", lastCpuKhz / 1_000_000f) else "--G"
 
         val batVal = if (cachedBatTemp > 0f) String.format(Locale.US, "%.1f°C", cachedBatTemp) else "--°C"
         val socVal = if (lastSocTemp > 0f) String.format(Locale.US, "%.1f°C", lastSocTemp) else "--°C"
@@ -630,7 +650,17 @@ class FpsOverlayService : Service() {
         val ddrTempVal = if (lastDdrTemp > 0f) String.format(Locale.US, "%.1f°C", lastDdrTemp) else "--°C"
         val camTempVal = if (lastCamTemp > 0f) String.format(Locale.US, "%.1f°C", lastCamTemp) else "--°C"
         val skinTempVal = if (lastSkinTemp > 0f) String.format(Locale.US, "%.1f°C", lastSkinTemp) else "--°C"
+
+        val batConcise = if (cachedBatTemp > 0f) "${cachedBatTemp.toInt()}°" else "--°"
+        val socConcise = if (lastSocTemp > 0f) "${lastSocTemp.toInt()}°" else "--°"
+        val cpuTempConcise = if (lastCpuTemp > 0f) "${lastCpuTemp.toInt()}°" else "--°"
+        val gpuTempConcise = if (lastGpuTemp > 0f) "${lastGpuTemp.toInt()}°" else "--°"
+        val ddrTempConcise = if (lastDdrTemp > 0f) "${lastDdrTemp.toInt()}°" else "--°"
+        val camTempConcise = if (lastCamTemp > 0f) "${lastCamTemp.toInt()}°" else "--°"
+        val skinTempConcise = if (lastSkinTemp > 0f) "${lastSkinTemp.toInt()}°" else "--°"
+
         val ramVal = lastRamText.ifEmpty { "--%" }
+        val ramConcise = lastRamText.replace("RAM:", "").replace("RAM", "").trim().ifEmpty { "--" }
 
         val newText = when (layoutMode) {
             2 -> { // Mini Dot
@@ -639,49 +669,85 @@ class FpsOverlayService : Service() {
             1 -> { // Vertical Column (Aligned monospace labels)
                 val lines = mutableListOf<String>()
                 if (PerfLogManager.isRecording) lines.add("● REC")
-                if (showFps) lines.add("FPS  $fpsVal")
-                if (showBatTemp) lines.add("PIN  $batVal")
-                if (showSocTemp) lines.add("SOC  $socVal")
-                if (showCpuTemp) lines.add("CPU  $cpuTempVal")
-                if (showGpuTemp) lines.add("GPU  $gpuTempVal")
-                if (showDdrTemp) lines.add("DDR  $ddrTempVal")
-                if (showCamTemp) lines.add("CAM  $camTempVal")
-                if (showSkinTemp) lines.add("SKN  $skinTempVal")
-                if (showWatt) lines.add("PWR  $wVal")
-                if (showGpu) lines.add("GPU  $gpuVal")
-                if (showVram) lines.add("VRM  $vramVal")
-                if (showCpuFreq) lines.add("CLK  $cpuFreqVal")
-                if (showRam) lines.add("RAM  $ramVal")
-                if (lines.isEmpty()) lines.add("FPS  $fpsVal")
+                if (isConcise) {
+                    if (showFps) lines.add(fpsVal)
+                    if (showBatTemp) lines.add(batConcise)
+                    if (showSocTemp) lines.add(socConcise)
+                    if (showCpuTemp) lines.add(cpuTempConcise)
+                    if (showGpuTemp) lines.add(gpuTempConcise)
+                    if (showDdrTemp) lines.add(ddrTempConcise)
+                    if (showCamTemp) lines.add(camTempConcise)
+                    if (showSkinTemp) lines.add(skinTempConcise)
+                    if (showWatt) lines.add(wVal)
+                    if (showGpu) lines.add(gpuVal)
+                    if (showVram) lines.add(vramConciseVal)
+                    if (showCpuFreq) lines.add(cpuFreqConciseVal)
+                    if (showRam) lines.add(ramConcise)
+                    if (lines.isEmpty()) lines.add(fpsVal)
+                } else {
+                    if (showFps) lines.add("FPS  $fpsVal")
+                    if (showBatTemp) lines.add("PIN  $batVal")
+                    if (showSocTemp) lines.add("SOC  $socVal")
+                    if (showCpuTemp) lines.add("CPU  $cpuTempVal")
+                    if (showGpuTemp) lines.add("GPU  $gpuTempVal")
+                    if (showDdrTemp) lines.add("DDR  $ddrTempVal")
+                    if (showCamTemp) lines.add("CAM  $camTempVal")
+                    if (showSkinTemp) lines.add("SKN  $skinTempVal")
+                    if (showWatt) lines.add("PWR  $wVal")
+                    if (showGpu) lines.add("GPU  $gpuVal")
+                    if (showVram) lines.add("VRM  $vramVal")
+                    if (showCpuFreq) lines.add("CLK  $cpuFreqVal")
+                    if (showRam) lines.add("RAM  $ramVal")
+                    if (lines.isEmpty()) lines.add("FPS  $fpsVal")
+                }
                 lines.joinToString("\n")
             }
             else -> { // Horizontal Pill / Multi-line Wrap
                 val items = mutableListOf<String>()
                 if (PerfLogManager.isRecording) items.add("● REC")
-                if (showFps) items.add("$fpsVal FPS")
-                if (showBatTemp) items.add("Pin $batVal")
-                if (showSocTemp) items.add("SoC $socVal")
-                if (showCpuTemp) items.add("CPU $cpuTempVal")
-                if (showGpuTemp) items.add("GPU $gpuTempVal")
-                if (showDdrTemp) items.add("DDR $ddrTempVal")
-                if (showCamTemp) items.add("CAM $camTempVal")
-                if (showSkinTemp) items.add("SKN $skinTempVal")
-                if (showWatt) items.add(wVal)
-                if (showGpu) items.add("GPU $gpuVal")
-                if (showVram) items.add("VRAM $vramVal")
-                if (showCpuFreq) items.add(cpuFreqVal)
-                if (showRam) items.add("RAM $ramVal")
-                if (items.isEmpty()) items.add("$fpsVal FPS")
+                if (isConcise) {
+                    if (showFps) items.add(fpsVal)
+                    if (showWatt) items.add(wVal)
+                    if (showGpu) items.add(gpuVal)
+                    if (showVram) items.add(vramConciseVal)
+                    if (showCpuFreq) items.add(cpuFreqConciseVal)
+                    if (showBatTemp) items.add(batConcise)
+                    if (showSocTemp) items.add(socConcise)
+                    if (showCpuTemp) items.add(cpuTempConcise)
+                    if (showGpuTemp) items.add(gpuTempConcise)
+                    if (showDdrTemp) items.add(ddrTempConcise)
+                    if (showCamTemp) items.add(camTempConcise)
+                    if (showSkinTemp) items.add(skinTempConcise)
+                    if (showRam) items.add(ramConcise)
+                    if (items.isEmpty()) items.add(fpsVal)
+                } else {
+                    if (showFps) items.add("$fpsVal FPS")
+                    if (showBatTemp) items.add("Pin $batVal")
+                    if (showSocTemp) items.add("SoC $socVal")
+                    if (showCpuTemp) items.add("CPU $cpuTempVal")
+                    if (showGpuTemp) items.add("GPU $gpuTempVal")
+                    if (showDdrTemp) items.add("DDR $ddrTempVal")
+                    if (showCamTemp) items.add("CAM $camTempVal")
+                    if (showSkinTemp) items.add("SKN $skinTempVal")
+                    if (showWatt) items.add(wVal)
+                    if (showGpu) items.add("GPU $gpuVal")
+                    if (showVram) items.add("VRAM $vramVal")
+                    if (showCpuFreq) items.add(cpuFreqVal)
+                    if (showRam) items.add("RAM $ramVal")
+                    if (items.isEmpty()) items.add("$fpsVal FPS")
+                }
 
+                val separator = if (isConcise) " · " else "  |  "
                 if (isLandscapeMode(config)) {
                     // Landscape: Bung het thanh 1 hang ngang duy nhat!
-                    items.joinToString("  |  ")
+                    items.joinToString(separator)
                 } else {
                     // Portrait: Tu dong xuong dong, can deu le trai
-                    if (items.size <= 3) {
-                        items.joinToString("  |  ")
+                    val perRow = if (isConcise) 4 else 3
+                    if (items.size <= perRow) {
+                        items.joinToString(separator)
                     } else {
-                        items.chunked(3).joinToString("\n") { row -> row.joinToString("  |  ") }
+                        items.chunked(perRow).joinToString("\n") { row -> row.joinToString(separator) }
                     }
                 }
             }

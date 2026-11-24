@@ -56,6 +56,10 @@ class PrefsManager(context: Context) {
         get() = prefs.getBoolean("overlay_vertical", false)
         set(value) = prefs.edit().putBoolean("overlay_vertical", value).apply()
 
+    var hudHideLabels: Boolean
+        get() = prefs.getBoolean("hud_hide_labels", false)
+        set(value) = prefs.edit().putBoolean("hud_hide_labels", value).apply()
+
     var appLang: Int
         get() = prefs.getInt("app_lang", 0)
         set(value) = prefs.edit().putInt("app_lang", value).apply()

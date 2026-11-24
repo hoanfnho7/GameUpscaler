@@ -181,6 +181,7 @@ fun HudSettingsScreen(
                     lang = lang,
                     onLayoutChange = { viewModel.setLayoutPreset(it, context) },
                     onScaleChange = { viewModel.setScale(it, context) },
+                    onHideLabelsChange = { viewModel.setHideLabels(it, context) },
                     onOpacityChange = { viewModel.setOpacity(it, context) },
                     onColorChange = { viewModel.setColorAccent(it, context) },
                     onPollingRateChange = { viewModel.setPollingRate(it, context) }
@@ -288,40 +289,53 @@ private fun LiveHudPreviewCanvas(
                 val pillBg = Color(0xFF0C0E11).copy(alpha = bgAlpha)
                 val pillBorder = accentColor.copy(alpha = 0.4f)
 
+                val isConcise = uiState.hideLabels || uiState.scaleLevel <= 0.75f
+                val separator = if (isConcise) "·" else "|"
+
                 Box(
                     modifier = Modifier
                         .graphicsLayer(
-                            scaleX = uiState.scaleLevel.coerceIn(0.5f, 1.3f),
-                            scaleY = uiState.scaleLevel.coerceIn(0.5f, 1.3f)
+                            scaleX = uiState.scaleLevel.coerceIn(0.4f, 1.4f),
+                            scaleY = uiState.scaleLevel.coerceIn(0.4f, 1.4f)
                         )
                         .clip(RoundedCornerShape(12.dp))
                         .background(pillBg)
                         .border(1.dp, pillBorder, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .padding(horizontal = 10.dp, vertical = if (isConcise) 4.dp else 6.dp)
                 ) {
                     if (uiState.layoutPreset == HudLayoutPreset.HORIZONTAL) {
-                        // Horizontal layout: Tokens wrap cleanly in rows of up to 3 items
                         val items = mutableListOf<String>()
-                        if (uiState.metricsMap["m_fps"] != false) items.add("59.8 FPS")
-                        if (uiState.metricsMap["m_bat_temp"] != false) items.add("Pin 36.2°C")
-                        if (uiState.metricsMap["m_soc_temp"] != false) items.add("SoC 41.5°C")
-                        if (uiState.metricsMap["m_watt"] != false) items.add("4.8W")
-                        if (uiState.metricsMap["m_gpu"] != false) items.add("GPU 65%")
-                        if (uiState.metricsMap["m_ram"] != false) items.add("RAM 4.2G")
-                        if (items.isEmpty()) items.add("59.8 FPS")
+                        if (isConcise) {
+                            if (uiState.metricsMap["m_fps"] != false) items.add("59.8")
+                            if (uiState.metricsMap["m_watt"] != false) items.add("4.8W")
+                            if (uiState.metricsMap["m_gpu"] != false) items.add("65%")
+                            if (uiState.metricsMap["m_ram"] != false) items.add("4.2G")
+                            if (uiState.metricsMap["m_bat_temp"] != false) items.add("36°")
+                            if (uiState.metricsMap["m_soc_temp"] != false) items.add("42°")
+                            if (items.isEmpty()) items.add("59.8")
+                        } else {
+                            if (uiState.metricsMap["m_fps"] != false) items.add("59.8 FPS")
+                            if (uiState.metricsMap["m_bat_temp"] != false) items.add("Pin 36.2°C")
+                            if (uiState.metricsMap["m_soc_temp"] != false) items.add("SoC 41.5°C")
+                            if (uiState.metricsMap["m_watt"] != false) items.add("4.8W")
+                            if (uiState.metricsMap["m_gpu"] != false) items.add("GPU 65%")
+                            if (uiState.metricsMap["m_ram"] != false) items.add("RAM 4.2G")
+                            if (items.isEmpty()) items.add("59.8 FPS")
+                        }
 
                         Column(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             horizontalAlignment = Alignment.Start
                         ) {
-                            items.chunked(3).forEach { rowItems ->
+                            val perRow = if (isConcise) 4 else 3
+                            items.chunked(perRow).forEach { rowItems ->
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     rowItems.forEachIndexed { i, text ->
                                         if (i > 0) {
-                                            Text("|", style = MaterialTheme.typography.labelSmall, color = Color(0x55FFFFFF))
+                                            Text(separator, style = MaterialTheme.typography.labelSmall, color = Color(0x55FFFFFF))
                                         }
                                         Text(
                                             text = text,
@@ -370,6 +384,7 @@ private fun HudAppearanceCard(
     lang: String,
     onLayoutChange: (HudLayoutPreset) -> Unit,
     onScaleChange: (Float) -> Unit,
+    onHideLabelsChange: (Boolean) -> Unit,
     onOpacityChange: (Int) -> Unit,
     onColorChange: (Int) -> Unit,
     onPollingRateChange: (PollingRatePreset) -> Unit
@@ -472,7 +487,7 @@ private fun HudAppearanceCard(
                 }
             }
 
-            // Slider: Kích thước HUD (0.5x - 1.5x)
+            // Slider: Kích thước HUD (0.4x - 1.5x)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -494,7 +509,7 @@ private fun HudAppearanceCard(
                 Slider(
                     value = uiState.scaleLevel,
                     onValueChange = onScaleChange,
-                    valueRange = 0.5f..1.5f,
+                    valueRange = 0.4f..1.5f,
                     colors = SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.primary,
                         activeTrackColor = MaterialTheme.colorScheme.primary,
@@ -505,11 +520,47 @@ private fun HudAppearanceCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("0.5x", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("0.4x", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("0.7x", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("1.0x", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("1.5x", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+
+            // Switch: Chế độ siêu gọn (Chỉ hiện thông số, bỏ nhãn)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .clickable { onHideLabelsChange(!uiState.hideLabels) }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                    Text(
+                        text = if (lang == "VI") "Chế độ siêu gọn (Ẩn nhãn chữ)" else "Ultra-compact (Hide labels)",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        text = if (lang == "VI") "Rút gọn: 120.0 · 5.4W · 85% · 36° · 4.2G" else "Compact: 120.0 · 5.4W · 85% · 36° · 4.2G",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = uiState.hideLabels,
+                    onCheckedChange = onHideLabelsChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
             }
 
             // Slider: Độ mờ nền (0% - 100%)

@@ -58,7 +58,8 @@ data class HudSettingsUiState(
     ),
     val thermalSensors: List<Pair<String, Float>> = emptyList(),
     val isThermalDialogOpen: Boolean = false,
-    val isQsTileDialogOpen: Boolean = false
+    val isQsTileDialogOpen: Boolean = false,
+    val hideLabels: Boolean = false
 )
 
 class HudSettingsViewModel : ViewModel() {
@@ -112,6 +113,7 @@ class HudSettingsViewModel : ViewModel() {
                 isHudActive = FpsOverlayService.isServiceRunning,
                 layoutPreset = layout,
                 scaleLevel = scaleVal,
+                hideLabels = p.hudHideLabels,
                 bgOpacity = opacityVal,
                 colorAccentIdx = p.hudColorAccent,
                 pollingRate = poll,
@@ -169,14 +171,20 @@ class HudSettingsViewModel : ViewModel() {
 
     fun setScale(scale: Float, context: Context) {
         val level = when {
-            scale <= 0.6f -> 0
-            scale <= 0.85f -> 1
-            scale <= 1.15f -> 2
-            scale <= 1.35f -> 3
+            scale <= 0.55f -> 0
+            scale <= 0.75f -> 1
+            scale <= 1.05f -> 2
+            scale <= 1.25f -> 3
             else -> 4
         }
         prefsMgr?.overlaySizeLevel = level
         _uiState.update { it.copy(scaleLevel = scale) }
+        notifyStyleChanged(context)
+    }
+
+    fun setHideLabels(enabled: Boolean, context: Context) {
+        prefsMgr?.hudHideLabels = enabled
+        _uiState.update { it.copy(hideLabels = enabled) }
         notifyStyleChanged(context)
     }
 
