@@ -5,103 +5,135 @@
 </p>
 
 <p align="center">
-  <b>Tăng độ nét game (SSAA 1.10x – 1.25x) & Thanh đo thông số phần cứng thời gian thực (FPS, Watt, Nhiệt độ) qua Shizuku</b><br />
-  <i>Hoàn toàn miễn phí • Mã nguồn mở 100% • Không cần Root • Không quảng cáo</i>
+  <b>Tăng độ nét game (SSAA 1.10x – 1.25x) & Thanh đo thông số phần cứng thời gian thực (FPS, Watt, Nhiệt độ, GPU Load) qua Shizuku</b><br />
+  <i>Giao diện Jetpack Compose (Material 3) • Hoàn toàn miễn phí • Mã nguồn mở 100% • Không cần Root • Không quảng cáo</i>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Android-8.0%20%E2%80%93%2017-blue.svg?style=flat-square" alt="Android" />
-  <img src="https://img.shields.io/badge/Root-Not%20Required-success.svg?style=flat-square" alt="No Root" />
-  <img src="https://img.shields.io/badge/Powered%20By-Shizuku-green.svg?style=flat-square" alt="Shizuku" />
-  <img src="https://img.shields.io/badge/License-MIT-orange.svg?style=flat-square" alt="MIT License" />
+  <a href="https://github.com/hoanfnho7/GameUpscaler/releases/latest">
+    <img src="https://img.shields.io/github/v/release/hoanfnho7/GameUpscaler?style=for-the-badge&color=00E676&label=Latest%20Release" alt="Latest Release" />
+  </a>
+  <img src="https://img.shields.io/badge/Android-8.0%20%E2%80%93%2015%2B-blue.svg?style=for-the-badge" alt="Android" />
+  <img src="https://img.shields.io/badge/Root-Not%20Required-success.svg?style=for-the-badge" alt="No Root" />
+  <img src="https://img.shields.io/badge/Powered%20By-Shizuku-green.svg?style=for-the-badge" alt="Shizuku" />
+  <img src="https://img.shields.io/badge/License-MIT-orange.svg?style=for-the-badge" alt="MIT License" />
 </p>
+
+---
+
+## 📸 Ảnh chụp giao diện thực tế (Screenshots)
+
+<div align="center">
+
+| 📊 Trang chủ (Tổng quan) | ⚡ Kho game & SSAA | 🎛️ Tùy biến thanh đo HUD |
+| :---: | :---: | :---: |
+| <img src="screenshots/trang-chu.jpg" width="260" alt="Trang chủ" /> | <img src="screenshots/kho-game-upscale.jpg" width="260" alt="Kho Game & SSAA" /> | <img src="screenshots/config-thanh-do.jpg" width="260" alt="Cấu hình HUD" /> |
+
+| 🎮 Thanh đo HUD ingame | 📲 Phím tắt Control Center | 📈 Biểu đồ hiệu năng (Log) |
+| :---: | :---: | :---: |
+| <img src="screenshots/thanh-do.jpg" width="260" alt="Thanh đo thực tế" /> | <img src="screenshots/phim-tat.jpg" width="260" alt="Phím tắt Control Center" /> | <img src="screenshots/luu-log.jpg" width="260" alt="Biểu đồ hiệu năng" /> |
+
+</div>
 
 ---
 
 ## 🇻🇳 Tiếng Việt
 
-**GameUpscaler Pro** là công cụ tối ưu trải nghiệm chơi game trên Android, ứng dụng kỹ thuật **Super-Sampling Anti-Aliasing (SSAA)** qua **Shizuku** để nâng độ phân giải render ảo (1.10x – 1.25x). Nhờ đó, hình ảnh trong game trở nên sắc nét hơn rõ rệt, triệt tiêu răng cưa viền 3D mà vẫn giữ nguyên tỉ lệ cảm ứng chính xác. Ngoài ra, ứng dụng tích hợp thanh đo phần cứng nổi (HUD Telemetry) giúp bạn theo dõi FPS thực tế, công suất xả pin (Watt) và nhiệt độ từng linh kiện trong lúc combat.
+**GameUpscaler Pro** là công cụ tối ưu hóa trải nghiệm chơi game chuyên nghiệp trên Android. Ứng dụng tích hợp công nghệ **Super-Sampling Anti-Aliasing (SSAA)** can thiệp qua **Shizuku API** để nâng độ phân giải render ảo (1.10x – 1.25x), giúp hình ảnh trong game mịn màng, triệt tiêu viền răng cưa 3D mà vẫn giữ nguyên tỉ lệ cảm ứng chính xác 100%.
 
-### 📱 Giao diện 3 Tab Hiện đại
+Bên cạnh đó, ứng dụng trang bị **Thanh đo phần cứng nổi (Floating HUD Telemetry)** thời gian thực và hệ thống **Biểu đồ ghi log hiệu năng (Performance Analytics)** chuẩn xác, không làm tụt xung hay ảnh hưởng hiệu năng chơi game.
 
-1. **📊 Tab 1: Giám sát hệ thống (System Monitor)**
-   - Theo dõi nhanh trạng thái kết nối Shizuku (có nút mở nhanh Shizuku nếu chưa bật).
-   - Thanh hiển thị dung lượng RAM đang dùng / còn trống trực quan.
-   - Theo dõi nhiệt độ Pin, mức % pin, công suất sạc/xả tức thời (Watt).
-   - Kiểm tra nhiệt độ SoC đỉnh và xung nhịp CPU.
-   - Nút **Khôi phục màn hình gốc (Reset)** tức thì bất cứ lúc nào.
-   - Dải game yêu thích mở nhanh (Pinned Games).
+### 🌟 Điểm nổi bật ở phiên bản mới
 
-2. **⚡ Tab 2: Chọn độ phân giải (SSAA Upscaler & Kho Game)**
-   - Hướng dẫn trực quan cơ chế SSAA cho người mới.
-   - Thẻ so sánh độ phân giải thực tế: Gốc ➔ Sau khi kích hoạt.
-   - 4 mức chọn độ nét định sẵn:
-     - **1.10x**: Nhẹ nhàng, rất mát máy, siêu tiết kiệm pin.
-     - **1.15x (Khuyên dùng)**: Cân bằng hoàn hảo giữa độ nét đồ họa và FPS mượt mà.
-     - **1.20x**: Sắc nét cao cho máy tầm trung khá trở lên.
-     - **1.25x**: Khử răng cưa tối đa cho máy flagship.
-   - Tự động hoàn tác về độ phân giải gốc ngay khi bạn thoát game.
-   - Tìm kiếm, quản lý game, ghim game yêu thích (`⭐`), đặt mức nét riêng cho từng game, và nhấn giữ để tạo lối tắt mở nhanh ngoài màn hình chính.
-
-3. **🎛️ Tab 3: Tinh chỉnh thanh đo HUD (HUD Overlay Tuning)**
-   - Khung giả lập xem trước thanh đo thực tế (Live Preview).
-   - Nút bật thử nghiệm trực tiếp thanh đo nổi trên màn hình.
-   - Tùy chỉnh hướng hiển thị: **Ngang 1 dòng** hoặc **Cột dọc**.
-   - 4 kích cỡ chữ: **Siêu gọn**, **Nhỏ**, **Vừa**, **To**.
-   - 4 độ trong suốt: **Nền đậm**, **Kính mờ**, **Siêu trong**, **Chỉ chữ**.
-   - Tùy chỉnh nhịp quét cảm biến (150ms, 300ms, 1s, Auto).
-   - 12 thông số phần cứng tùy chọn bật/tắt (FPS 0.1, Công suất Watt, VRAM đồ họa, Nhiệt độ Pin, SoC, CPU, GPU, RAM, Vỏ máy...).
+- **Giao diện Jetpack Compose (Material 3)**: Hiện đại, mượt mà, hỗ trợ chuyển đổi Light/Dark mode đồng bộ, đa ngôn ngữ (Tiếng Việt & English).
+- **Tăng độ nét SSAA tự động**: Tự nhận diện game, áp tỷ lệ tăng nét theo từng game và tự động khôi phục độ phân giải gốc ngay khi đóng game.
+- **Thanh đo HUD phân tầng (Layered Telemetry)**:
+  - **Nhịp nhanh (150ms – 300ms)**: FPS SurfaceFlinger & DRM node (chính xác 0.1), Công suất xả/sạc pin tức thời (Watt), Mức tải GPU thực tế qua node sysfs (`/sys/class/kgsl/...`).
+  - **Nhịp 1 giây (1000ms)**: Đồng bộ nhiệt độ từ các cụm cảm biến SoC, CPU (nhân Prime, Titanium, Gold, Oryon...), GPU, Pin, RAM DDR, Camera, Vỏ máy (Skin).
+  - **Nhịp 3 giây (3000ms)**: Bộ nhớ VRAM đồ họa (`dumpsys gpu`), RAM hệ thống và dò tự động game đang hiển thị.
+- **Tùy biến hiển thị thông minh**:
+  - Dạng ngang tự động bung 1 dòng trên màn hình xoay ngang (Landscape), tự động xuống dòng đều lề trái ở màn hình dọc (Portrait).
+  - Hỗ trợ Display Cutout (Short Edges) tràn viền không bị giới hạn camera nốt ruồi / tai thỏ.
+  - Tùy chỉnh tỷ lệ kích thước (Scale), độ mờ nền kính (Glassmorphism), cảnh báo màu theo ngưỡng nhiệt.
+- **Phím tắt Control Center (Quick Settings Tile)**: Bật/tắt thanh đo HUD nhanh từ thanh cài đặt nhanh của Android mà không cần mở ứng dụng.
+- **Ghi log & Biểu đồ hiệu năng**: Chạm nút ● REC trên HUD để lưu lại thông số cả trận, hiển thị biểu đồ FPS, 1% Low, mức tiêu thụ điện năng (mWh).
 
 ---
 
-### 🚀 Hướng dẫn cài đặt & Sử dụng (Dành cho người mới)
+### 📱 Các màn hình chính trong ứng dụng
 
-Chỉ cần 3 bước cực kỳ đơn giản:
+1. **📊 Trang chủ (System Monitor)**:
+   - Trạng thái kết nối Shizuku và độ phân giải / mật độ điểm ảnh (density) màn hình gốc.
+   - Dung lượng RAM đang dùng và RAM khả dụng.
+   - Trạng thái Pin, mức tiêu thụ điện năng tức thời (Watt), nhiệt độ Pin và nhiệt độ SoC.
+   - Nút **Khôi phục màn hình gốc (Reset)** tức thì bất cứ lúc nào.
+   - Danh sách game đã ghim để mở nhanh.
 
-#### Bước 1: Kích hoạt Shizuku
+2. **⚡ Kho Game & Khử răng cưa (SSAA Upscaler)**:
+   - Cài đặt tỷ lệ khử răng cưa mặc định:
+     - **1.10x**: Mát máy, nhẹ nhàng, siêu tiết kiệm pin.
+     - **1.15x (Khuyên dùng)**: Cân bằng lý tưởng giữa độ nét đồ họa và FPS mượt mà.
+     - **1.20x**: Hình ảnh sắc nét cao cho các dòng máy tầm trung khá trở lên.
+     - **1.25x**: Khử răng cưa tối đa cho các dòng máy Flagship.
+   - Quản lý danh sách game, tìm kiếm, ghim yêu thích (`⭐`), cấu hình tỷ lệ riêng cho từng game.
+   - Khởi chạy game với SSAA và tự động hoàn tác về màn hình gốc khi thoát game.
+
+3. **🎛️ Thanh trạng thái (HUD Overlay Settings)**:
+   - Live Preview giả lập hiển thị thực tế theo từng tùy chỉnh.
+   - Chọn Preset bố cục: **Ngang**, **Cột dọc**, **Mini Dot**.
+   - Điều chỉnh độ mờ nền kính (Đậm, Kính mờ, Trong suốt, Chỉ chữ).
+   - Thanh trượt kích thước HUD (Scale) & công tắc ẩn nhãn (chỉ hiện số siêu gọn).
+   - Bật/tắt tự do 13 loại thông số phần cứng theo nhu cầu.
+
+4. **📈 Phân tích hiệu năng (Performance Analytics)**:
+   - Danh sách các phiên ghi nhận hiệu năng (Session logs).
+   - Biểu đồ thời gian thực: FPS, Công suất (W), Nhiệt độ Pin & SoC, Mức tải GPU/VRAM.
+   - Đo lường chỉ số chuẩn eSports: FPS trung bình, FPS tối đa/tối thiểu, 1% Low FPS.
+
+---
+
+### 🚀 Hướng dẫn cài đặt & Kích hoạt Shizuku
+
 1. Cài đặt app **[Shizuku](https://shizuku.rikka.app)** từ Google Play hoặc GitHub.
-2. Mở Shizuku và kích hoạt qua **Ghép nối không dây (Wireless Debugging)** hoặc cắm máy tính gõ 1 lệnh ADB (không cần Root).
-> 💡 *Mẹo cho máy Xiaomi / Vivo / iQOO / Oppo:* Trong Tùy chọn nhà phát triển, nhớ bật thêm mục **Gỡ lỗi không dây (Cài đặt bảo mật)** để Shizuku có quyền điều chỉnh màn hình.
-
-#### Bước 2: Cấp quyền cửa sổ nổi (Overlay)
-- Mở **GameUpscaler Pro**, nếu bạn muốn dùng thanh đo FPS thì cấp quyền **Hiển thị trên ứng dụng khác** khi được hỏi.
-
-#### Bước 3: Vào game và tận hưởng
-- Chuyển sang Tab **⚡ Độ phân giải**, chọn mức nét mong muốn (khuyên dùng `1.15x`).
-- Chạm vào game muốn chơi trong danh sách để khởi chạy!
-- Khi vào game, thanh đo HUD sẽ tự động xuất hiện. Khi chơi xong thoát game, màn hình sẽ **tự động trở về độ phân giải gốc**.
+2. Mở Shizuku và kích hoạt qua **Ghép nối không dây (Wireless Debugging)** hoặc cắm máy tính chạy lệnh ADB (không cần Root).
+   > 💡 *Lưu ý cho Xiaomi/HyperOS, Vivo/iQOO, Oppo/Realme:* Hãy bật thêm mục **Gỡ lỗi không dây (Cài đặt bảo mật)** trong Tùy chọn nhà phát triển để Shizuku có quyền chỉnh kích thước màn hình.
+3. Mở **GameUpscaler Pro**, cấp quyền **Hiển thị trên ứng dụng khác (Overlay)** để sử dụng thanh đo HUD.
+4. Chọn mức SSAA mong muốn (khuyên dùng `1.15x`), chọn game và bắt đầu trải nghiệm!
 
 ---
 
 ## 🇺🇸 English
 
-**GameUpscaler Pro** is a modern, lightweight Android utility designed to sharpen 3D game visuals (**SSAA 1.10x – 1.25x**) and display an in-game **Hardware Telemetry HUD** (FPS, Power Draw, Temperatures, VRAM) via **Shizuku**. Works seamlessly on **Android 8.0 – 17** across all device brands without requiring Root.
+**GameUpscaler Pro** is a modern, open-source Android optimization tool built with **Jetpack Compose (Material 3)**. It harnesses **Super-Sampling Anti-Aliasing (SSAA)** through **Shizuku API** to render 3D games at higher internal resolutions (1.10x – 1.25x), eliminating jagged edges while perfectly preserving native touch mapping.
 
-### ✨ Highlights & Architecture
+In addition, it features an advanced in-game **Hardware Telemetry Floating HUD** and full **Performance Analytics** with interactive charts.
 
-- **100% Free Forever:** Zero ads, zero background tracking, no subscriptions.
-- **SSAA Resolution Upscaler:** Smooths jagged edges and elevates rendering sharpness while maintaining touch calibration. Automatically restores native resolution upon exit.
-- **3-Tab Modern Material UI:**
-  - **📊 System Monitor:** At-a-glance telemetry (RAM usage, battery discharge Wattage, cell temperature, SoC peaks, quick reset).
-  - **⚡ Upscaler & Library:** 4 resolution presets (1.10x – 1.25x), per-game custom scales, favorite pinning, and Home Screen shortcuts.
-  - **🎛️ HUD Setup:** Live in-app preview, customizable horizontal/vertical layouts, 4 sizing scales, 4 transparency styles, and 12 hardware sensors.
-- **Performance Logging:** Tap the floating HUD during gameplay to record real-time FPS and Wattage curves, then view interactive graphs in **Perf Insights**.
-- **Control Center Quick Tile:** Toggle the telemetry HUD anytime directly from Quick Settings (`FPS HUD`).
+### ✨ Key Features
+
+- **100% Free & Open Source**: No ads, no analytics trackers, no root required.
+- **Full Material 3 Jetpack Compose UI**: Seamless Light/Dark theme switching, multi-language support (Vietnamese & English).
+- **SSAA Resolution Upscaler**:
+  - 4 presets (1.10x, 1.15x Recommended, 1.20x, 1.25x) or custom scaling.
+  - Automatically reverts to native screen dimensions upon exiting the game.
+  - Per-game custom profiles and game library manager.
+- **Layered Hardware Telemetry HUD**:
+  - **Fast Polling (150ms – 300ms)**: Real-time 0.1 precise FPS (SurfaceFlinger & DRM node), instant power wattage (W), real GPU core utilization via sysfs.
+  - **1s Cadence (1000ms)**: Temperature tracking across CPU cores (including Prime/Titanium/Gold/Oryon clusters), GPU, SoC, Battery, DDR, Camera, and Skin.
+  - **3s Cadence (3000ms)**: VRAM buffer, system RAM usage, and foreground app tracking.
+- **Adaptive Layout Engine**:
+  - Single-line horizontal layout in Landscape mode; neat left-aligned multi-row wrap in Portrait mode.
+  - Cutout short edges support ensuring edge-to-edge drawing across camera punch-holes.
+- **Control Center Quick Settings Tile**: One-tap toggle for the HUD directly from Android's status bar.
+- **In-Game Session Recorder & Charting**: Tap ● REC on HUD to log gameplay telemetry and view FPS stability curves, 1% Low FPS, and energy metrics.
 
 ---
 
-### 🛠️ Quick Setup Guide
+### 📥 Download & Installation
 
-1. Install and activate **[Shizuku](https://shizuku.rikka.app)** on your phone.
-2. Download the latest `app-release.apk` from the **Releases** tab.
-3. Open **GameUpscaler Pro**, choose your SSAA factor (`1.15x` recommended), tap your game to launch, and enjoy!
-
----
-
-### 🧹 Repo Maintenance (For Maintainer)
-
-- **Clean Old Releases:** If GitHub Actions generated redundant release tags, go to the **Actions** tab ➔ select **Clean Old Releases** ➔ click **Run workflow** to automatically wipe old tags and keep only the latest release.
-- **Normal Commits:** Regular code pushes now build APK artifacts for testing without flooding GitHub Releases. Official releases are generated on version tags (`v*`) or manual trigger.
+1. Grab the latest APK from the **[Releases](https://github.com/hoanfnho7/GameUpscaler/releases)** page.
+2. Ensure **[Shizuku](https://shizuku.rikka.app)** is running on your device (via Wireless Debugging or ADB).
+3. Grant **Draw over other apps** (Overlay permission) when prompted.
+4. Launch your game via GameUpscaler Pro with your preferred SSAA factor!
 
 ---
 
