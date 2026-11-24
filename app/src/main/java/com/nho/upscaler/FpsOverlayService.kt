@@ -1149,8 +1149,9 @@ class FpsOverlayService : Service() {
 
                         // Subtle divider right under FPS
                         if (idxEntry == 0 && entries.size > 1) {
+                            val conciseDivW = UiTheme.dp(this, intArrayOf(28, 34, 40, 48, 56)[sizeLevel.coerceIn(0, 4)])
                             val div = View(this).apply {
-                                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
+                                val lp = LinearLayout.LayoutParams(conciseDivW, 1)
                                 lp.topMargin = UiTheme.dp(this@FpsOverlayService, 3)
                                 lp.bottomMargin = UiTheme.dp(this@FpsOverlayService, 1)
                                 layoutParams = lp
@@ -1160,12 +1161,16 @@ class FpsOverlayService : Service() {
                         }
                     }
                 } else {
-                    // Variant 2A: Labeled Vertical Card with Header + Divider + Left/Right aligned rows
+                    // Variant 2A: Labeled Vertical Card with compact fixed content width (matches mockup w-44, never stretches full-screen)
+                    val cardContentWidthPx = UiTheme.dp(
+                        this,
+                        intArrayOf(86, 102, 118, 136, 156)[sizeLevel.coerceIn(0, 4)]
+                    )
                     val headerRow = LinearLayout(this).apply {
                         orientation = LinearLayout.HORIZONTAL
                         gravity = Gravity.CENTER_VERTICAL
                         layoutParams = LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            cardContentWidthPx,
                             ViewGroup.LayoutParams.WRAP_CONTENT
                         )
                     }
@@ -1191,7 +1196,7 @@ class FpsOverlayService : Service() {
                     ).apply {
                         val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                         lp.marginStart = UiTheme.dp(this@FpsOverlayService, 5)
-                        lp.marginEnd = UiTheme.dp(this@FpsOverlayService, 8)
+                        lp.marginEnd = UiTheme.dp(this@FpsOverlayService, 6)
                         layoutParams = lp
                     }
                     headerRow.addView(headerTv)
@@ -1200,7 +1205,7 @@ class FpsOverlayService : Service() {
 
                     // Hairline divider
                     val divider = View(this).apply {
-                        val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
+                        val lp = LinearLayout.LayoutParams(cardContentWidthPx, 1)
                         lp.topMargin = UiTheme.dp(this@FpsOverlayService, 4)
                         lp.bottomMargin = UiTheme.dp(this@FpsOverlayService, 4)
                         layoutParams = lp
@@ -1208,13 +1213,13 @@ class FpsOverlayService : Service() {
                     }
                     root.addView(divider)
 
-                    val colGapPx = UiTheme.dp(this, 10)
+                    val colGapPx = UiTheme.dp(this, 6)
                     entries.forEachIndexed { idxEntry, entry ->
                         val row = LinearLayout(this).apply {
                             orientation = LinearLayout.HORIZONTAL
                             gravity = Gravity.CENTER_VERTICAL
                             val lp = LinearLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                cardContentWidthPx,
                                 ViewGroup.LayoutParams.WRAP_CONTENT
                             )
                             if (idxEntry > 0) lp.topMargin = rowGapPx
