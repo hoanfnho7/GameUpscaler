@@ -312,7 +312,7 @@ private fun LiveHudPreviewCanvas(
 
                         Column(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.Start
                         ) {
                             items.chunked(3).forEach { rowItems ->
                                 Row(

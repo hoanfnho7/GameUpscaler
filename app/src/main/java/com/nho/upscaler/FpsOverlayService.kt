@@ -167,16 +167,20 @@ class FpsOverlayService : Service() {
         }
     }
 
-    private fun isLandscapeMode(): Boolean {
-        return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    private fun isLandscapeMode(config: Configuration? = null): Boolean {
+        val conf = config ?: resources.configuration
+        return conf.orientation == Configuration.ORIENTATION_LANDSCAPE
     }
 
-    private fun applyPositionForCurrentOrientation() {
+    private fun applyPositionForCurrentOrientation(config: Configuration? = null) {
         val params = overlayParams ?: return
         val dm = resources.displayMetrics
-        val (rawX, rawY) = prefsMgr.getHudPosition(isLandscapeMode())
+        val isLand = isLandscapeMode(config)
+        val (rawX, rawY) = prefsMgr.getHudPosition(isLand)
         val maxX = (dm.widthPixels - 80).coerceAtLeast(8)
         val maxY = (dm.heightPixels - 60).coerceAtLeast(4)
+        params.width = WindowManager.LayoutParams.WRAP_CONTENT
+        params.height = WindowManager.LayoutParams.WRAP_CONTENT
         params.x = rawX.coerceIn(4, maxX)
         params.y = rawY.coerceIn(2, maxY)
     }
@@ -185,9 +189,10 @@ class FpsOverlayService : Service() {
         super.onConfigurationChanged(newConfig)
         if (overlayView != null && overlayParams != null) {
             lastRenderedText = ""
-            applyOverlayStyle()
-            applyPositionForCurrentOrientation()
-            renderTelemetryText()
+            applyOverlayStyle(newConfig)
+            applyPositionForCurrentOrientation(newConfig)
+            renderTelemetryText(newConfig)
+            overlayView?.requestLayout()
             try {
                 windowManager?.updateViewLayout(overlayView, overlayParams)
             } catch (_: Exception) {}
@@ -529,9 +534,9 @@ class FpsOverlayService : Service() {
         }
     }
 
-    private fun applyOverlayStyle() {
+    private fun applyOverlayStyle(config: Configuration? = null) {
         val tv = overlayView ?: return
-        val isLand = isLandscapeMode()
+        val isLand = isLandscapeMode(config)
         val idx = sizeLevel.coerceIn(0, 4)
         val bIdx = bgMode.coerceIn(0, 3)
         val layoutMode = prefsMgr.hudLayoutMode // 0: Horizontal, 1: Compact 2x2, 2: Mini Dot
@@ -564,21 +569,22 @@ class FpsOverlayService : Service() {
                 tv.setPadding(padH[idx], padV[idx] + 3, padH[idx], padV[idx] + 3)
                 tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 14f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
             }
-            else -> { // Horizontal Pill / Wrapped rows
-                val isLand = isLandscapeMode()
+            else -> { // Horizontal Mode
                 val dm = resources.displayMetrics
                 if (isLand) {
-                    tv.isSingleLine = false
-                    tv.maxLines = 3
-                    tv.maxWidth = (dm.widthPixels - 40).coerceAtLeast(300)
+                    // Landscape: Bung het thanh 1 hang ngang duy nhat!
+                    tv.isSingleLine = true
+                    tv.maxLines = 1
+                    tv.maxWidth = (dm.widthPixels - 32).coerceAtLeast(600)
                     tv.gravity = Gravity.CENTER_VERTICAL
                     tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
-                    tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 12f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
+                    tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 999f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
                 } else {
+                    // Portrait: Tu dong xuong dong, can deu le trai (Gravity.START)
                     tv.isSingleLine = false
                     tv.maxLines = 6
                     tv.maxWidth = (dm.widthPixels - 32).coerceAtLeast(200)
-                    tv.gravity = Gravity.CENTER
+                    tv.gravity = Gravity.START or Gravity.CENTER_VERTICAL
                     tv.setPadding(padH[idx], padV[idx] + 2, padH[idx], padV[idx] + 2)
                     tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 12f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
                 }
@@ -592,7 +598,7 @@ class FpsOverlayService : Service() {
         }
     }
 
-    private fun renderTelemetryText() {
+    private fun renderTelemetryText(config: Configuration? = null) {
         val tv = overlayView ?: return
         val layoutMode = prefsMgr.hudLayoutMode
 
@@ -667,13 +673,11 @@ class FpsOverlayService : Service() {
                 if (showRam) items.add("RAM $ramVal")
                 if (items.isEmpty()) items.add("$fpsVal FPS")
 
-                if (isLandscapeMode()) {
-                    if (items.size <= 6) {
-                        items.joinToString("  |  ")
-                    } else {
-                        items.chunked(5).joinToString("\n") { row -> row.joinToString("  |  ") }
-                    }
+                if (isLandscapeMode(config)) {
+                    // Landscape: Bung het thanh 1 hang ngang duy nhat!
+                    items.joinToString("  |  ")
                 } else {
+                    // Portrait: Tu dong xuong dong, can deu le trai
                     if (items.size <= 3) {
                         items.joinToString("  |  ")
                     } else {
