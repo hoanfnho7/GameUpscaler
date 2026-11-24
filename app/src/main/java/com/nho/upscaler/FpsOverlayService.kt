@@ -208,32 +208,16 @@ class FpsOverlayService : Service() {
 
     private fun getScreenDimensions(config: Configuration? = null): Pair<Int, Int> {
         val wm = windowManager ?: getSystemService(Context.WINDOW_SERVICE) as? WindowManager
-        var rawW = 0
-        var rawH = 0
+        val dm = resources.displayMetrics
+        var rawW = dm.widthPixels
+        var rawH = dm.heightPixels
 
-        if (wm != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                try {
-                    val bounds = wm.currentWindowMetrics.bounds
-                    rawW = bounds.width()
-                    rawH = bounds.height()
-                } catch (_: Exception) {}
-            }
-            if (rawW <= 0 || rawH <= 0) {
-                try {
-                    val dm = DisplayMetrics()
-                    @Suppress("DEPRECATION")
-                    wm.defaultDisplay.getRealMetrics(dm)
-                    rawW = dm.widthPixels
-                    rawH = dm.heightPixels
-                } catch (_: Exception) {}
-            }
-        }
-
-        if (rawW <= 0 || rawH <= 0) {
-            val dm = resources.displayMetrics
-            rawW = dm.widthPixels
-            rawH = dm.heightPixels
+        if (wm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val bounds = wm.currentWindowMetrics.bounds
+                rawW = bounds.width()
+                rawH = bounds.height()
+            } catch (_: Exception) {}
         }
 
         val isLand = isLandscapeMode(config)
@@ -246,27 +230,38 @@ class FpsOverlayService : Service() {
         val tv = overlayView ?: return
         val params = overlayParams ?: return
         val (screenW, screenH) = getScreenDimensions(config)
+        val safeMargin = 32
 
-        val specW = View.MeasureSpec.makeMeasureSpec((screenW - 8).coerceAtLeast(100), View.MeasureSpec.AT_MOST)
-        val specH = View.MeasureSpec.makeMeasureSpec((screenH - 8).coerceAtLeast(100), View.MeasureSpec.AT_MOST)
+        val specW = View.MeasureSpec.makeMeasureSpec((screenW - safeMargin).coerceAtLeast(100), View.MeasureSpec.AT_MOST)
+        val specH = View.MeasureSpec.makeMeasureSpec((screenH - 16).coerceAtLeast(100), View.MeasureSpec.AT_MOST)
         tv.measure(specW, specH)
         val measuredW = tv.measuredWidth
         val measuredH = tv.measuredHeight
 
         var needsUpdate = false
 
-        if (params.x + measuredW > screenW - 8) {
-            val targetX = (screenW - measuredW - 12).coerceAtLeast(4)
-            if (params.x != targetX) {
-                params.x = targetX
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            if (params.layoutInDisplayCutoutMode != WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES) {
+                params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 needsUpdate = true
             }
         }
-        if (params.y + measuredH > screenH - 8) {
-            val targetY = (screenH - measuredH - 8).coerceAtLeast(2)
-            if (params.y != targetY) {
-                params.y = targetY
-                needsUpdate = true
+
+        // Only adjust params.x if using Gravity.START (custom position)
+        if ((params.gravity and Gravity.CENTER_HORIZONTAL) != Gravity.CENTER_HORIZONTAL) {
+            if (params.x + measuredW > screenW - 16) {
+                val targetX = (screenW - measuredW - 16).coerceAtLeast(4)
+                if (params.x != targetX) {
+                    params.x = targetX
+                    needsUpdate = true
+                }
+            }
+            if (params.y + measuredH > screenH - 8) {
+                val targetY = (screenH - measuredH - 8).coerceAtLeast(2)
+                if (params.y != targetY) {
+                    params.y = targetY
+                    needsUpdate = true
+                }
             }
         }
 
@@ -289,34 +284,38 @@ class FpsOverlayService : Service() {
         val params = overlayParams ?: return
         val isLand = isLandscapeMode(config)
         val (screenW, screenH) = getScreenDimensions(config)
-        val (rawX, rawY) = prefsMgr.getHudPosition(isLand)
 
-        val tv = overlayView
-        val specW = View.MeasureSpec.makeMeasureSpec(screenW, View.MeasureSpec.AT_MOST)
-        val specH = View.MeasureSpec.makeMeasureSpec(screenH, View.MeasureSpec.AT_MOST)
-        tv?.measure(specW, specH)
-        val viewW = tv?.measuredWidth?.takeIf { it > 0 } ?: (if (isLand) 400 else 200)
-        val viewH = tv?.measuredHeight?.takeIf { it > 0 } ?: 60
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
 
         val hasCustomLand = prefsMgr.hasCustomHudPosition(true)
-        val targetX = if (isLand && (!hasCustomLand || rawX <= 24)) {
-            ((screenW - viewW) / 2).coerceAtLeast(4)
+        if (isLand && !hasCustomLand) {
+            // Default auto-center in landscape:
+            params.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            params.x = 0
+            params.y = 4
+            params.width = WindowManager.LayoutParams.WRAP_CONTENT
+            params.height = WindowManager.LayoutParams.WRAP_CONTENT
         } else {
-            rawX
-        }
-        val targetY = if (isLand && (!hasCustomLand || rawY <= 6)) {
-            4
-        } else {
-            rawY
-        }
+            // Custom dragged or portrait:
+            params.gravity = Gravity.TOP or Gravity.START
+            val (rawX, rawY) = prefsMgr.getHudPosition(isLand)
+            val tv = overlayView
+            val specW = View.MeasureSpec.makeMeasureSpec(screenW, View.MeasureSpec.AT_MOST)
+            val specH = View.MeasureSpec.makeMeasureSpec(screenH, View.MeasureSpec.AT_MOST)
+            tv?.measure(specW, specH)
+            val viewW = tv?.measuredWidth?.takeIf { it > 0 } ?: (if (isLand) 400 else 200)
+            val viewH = tv?.measuredHeight?.takeIf { it > 0 } ?: 60
 
-        val maxX = (screenW - viewW - 8).coerceAtLeast(4)
-        val maxY = (screenH - viewH - 8).coerceAtLeast(2)
+            val maxX = (screenW - viewW - 16).coerceAtLeast(4)
+            val maxY = (screenH - viewH - 8).coerceAtLeast(2)
 
-        params.width = WindowManager.LayoutParams.WRAP_CONTENT
-        params.height = WindowManager.LayoutParams.WRAP_CONTENT
-        params.x = targetX.coerceIn(4, maxX)
-        params.y = targetY.coerceIn(2, maxY)
+            params.width = WindowManager.LayoutParams.WRAP_CONTENT
+            params.height = WindowManager.LayoutParams.WRAP_CONTENT
+            params.x = rawX.coerceIn(4, maxX)
+            params.y = rawY.coerceIn(2, maxY)
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -536,6 +535,9 @@ class FpsOverlayService : Service() {
             ).apply {
                 gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
                 y = 90
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
             }
             windowManager?.addView(closeTv, closeParams)
 
@@ -555,6 +557,9 @@ class FpsOverlayService : Service() {
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
             }
             overlayParams = params
             applyPositionForCurrentOrientation()
@@ -572,6 +577,16 @@ class FpsOverlayService : Service() {
                 override fun onTouch(v: View, event: MotionEvent): Boolean {
                     when (event.action) {
                         MotionEvent.ACTION_DOWN -> {
+                            if ((params.gravity and Gravity.CENTER_HORIZONTAL) == Gravity.CENTER_HORIZONTAL) {
+                                val loc = IntArray(2)
+                                v.getLocationOnScreen(loc)
+                                params.gravity = Gravity.TOP or Gravity.START
+                                params.x = loc[0]
+                                params.y = loc[1]
+                                try {
+                                    windowManager?.updateViewLayout(v, params)
+                                } catch (_: Exception) {}
+                            }
                             initialX = params.x
                             initialY = params.y
                             initialTouchX = event.rawX
@@ -647,8 +662,9 @@ class FpsOverlayService : Service() {
                                 val (screenW, screenH) = getScreenDimensions()
                                 val viewW = overlayView?.width ?: 0
                                 val viewH = overlayView?.height ?: 0
-                                val clampedX = params.x.coerceIn(4, (screenW - viewW - 8).coerceAtLeast(4))
+                                val clampedX = params.x.coerceIn(4, (screenW - viewW - 16).coerceAtLeast(4))
                                 val clampedY = params.y.coerceIn(2, (screenH - viewH - 8).coerceAtLeast(2))
+                                params.gravity = Gravity.TOP or Gravity.START
                                 params.x = clampedX
                                 params.y = clampedY
                                 try {
@@ -727,20 +743,22 @@ class FpsOverlayService : Service() {
             }
             else -> { // Horizontal Mode
                 if (isLand) {
-                    // Landscape: 100% tren 1 hang ngang duy nhat, cam tuyet doi xuong dong!
-                    tv.isSingleLine = true
-                    tv.maxLines = 1
+                    // Landscape: Bung tu do tren 1 hang duy nhat; neu vuot 100% chieu ngang thi phan du tu rot dong 2/3 khong cat chu
+                    tv.isSingleLine = false
+                    tv.maxLines = 3
                     tv.ellipsize = null
-                    tv.maxWidth = screenW
-                    tv.gravity = Gravity.CENTER_VERTICAL
+                    val safeMargin = 32
+                    tv.maxWidth = (screenW - safeMargin).coerceAtLeast(300)
+                    tv.gravity = Gravity.CENTER
                     tv.setPadding(padH[idx], padV[idx], padH[idx], padV[idx])
-                    tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 999f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
+                    tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 12f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
                 } else {
                     // Portrait: Tu dong xuong dong, can deu le trai (Gravity.START)
                     tv.isSingleLine = false
                     tv.maxLines = 6
                     tv.ellipsize = null
-                    tv.maxWidth = (screenW - 24).coerceAtLeast(200)
+                    val safeMargin = 24
+                    tv.maxWidth = (screenW - safeMargin).coerceAtLeast(200)
                     tv.gravity = Gravity.START or Gravity.CENTER_VERTICAL
                     tv.setPadding(padH[idx], padV[idx] + 2, padH[idx], padV[idx] + 2)
                     tv.background = UiTheme.roundBoxDp(this, UiTheme.HUD_BG_OPACITY[bIdx], 12f, 1f, UiTheme.HUD_STROKE_OPACITY[bIdx])
