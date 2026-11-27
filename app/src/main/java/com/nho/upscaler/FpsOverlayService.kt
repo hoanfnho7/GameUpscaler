@@ -44,6 +44,7 @@ import android.widget.Toast
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
 import java.io.BufferedWriter
+import java.io.File
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.util.Locale
@@ -59,7 +60,8 @@ class FpsOverlayService : Service() {
         private val WS_REGEX = Regex("\\s+")
         private val NUM_REGEX = Regex("([0-9]+)")
         private val FPS_REGEX = Regex("fps:\\s*([0-9.]+)")
-        private val HAL_TEMP_REGEX = Regex("mValue=([-0-9.]+),\\s*mType=(\\d+)")
+        private val HAL_TEMP_REGEX = Regex("mValue=([-0-9.]+),\\s*mType=(\\d+),\\s*mName=([^,}]+)")
+        private val HAL_TEMP_FALLBACK_REGEX = Regex("mValue=([-0-9.]+),\\s*mType=(\\d+)")
     }
 
     private data class HudMetricEntry(
@@ -83,6 +85,8 @@ class FpsOverlayService : Service() {
     @Volatile private var isRunning = false
     @Volatile private var isScreenOn = true
     @Volatile private var telemetryThread: Thread? = null
+    @Volatile private var thermalThread: Thread? = null
+    @Volatile private var directSysfsThermalSupported: Boolean? = null
 
     private var targetPkg = ""
     private var gameName = "Game"
@@ -103,9 +107,9 @@ class FpsOverlayService : Service() {
     @Volatile private var shellWriter: BufferedWriter? = null
     @Volatile private var shellReader: BufferedReader? = null
 
-    private var lastFps = -1f
+    @Volatile private var lastFps = -1f
     private val frameTimeWindow = ArrayDeque<Float>(10)
-    private var lastFrameTimeMs = -1f
+    @Volatile private var lastFrameTimeMs = -1f
     @Volatile private var cachedBatTemp = 0f
     @Volatile private var cachedBatPct = 100
     @Volatile private var cachedVoltMv = 0
@@ -118,23 +122,25 @@ class FpsOverlayService : Service() {
     private var lastGuardToastMs = 0L
     private var guardAutoResetDone = false
 
-    private var lastSocTemp = 0f
-    private var lastCpuTemp = 0f
-    private var lastGpuTemp = 0f
-    private var lastDdrTemp = 0f
-    private var lastCamTemp = 0f
-    private var lastSkinTemp = 0f
-    private var lastWatts = 0f
-    private var lastGpuLoadPct = -1
-    private var lastGpuVramMb = -1
-    private var lastCpuLoadPct = -1
+    @Volatile private var lastSocTemp = 0f
+    @Volatile private var lastCpuTemp = 0f
+    @Volatile private var lastGpuTemp = 0f
+    @Volatile private var lastDdrTemp = 0f
+    @Volatile private var lastCamTemp = 0f
+    @Volatile private var lastSkinTemp = 0f
+    @Volatile private var lastWatts = 0f
+    @Volatile private var lastGpuLoadPct = -1
+    @Volatile private var lastGpuVramMb = -1
+    @Volatile private var lastCpuLoadPct = -1
     private var prevCpuTotal = -1L
     private var prevCpuIdle = -1L
-    private var lastCpuKhz = 0L
-    private var lastRamText = ""
+    @Volatile private var lastCpuKhz = 0L
+    @Volatile private var lastRamText = ""
 
     private var lastRenderedText = ""
     private var lastRenderedColor = 0
+    private var lastOverlayLayoutW = 0
+    private var lastOverlayLayoutH = 0
 
     private var prevLayerFrames = HashMap<String, Long>(16)
     private var prevLayerJanks = HashMap<String, Long>(16)
@@ -146,7 +152,6 @@ class FpsOverlayService : Service() {
     private var initializedStatsForPkg: String? = null
     private var lastDrmFps = -1f
     private var frozenDrmTicks = 0
-    private var emptyThermalTicks = 0
     private var tickCounter = 0
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -158,6 +163,7 @@ class FpsOverlayService : Service() {
                 Intent.ACTION_SCREEN_ON -> {
                     isScreenOn = true
                     telemetryThread?.interrupt()
+                    thermalThread?.interrupt()
                 }
                 Intent.ACTION_BATTERY_CHANGED -> updateBatteryFromIntent(intent)
             }
@@ -321,8 +327,17 @@ class FpsOverlayService : Service() {
             needsUpdate = true
         }
 
-        if (needsUpdate) {
-            tv.requestLayout()
+        val sizeChanged = (measuredW != lastOverlayLayoutW || measuredH != lastOverlayLayoutH)
+        if (sizeChanged) {
+            lastOverlayLayoutW = measuredW
+            lastOverlayLayoutH = measuredH
+        }
+
+        // Always re-request layout & invalidate after manual measure() so ViewRootImpl never skips redraw
+        tv.requestLayout()
+        tv.invalidate()
+
+        if (needsUpdate || sizeChanged) {
             try {
                 windowManager?.updateViewLayout(tv, params)
             } catch (_: Exception) {}
@@ -379,6 +394,8 @@ class FpsOverlayService : Service() {
         super.onConfigurationChanged(newConfig)
         if (overlayView != null && overlayParams != null) {
             lastRenderedText = ""
+            lastOverlayLayoutW = 0
+            lastOverlayLayoutH = 0
             applyOverlayStyle(newConfig)
             applyPositionForCurrentOrientation(newConfig)
             renderTelemetryText(newConfig)
@@ -389,6 +406,7 @@ class FpsOverlayService : Service() {
             } catch (_: Exception) {}
         }
         telemetryThread?.interrupt()
+        thermalThread?.interrupt()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -421,6 +439,8 @@ class FpsOverlayService : Service() {
                     isVertical = (prefsMgr.hudLayoutMode == 1)
                     lastRenderedText = ""
                     lastRenderedColor = 0
+                    lastOverlayLayoutW = 0
+                    lastOverlayLayoutH = 0
                     tickCounter = 0
                     startAsForeground()
                     applyOverlayStyle()
@@ -434,6 +454,7 @@ class FpsOverlayService : Service() {
                     } catch (_: Exception) {}
                     syncQuickSettingsTile()
                     telemetryThread?.interrupt()
+                    thermalThread?.interrupt()
                 } else {
                     stopSelf()
                 }
@@ -473,8 +494,10 @@ class FpsOverlayService : Service() {
         if (!isRunning) {
             isRunning = true
             startTelemetryLoop()
+            startThermalLoop()
         } else {
             telemetryThread?.interrupt()
+            thermalThread?.interrupt()
         }
         return START_STICKY
     }
@@ -1386,19 +1409,6 @@ class FpsOverlayService : Service() {
             val initMarker = "___HUD_INIT_${System.nanoTime()}___"
             val initCmd = "exec 2>/dev/null; " +
                     "_rdz() { for f in \$1; do v=\"\"; read -r v < \"\$f\" 2>/dev/null; [ -n \"\$v\" ] && printf \"%s \" \"\$v\"; done; printf \"\\n\"; }; " +
-                    "CPU_ZONES=\"\"; GPU_ZONES=\"\"; DDR_ZONES=\"\"; CAM_ZONES=\"\"; SKIN_ZONES=\"\"; BAT_NODE=\"\"; " +
-                    "for bf in /sys/class/power_supply/battery/temp /sys/class/power_supply/bms/temp; do if [ -r \"\$bf\" ]; then BAT_NODE=\"\$bf\"; break; fi; done; " +
-                    "for z in /sys/class/thermal/thermal_zone*; do " +
-                    "[ -r \"\$z/temp\" ] || continue; " +
-                    "t=\"\"; read -r t < \"\$z/type\" 2>/dev/null; [ -n \"\$t\" ] || continue; " +
-                    "case \"\$t\" in " +
-                    "*[Ss][Tt][Ee][Pp]*|*[Bb][Cc][Ll]*|*[Tt][Rr][Ii][Pp]*|*[Ll][Ii][Mm][Ii][Tt]*|*[Mm][Aa][Xx]*|*[Ss][Oo][Cc][Dd]*|*[Vv][Ii][Rr][Tt][Uu][Aa][Ll]*|*[Tt][Hh][Rr][Ee][Ss][Hh]*|*[Aa][Dd][Cc]*|*[Cc][Aa][Pp]*|*[Nn][Pp][Uu]*|*[Nn][Ss][Pp][Ss][Ss]*|*[Mm][Oo][Dd][Ee][Mm]*|*[Pp][Aa]*|*[Bb][Aa][Tt]*|*[Ww][Ll][Aa][Nn]*|*[Uu][Ss][Bb]*|*[Ff][Ll][Aa][Ss][Hh]*|*[Cc][Hh][Gg]*) ;; " +
-                    "*[Gg][Pp][Uu]*|*[Kk][Gg][Ss][Ll]*|*[Mm][Aa][Ll][Ii]*) GPU_ZONES=\"\$GPU_ZONES \$z/temp\" ;; " +
-                    "*[Dd][Dd][Rr]*|*[Ll][Ll][Cc][Cc]*|*[Dd][Rr][Aa][Mm]*|*[Ll][Pp][Dd][Dd][Rr]*) DDR_ZONES=\"\$DDR_ZONES \$z/temp\" ;; " +
-                    "*[Cc][Aa][Mm]*|*[Oo][Ii][Ss]*|*[Aa][Cc][Tt][Uu][Aa][Tt][Oo][Rr]*|*[Tt][Oo][Ff]*) CAM_ZONES=\"\$CAM_ZONES \$z/temp\" ;; " +
-                    "*[Ss][Kk][Ii][Nn]*|*[Qq][Uu][Ii][Ee][Tt]*|*[Xx][Oo]-[Tt][Hh][Ee][Rr][Mm]*|*[Ss][Yy][Ss]-[Tt][Hh][Ee][Rr][Mm]*|*[Bb][Oo][Aa][Rr][Dd]*|*[Mm][Ss][Mm]-[Tt][Hh][Ee][Rr][Mm]*|*[Ss][Hh][Ee][Ll][Ll]*|*[Ss][Uu][Bb]-[Tt][Hh][Ee][Rr][Mm]*|*[Mm][Aa][Ii][Nn]-[Tt][Hh][Ee][Rr][Mm]*|*[Vv][Ii][Vv][Oo]*) SKIN_ZONES=\"\$SKIN_ZONES \$z/temp\" ;; " +
-                    "*[Cc][Pp][Uu]*|*[Ss][Oo][Cc]*|*[Aa][Pp][Cc]*|*[Tt][Ss][Ee][Nn][Ss]*|*[Cc][Oo][Rr][Ee]*|*[Cc][Ll][Uu][Ss][Tt][Ee][Rr]*|*[Ss][Ii][Ll][Vv][Ee][Rr]*|*[Gg][Oo][Ll][Dd]*|*[Pp][Rr][Ii][Mm][Ee]*|*[Tt][Ii][Tt][Aa][Nn][Ii][Uu][Mm]*|*[Kk][Rr][Yy][Oo]*|*[Oo][Rr][Yy][Oo][Nn]*) CPU_ZONES=\"\$CPU_ZONES \$z/temp\" ;; " +
-                    "esac; done; " +
                     "FREQ_FILES=\"\"; for f in /sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq; do [ -r \"\$f\" ] && FREQ_FILES=\"\$FREQ_FILES \$f\"; done; " +
                     "DRM_NODE=\"\"; for f in /sys/class/drm/sde-crtc-0/measured_fps /sys/class/drm/card0/sde-crtc-0/measured_fps; do if [ -r \"\$f\" ]; then DRM_NODE=\"\$f\"; break; fi; done; " +
                     "printf \"$initMarker\\n\"\n"
@@ -1519,22 +1529,12 @@ class FpsOverlayService : Service() {
                     val showGpu = prefsMgr.getMetric("m_gpu", true)
                     val showVram = prefsMgr.getMetric("m_vram", false)
                     val showCpuFreq = prefsMgr.getMetric("m_cpu_freq", false)
-                    val showSocTemp = prefsMgr.getMetric("m_soc_temp", true)
-                    val showCpuTemp = prefsMgr.getMetric("m_cpu_temp", false)
-                    val showGpuTemp = prefsMgr.getMetric("m_gpu_temp", false)
-                    val showDdrTemp = prefsMgr.getMetric("m_ddr_temp", false)
-                    val showCamTemp = prefsMgr.getMetric("m_cam_temp", false)
-                    val showSkinTemp = prefsMgr.getMetric("m_skin_temp", false)
                     val showRam = prefsMgr.getMetric("m_ram", false)
                     val showCpuLoad = prefsMgr.getMetric("m_cpu_load", false)
 
                     // Chu kỳ nhanh (150ms-300ms, mỗi tick): Đo công suất điện tiêu thụ tức thời
                     if (showWatt) {
                         readInstantWattage()
-                    }
-                    // Chủ động poll pin mỗi 1s qua sticky intent để không bị OriginOS/Android 14+ bóp BroadcastReceiver
-                    if (is1sTick) {
-                        pollBatterySticky()
                     }
 
                     sb.setLength(0)
@@ -1544,7 +1544,7 @@ class FpsOverlayService : Service() {
                         sb.append("gload=-1; if [ -r /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage ]; then read -r gload < /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage 2>/dev/null; elif [ -r /sys/module/ged/parameters/gpu_loading ]; then read -r gload < /sys/module/ged/parameters/gpu_loading 2>/dev/null; elif [ -r /sys/class/misc/mali0/device/utilization ]; then read -r gload < /sys/class/misc/mali0/device/utilization 2>/dev/null; fi; printf \"GPU_LOAD=%s\\n\" \"\$gload\"; ")
                     }
 
-                    // Chu kỳ trung bình (1 giây / 1000ms): Kiểm tra PID tiến trình, tải CPU (/proc/stat), xung nhịp CPU và nhiệt độ phần cứng
+                    // Chu kỳ trung bình (1 giây / 1000ms): Kiểm tra PID tiến trình, tải CPU (/proc/stat) và xung nhịp CPU
                     if (targetPkg.isNotEmpty() && is1sTick) {
                         sb.append("printf \"PID=%s\\n\" \"\$(pidof ").append(targetPkg).append(" 2>/dev/null)\"; ")
                     } else if (detectedPkg.isNotEmpty() && is1sTick) {
@@ -1555,29 +1555,6 @@ class FpsOverlayService : Service() {
                     }
                     if (showCpuFreq && is1sTick) {
                         sb.append("printf \"CPU_KHZ=\"; _rdz \"\$FREQ_FILES\"; ")
-                    }
-                    if (is1sTick) {
-                        sb.append("if [ -n \"\$BAT_NODE\" ]; then bv=\"\"; read -r bv < \"\$BAT_NODE\" 2>/dev/null; [ -n \"\$bv\" ] && printf \"BAT_T=%s\\n\" \"\$bv\"; fi; ")
-                    }
-                    val wantChipThermal = (showCpuTemp || showSocTemp || showGpuTemp || showDdrTemp || showCamTemp || showSkinTemp)
-                    if ((showCpuTemp || showSocTemp) && is1sTick) {
-                        sb.append("printf \"CPU_T=\"; _rdz \"\$CPU_ZONES\"; ")
-                    }
-                    if ((showGpuTemp || showSocTemp) && is1sTick) {
-                        sb.append("printf \"GPU_T=\"; _rdz \"\$GPU_ZONES\"; ")
-                    }
-                    if (showDdrTemp && is1sTick) {
-                        sb.append("printf \"DDR_T=\"; _rdz \"\$DDR_ZONES\"; ")
-                    }
-                    if (showCamTemp && is1sTick) {
-                        sb.append("printf \"CAM_T=\"; _rdz \"\$CAM_ZONES\"; ")
-                    }
-                    if (showSkinTemp && is1sTick) {
-                        sb.append("printf \"SKIN_T=\"; _rdz \"\$SKIN_ZONES\"; ")
-                    }
-                    if (wantChipThermal && is1sTick) {
-                        // Fallback đọc trực tiếp từ Android Thermal HAL nếu sysfs thermal_zone trống hoặc bị khóa
-                        sb.append("if [ -z \"\$CPU_ZONES\" ] && [ -z \"\$GPU_ZONES\" ]; then dumpsys thermalservice 2>/dev/null | grep 'Temperature{'; fi; ")
                     }
 
                     // Chu kỳ chậm (3 giây / 3000ms): Dò app foreground, VRAM và RAM siêu nhẹ qua /proc (không dùng dumpsys meminfo gây khựng)
@@ -1672,6 +1649,343 @@ class FpsOverlayService : Service() {
         }
     }
 
+    // Dedicated 1s thermal thread completely decoupled from the persistent FPS shell.
+    // Uses the exact proven fresh-read strategy from "SOI CẢM BIẾN" so temperatures never stall.
+    private fun startThermalLoop() {
+        thermalThread = thread(name = "HudThermalLoop") {
+            while (isRunning) {
+                if (!isScreenOn) {
+                    try { Thread.sleep(1500) } catch (_: InterruptedException) {}
+                    continue
+                }
+
+                try {
+                    pollAllThermalSensors()
+                    mainHandler.post { renderTelemetryText() }
+                } catch (_: Exception) {}
+
+                try {
+                    Thread.sleep(1000L)
+                } catch (_: InterruptedException) {}
+            }
+        }
+    }
+
+    private fun normalizeTempC(raw: Float, isBatteryNode: Boolean = false): Float {
+        return when {
+            raw > 1000f -> raw / 1000f
+            isBatteryNode && raw > 80f -> raw / 10f
+            raw > 150f -> raw / 10f
+            else -> raw
+        }
+    }
+
+    private fun readDirectBatteryTempC(): Float {
+        val paths = arrayOf("/sys/class/power_supply/battery/temp", "/sys/class/power_supply/bms/temp")
+        for (p in paths) {
+            try {
+                val f = File(p)
+                if (f.canRead()) {
+                    val raw = f.readText().trim().toFloatOrNull() ?: continue
+                    val deg = normalizeTempC(raw, isBatteryNode = true)
+                    if (deg in 0.5f..80f) return deg
+                }
+            } catch (_: Exception) {}
+        }
+        return 0f
+    }
+
+    private fun readDirectSysfsThermals(): List<Triple<String, Float, Int>> {
+        if (directSysfsThermalSupported == false) return emptyList()
+        val out = ArrayList<Triple<String, Float, Int>>(24)
+        for (i in 0..120) {
+            try {
+                val typeFile = File("/sys/class/thermal/thermal_zone$i/type")
+                val tempFile = File("/sys/class/thermal/thermal_zone$i/temp")
+                if (typeFile.canRead() && tempFile.canRead()) {
+                    val name = typeFile.readText().trim()
+                    val raw = tempFile.readText().trim().toFloatOrNull() ?: continue
+                    if (name.isNotEmpty()) {
+                        val isBat = name.equals("battery", ignoreCase = true) || name.equals("bms", ignoreCase = true)
+                        val deg = normalizeTempC(raw, isBatteryNode = isBat)
+                        if (deg in 0.5f..120f) {
+                            out.add(Triple(name, deg, -1))
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        directSysfsThermalSupported = out.isNotEmpty()
+        return out
+    }
+
+    private fun parseThermalServiceDump(lines: List<String>): List<Triple<String, Float, Int>> {
+        val currentHal = ArrayList<Triple<String, Float, Int>>(16)
+        val cachedHal = ArrayList<Triple<String, Float, Int>>(16)
+        // section: 0 = other, 1 = Cached temperatures, 2 = Current temperatures from HAL
+        var section = 0
+
+        for (rawLine in lines) {
+            val l = rawLine.trim()
+            if (l.isEmpty()) continue
+            when {
+                l.startsWith("Current temperatures from HAL") -> {
+                    section = 2
+                    continue
+                }
+                l.startsWith("Cached temperatures") -> {
+                    section = 1
+                    continue
+                }
+                l.startsWith("Current cooling devices") ||
+                        l.startsWith("Temperature static thresholds") ||
+                        l.startsWith("ThermalEventListeners") ||
+                        l.startsWith("ThermalStatusListeners") -> {
+                    section = 0
+                    continue
+                }
+            }
+            if (section == 0 || !l.contains("Temperature{")) continue
+
+            var tv = 0f
+            var tp = -1
+            var name = ""
+            val mFull = HAL_TEMP_REGEX.find(l)
+            if (mFull != null) {
+                tv = mFull.groupValues[1].toFloatOrNull() ?: 0f
+                tp = mFull.groupValues[2].toIntOrNull() ?: -1
+                name = mFull.groupValues[3].trim()
+            } else {
+                val mFallback = HAL_TEMP_FALLBACK_REGEX.find(l) ?: continue
+                tv = mFallback.groupValues[1].toFloatOrNull() ?: 0f
+                tp = mFallback.groupValues[2].toIntOrNull() ?: -1
+            }
+
+            if (tv in 0.5f..120f) {
+                val item = Triple(name, tv, tp)
+                if (section == 2) currentHal.add(item) else cachedHal.add(item)
+            }
+        }
+        return if (currentHal.isNotEmpty()) currentHal else cachedHal
+    }
+
+    private fun pollAllThermalSensors() {
+        // 1. Always refresh battery sticky intent (keeps voltage, %, charging state, and fallback temp fresh)
+        pollBatterySticky()
+        var batFromSysfs = readDirectBatteryTempC()
+        if (batFromSysfs > 0f) {
+            cachedBatTemp = batFromSysfs
+        }
+
+        val wantChipThermal = prefsMgr.getMetric("m_soc_temp", true) ||
+                prefsMgr.getMetric("m_cpu_temp", false) ||
+                prefsMgr.getMetric("m_gpu_temp", false) ||
+                prefsMgr.getMetric("m_ddr_temp", false) ||
+                prefsMgr.getMetric("m_cam_temp", false) ||
+                prefsMgr.getMetric("m_skin_temp", false)
+        val wantBatThermal = prefsMgr.getMetric("m_bat_temp", true) || prefsMgr.thermalGuardEnabled || PerfLogManager.isRecording
+        if (!wantChipThermal && (!wantBatThermal || batFromSysfs > 0f)) return
+
+        // 2. Try zero-overhead direct Java File reads first
+        val sensors = ArrayList<Triple<String, Float, Int>>(32)
+        if (wantChipThermal) {
+            sensors.addAll(readDirectSysfsThermals())
+        }
+
+        // 3. Fresh Shizuku shell read (exact proven model from "SOI CẢM BIẾN" + ultra-fast grep -H path)
+        if (ShizukuHelper.isBinderAlive() && (sensors.isEmpty() || (wantBatThermal && batFromSysfs <= 0f))) {
+            val fastCmd = if (wantChipThermal) {
+                "for bf in /sys/class/power_supply/battery/temp /sys/class/power_supply/bms/temp; do " +
+                        "[ -r \"\$bf\" ] && echo \"BAT_SYSFS:\$(cat \"\$bf\" 2>/dev/null)\" && break; done; " +
+                        "grep -H . /sys/class/thermal/thermal_zone*/type /sys/class/thermal/thermal_zone*/temp 2>/dev/null"
+            } else {
+                "for bf in /sys/class/power_supply/battery/temp /sys/class/power_supply/bms/temp; do " +
+                        "[ -r \"\$bf\" ] && echo \"BAT_SYSFS:\$(cat \"\$bf\" 2>/dev/null)\" && break; done"
+            }
+
+            val fastLines = ShizukuHelper.runCommand(fastCmd)
+            val zoneTypes = HashMap<String, String>(64)
+            val zoneTemps = HashMap<String, Float>(64)
+
+            for (rawLine in fastLines) {
+                val line = rawLine.trim()
+                val sep = line.indexOf(':')
+                if (sep <= 0 || sep >= line.length - 1) continue
+                val key = line.substring(0, sep).trim()
+                val value = line.substring(sep + 1).trim()
+                when {
+                    key == "BAT_SYSFS" -> {
+                        val raw = value.toFloatOrNull()
+                        if (raw != null) {
+                            val deg = normalizeTempC(raw, isBatteryNode = true)
+                            if (deg in 0.5f..80f) batFromSysfs = deg
+                        }
+                    }
+                    key.endsWith("/type") -> {
+                        zoneTypes[key.removeSuffix("/type")] = value
+                    }
+                    key.endsWith("/temp") -> {
+                        val raw = value.toFloatOrNull()
+                        if (raw != null) zoneTemps[key.removeSuffix("/temp")] = raw
+                    }
+                }
+            }
+
+            if (wantChipThermal && sensors.isEmpty() && zoneTypes.isNotEmpty()) {
+                for ((zonePath, name) in zoneTypes) {
+                    val raw = zoneTemps[zonePath] ?: continue
+                    if (name.isEmpty()) continue
+                    val isBat = name.equals("battery", ignoreCase = true) || name.equals("bms", ignoreCase = true)
+                    val deg = normalizeTempC(raw, isBatteryNode = isBat)
+                    if (deg in 0.5f..120f) {
+                        sensors.add(Triple(name, deg, -1))
+                    }
+                }
+            }
+
+            // Fallback A: Exact "SOI CẢM BIẾN" cat loop if grep -H returned nothing
+            if (wantChipThermal && sensors.isEmpty()) {
+                val catCmd = "for z in /sys/class/thermal/thermal_zone*; do " +
+                        "[ -r \"\$z/temp\" ] && [ -r \"\$z/type\" ] && " +
+                        "echo \"\$(cat \"\$z/type\" 2>/dev/null): \$(cat \"\$z/temp\" 2>/dev/null)\"; done"
+                val catLines = ShizukuHelper.runCommand(catCmd)
+                for (line in catLines) {
+                    val sep = line.indexOf(':')
+                    if (sep <= 0 || sep >= line.length - 1) continue
+                    val name = line.substring(0, sep).trim()
+                    val raw = line.substring(sep + 1).trim().toFloatOrNull() ?: continue
+                    if (name.isEmpty()) continue
+                    val isBat = name.equals("battery", ignoreCase = true) || name.equals("bms", ignoreCase = true)
+                    val deg = normalizeTempC(raw, isBatteryNode = isBat)
+                    if (deg in 0.5f..120f) {
+                        sensors.add(Triple(name, deg, -1))
+                    }
+                }
+            }
+
+            // Fallback B: Android Thermal HAL (Current temperatures from HAL ONLY, ignoring stale Cached section)
+            if (wantChipThermal && sensors.isEmpty()) {
+                val dumpLines = ShizukuHelper.runCommand("dumpsys thermalservice 2>/dev/null")
+                sensors.addAll(parseThermalServiceDump(dumpLines))
+            }
+        }
+
+        if (batFromSysfs > 0f) {
+            cachedBatTemp = batFromSysfs
+        }
+        var gotChipTemp = false
+        if (sensors.isNotEmpty()) {
+            gotChipTemp = applyThermalReadings(sensors, hasDirectBatSysfs = batFromSysfs > 0f)
+        }
+        // If sysfs zones existed (e.g. battery-only) but had no readable CPU/GPU chip sensors, fall back to Thermal HAL
+        if (wantChipThermal && !gotChipTemp && ShizukuHelper.isBinderAlive()) {
+            val dumpLines = ShizukuHelper.runCommand("dumpsys thermalservice 2>/dev/null")
+            val halSensors = parseThermalServiceDump(dumpLines)
+            if (halSensors.isNotEmpty()) {
+                applyThermalReadings(halSensors, hasDirectBatSysfs = (batFromSysfs > 0f || cachedBatTemp > 0f))
+            }
+        }
+    }
+
+    private fun isExcludedThermalZone(lowerName: String): Boolean {
+        return lowerName.contains("step") ||
+                lowerName.contains("bcl") ||
+                lowerName.contains("trip") ||
+                lowerName.contains("limit") ||
+                lowerName.contains("socd") ||
+                lowerName.contains("virtual") ||
+                lowerName.contains("thresh") ||
+                lowerName.contains("adc") ||
+                lowerName.contains("cap") ||
+                lowerName.contains("modem") ||
+                lowerName.contains("wlan") ||
+                lowerName.contains("wifi") ||
+                lowerName.contains("usb") ||
+                lowerName.contains("flash") ||
+                lowerName.contains("chg") ||
+                lowerName.contains("charger") ||
+                lowerName.contains("pa-therm") ||
+                lowerName.contains("pa_therm") ||
+                lowerName.contains("qfe") ||
+                lowerName.contains("wcd") ||
+                lowerName.contains("haptic") ||
+                lowerName.contains("-max") ||
+                lowerName.contains("_max")
+    }
+
+    private fun applyThermalReadings(readings: List<Triple<String, Float, Int>>, hasDirectBatSysfs: Boolean): Boolean {
+        var cpuMax = 0f
+        var gpuMax = 0f
+        var ddrMax = 0f
+        var camMax = 0f
+        var skinMax = 0f
+        var batSysfsZone = 0f
+        var batHalZone = 0f
+
+        for ((rawName, deg, halType) in readings) {
+            if (deg !in 0.5f..120f) continue
+            val n = rawName.lowercase(Locale.US)
+
+            val isBattery = (halType == 2) ||
+                    n == "battery" || n == "bms" || n == "batt" ||
+                    n.contains("batt_therm") || n.contains("battery_therm") ||
+                    n.contains("bat_therm") || n.contains("battery-therm")
+            if (isBattery) {
+                if (deg in 0.5f..80f) {
+                    if (halType == -1 && batSysfsZone <= 0f) batSysfsZone = deg
+                    else if (halType == 2 && batHalZone <= 0f) batHalZone = deg
+                }
+                continue
+            }
+
+            if (n.isNotEmpty() && isExcludedThermalZone(n)) continue
+
+            when {
+                halType == 1 || n.contains("gpu") || n.contains("kgsl") || n.contains("mali") || n.contains("adreno") -> {
+                    if (deg > gpuMax) gpuMax = deg
+                }
+                n.contains("ddr") || n.contains("llcc") || n.contains("dram") || n.contains("lpddr") || n.contains("mem-therm") || n.contains("mem_therm") -> {
+                    if (deg > ddrMax) ddrMax = deg
+                }
+                n.contains("cam") || n.contains("ois") || n.contains("actuator") || n.contains("tof") || n.contains("isp") -> {
+                    if (deg > camMax) camMax = deg
+                }
+                halType == 3 || n.contains("skin") || n.contains("quiet") || n.contains("xo-therm") || n.contains("xo_therm") ||
+                        n.contains("sys-therm") || n.contains("sys_therm") || n.contains("board") ||
+                        n.contains("msm-therm") || n.contains("msm_therm") || n.contains("shell") ||
+                        n.contains("sub-therm") || n.contains("main-therm") || n.contains("vivo") ||
+                        n.contains("back-therm") || n.contains("front-therm") || n.contains("frame") -> {
+                    if (deg > skinMax) skinMax = deg
+                }
+                halType == 0 || n.contains("cpu") || n.contains("soc") || n.contains("apc") || n.contains("tsens") ||
+                        n.contains("core") || n.contains("cluster") || n.contains("silver") || n.contains("gold") ||
+                        n.contains("prime") || n.contains("titanium") || n.contains("kryo") || n.contains("oryon") -> {
+                    if (deg > cpuMax) cpuMax = deg
+                }
+            }
+        }
+
+        if (!hasDirectBatSysfs) {
+            if (batSysfsZone > 0f) {
+                cachedBatTemp = batSysfsZone
+            } else if (cachedBatTemp <= 0f && batHalZone > 0f) {
+                cachedBatTemp = batHalZone
+            }
+        }
+        if (cpuMax > 0f) lastCpuTemp = cpuMax
+        if (gpuMax > 0f) lastGpuTemp = gpuMax
+        if (ddrMax > 0f) lastDdrTemp = ddrMax
+        if (camMax > 0f) lastCamTemp = camMax
+        if (skinMax > 0f) lastSkinTemp = skinMax
+
+        val socMax = maxOf(
+            if (cpuMax > 0f) cpuMax else lastCpuTemp,
+            if (gpuMax > 0f) gpuMax else lastGpuTemp
+        )
+        if (socMax > 0f) lastSocTemp = socMax
+        return (cpuMax > 0f || gpuMax > 0f)
+    }
+
     private fun evaluateThermalGuard(nowMs: Long) {
         if (!prefsMgr.thermalGuardEnabled) {
             thermalAlertState = 0
@@ -1730,23 +2044,6 @@ class FpsOverlayService : Service() {
         }
     }
 
-    private fun parseMaxThermalTokens(rawTokens: String): Float {
-        var maxTemp = 0f
-        for (tok in rawTokens.trim().split(WS_REGEX)) {
-            val tRaw = tok.toFloatOrNull() ?: continue
-            val tC = when {
-                tRaw > 1000f -> tRaw / 1000f
-                tRaw > 150f -> tRaw / 10f
-                else -> tRaw
-            }
-            // Allow 0°C..125°C so peltier coolers (sò lạnh) cooling sensors below 20°C still update cleanly
-            if (tC in 0.5f..125f && tC > maxTemp) {
-                maxTemp = tC
-            }
-        }
-        return maxTemp
-    }
-
     private fun parseBatchOutput(raw: String): Pair<Set<String>, Float> {
         var memTotalKb = 0L
         var memAvailKb = 0L
@@ -1755,12 +2052,6 @@ class FpsOverlayService : Service() {
         val procGpuMap = HashMap<String, Long>(8)
         var pidSet = emptySet<String>()
         var drmFps = 0f
-        var sawThermalSection = false
-        var gotAnyThermalValue = false
-        var halCpuMax = 0f
-        var halGpuMax = 0f
-        var halSkinMax = 0f
-        var halBatTemp = 0f
 
         var start = 0
         val len = raw.length
@@ -1827,60 +2118,6 @@ class FpsOverlayService : Service() {
                     val maxKhz = l.substring(8).trim().split(WS_REGEX).mapNotNull { it.toLongOrNull() }.maxOrNull() ?: 0L
                     if (maxKhz > 0L) lastCpuKhz = maxKhz
                 }
-                l.startsWith("BAT_T=") -> {
-                    val raw = l.substring(6).trim().toFloatOrNull()
-                    if (raw != null) {
-                        val tC = when {
-                            raw > 1000f -> raw / 1000f
-                            raw > 100f -> raw / 10f
-                            else -> raw
-                        }
-                        if (tC in 0.5f..80f) cachedBatTemp = tC
-                    }
-                }
-                l.startsWith("CPU_T=") -> {
-                    sawThermalSection = true
-                    val v = parseMaxThermalTokens(l.substring(6))
-                    if (v > 0f) {
-                        lastCpuTemp = v
-                        gotAnyThermalValue = true
-                    }
-                }
-                l.startsWith("GPU_T=") -> {
-                    sawThermalSection = true
-                    val v = parseMaxThermalTokens(l.substring(6))
-                    if (v > 0f) {
-                        lastGpuTemp = v
-                        gotAnyThermalValue = true
-                    }
-                }
-                l.startsWith("DDR_T=") -> {
-                    val v = parseMaxThermalTokens(l.substring(6))
-                    if (v > 0f) lastDdrTemp = v
-                }
-                l.startsWith("CAM_T=") -> {
-                    val v = parseMaxThermalTokens(l.substring(6))
-                    if (v > 0f) lastCamTemp = v
-                }
-                l.startsWith("SKIN_T=") -> {
-                    val v = parseMaxThermalTokens(l.substring(7))
-                    if (v > 0f) lastSkinTemp = v
-                }
-                l.contains("Temperature{") -> {
-                    val m = HAL_TEMP_REGEX.find(l)
-                    if (m != null) {
-                        val tv = m.groupValues[1].toFloatOrNull() ?: 0f
-                        val tp = m.groupValues[2].toIntOrNull() ?: -1
-                        if (tv in 0.5f..125f) {
-                            when (tp) {
-                                0 -> if (tv > halCpuMax) halCpuMax = tv
-                                1 -> if (tv > halGpuMax) halGpuMax = tv
-                                2 -> if (tv in 0.5f..80f) halBatTemp = tv
-                                3 -> if (tv > halSkinMax) halSkinMax = tv
-                            }
-                        }
-                    }
-                }
                 l.startsWith("VmRSS:") -> {
                     appPssKb = NUM_REGEX.find(l)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
                 }
@@ -1899,27 +2136,6 @@ class FpsOverlayService : Service() {
                 }
             }
         }
-
-        if (halCpuMax > 0f && !gotAnyThermalValue) lastCpuTemp = halCpuMax
-        if (halGpuMax > 0f && !gotAnyThermalValue) lastGpuTemp = halGpuMax
-        if (halSkinMax > 0f && lastSkinTemp <= 0f) lastSkinTemp = halSkinMax
-        if (halBatTemp > 0f) cachedBatTemp = halBatTemp
-
-        // Self-heal persistent shell if thermal_zone reads ever go completely empty for 3 consecutive 1s ticks
-        if (sawThermalSection) {
-            if (gotAnyThermalValue || halCpuMax > 0f || halGpuMax > 0f) {
-                emptyThermalTicks = 0
-            } else {
-                emptyThermalTicks++
-                if (emptyThermalTicks >= 3) {
-                    emptyThermalTicks = 0
-                    closeShellSession()
-                }
-            }
-        }
-
-        val socMax = maxOf(lastCpuTemp, lastGpuTemp)
-        if (socMax > 0f) lastSocTemp = socMax
 
         if (pidSet.isNotEmpty()) {
             var gameGpuBytes = 0L
@@ -2106,6 +2322,9 @@ class FpsOverlayService : Service() {
         isServiceRunning = false
         syncQuickSettingsTile()
         telemetryThread?.interrupt()
+        telemetryThread = null
+        thermalThread?.interrupt()
+        thermalThread = null
         closeShellSession()
         prevLayerFrames.clear()
         try { unregisterReceiver(systemReceiver) } catch (_: Exception) {}

@@ -48,13 +48,16 @@ object ShizukuHelper {
     }
 
     fun runCommand(cmd: String): List<String> {
+        var proc: Process? = null
         return try {
-            val proc = newShellProcess(arrayOf("sh", "-c", cmd))
-            val lines = BufferedReader(InputStreamReader(proc.inputStream)).readLines()
+            proc = newShellProcess(arrayOf("sh", "-c", cmd))
+            val lines = BufferedReader(InputStreamReader(proc.inputStream)).use { it.readLines() }
             proc.waitFor()
             lines
         } catch (_: Exception) {
             emptyList()
+        } finally {
+            try { proc?.destroy() } catch (_: Exception) {}
         }
     }
 

@@ -331,23 +331,38 @@ class HudSettingsViewModel : ViewModel() {
                             raw > 150f -> raw / 10f
                             else -> raw
                         }
-                        if (deg in 15f..125f && name.isNotEmpty() && seen.add(name)) {
+                        if (deg in 0.5f..125f && name.isNotEmpty() && seen.add(name)) {
                             list.add(Pair(name, deg))
                         }
                     }
                 }
             } catch (_: Exception) {}
 
-            // 2. Fallback via dumpsys thermalservice
+            // 2. Fallback via dumpsys thermalservice (prefer live HAL section over stale cached section)
             if (list.isEmpty()) {
                 try {
                     val dumpLines = ShizukuHelper.runCommand("dumpsys thermalservice")
-                    val dump = dumpLines.joinToString("\n")
-                    val regex = Regex("""Temperature\{mValue=([0-9.]+)[^}]*mName=([^,}]+)""")
-                    for (m in regex.findAll(dump)) {
+                    val currentSection = StringBuilder()
+                    val fallbackSection = StringBuilder()
+                    var inCurrent = false
+                    for (rawLine in dumpLines) {
+                        val l = rawLine.trim()
+                        if (l.startsWith("Current temperatures from HAL")) {
+                            inCurrent = true
+                            continue
+                        } else if (l.startsWith("Current cooling devices") || l.startsWith("Temperature static thresholds")) {
+                            inCurrent = false
+                            continue
+                        }
+                        if (inCurrent) currentSection.append(l).append('\n')
+                        fallbackSection.append(l).append('\n')
+                    }
+                    val targetDump = if (currentSection.isNotEmpty()) currentSection.toString() else fallbackSection.toString()
+                    val regex = Regex("""Temperature\{mValue=([-0-9.]+)[^}]*mName=([^,}]+)""")
+                    for (m in regex.findAll(targetDump)) {
                         val deg = m.groupValues[1].toFloatOrNull() ?: continue
                         val name = m.groupValues[2].trim()
-                        if (deg in 15f..125f && name.isNotEmpty() && seen.add(name)) {
+                        if (deg in 0.5f..125f && name.isNotEmpty() && seen.add(name)) {
                             list.add(Pair(name, deg))
                         }
                     }
@@ -357,7 +372,7 @@ class HudSettingsViewModel : ViewModel() {
 
         // 3. Direct filesystem read
         if (list.isEmpty()) {
-            for (i in 0..60) {
+            for (i in 0..80) {
                 try {
                     val typeFile = File("/sys/class/thermal/thermal_zone$i/type")
                     val tempFile = File("/sys/class/thermal/thermal_zone$i/temp")
@@ -369,7 +384,7 @@ class HudSettingsViewModel : ViewModel() {
                             raw > 150f -> raw / 10f
                             else -> raw
                         }
-                        if (deg in 15f..125f && name.isNotEmpty() && seen.add(name)) {
+                        if (deg in 0.5f..125f && name.isNotEmpty() && seen.add(name)) {
                             list.add(Pair(name, deg))
                         }
                     }
