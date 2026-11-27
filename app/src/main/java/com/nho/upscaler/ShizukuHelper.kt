@@ -284,7 +284,7 @@ object ShizukuHelper {
                             raw > 200f -> raw / 10f
                             else -> raw
                         }
-                        if (c in 15f..125f) {
+                        if (c in 0.5f..125f) {
                             report.append(String.format(Locale.US, "• %-22s : %.1f°C\n", name, c))
                         }
                     }
