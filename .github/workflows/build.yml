@@ -60,33 +60,55 @@ jobs:
       - name: Accept Android SDK Licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null || true
 
-      - name: Build Signed APK
-        env:
-          RUN_NUM: ${{ github.run_number }}
-        run: gradle assembleRelease -PversionCode=$RUN_NUM --no-daemon --stacktrace
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: GameUpscaler-v1.0.${{ github.run_number }}
-          path: app/build/outputs/apk/release/app-release.apk
-
-      - name: Determine Release Eligibility
+      - name: Determine Release Eligibility & Version
         id: check_release
         run: |
+          RUN_NUM="${{ github.run_number }}"
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
             echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.publish_release }}" == "true" ]]; then
             echo "should_release=true" >> $GITHUB_OUTPUT
             TAG="${{ inputs.release_tag }}"
             if [ -z "$TAG" ]; then
-              TAG="v1.0.${{ github.run_number }}"
+              TAG="v1.0.$RUN_NUM"
             fi
             echo "tag=$TAG" >> $GITHUB_OUTPUT
           else
             echo "should_release=false" >> $GITHUB_OUTPUT
+            TAG="v1.0.$RUN_NUM"
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
           fi
+
+          VER_NAME="${TAG#v}"
+          IFS='.' read -r V_MAJ V_MIN V_PATCH <<< "$VER_NAME"
+          V_MAJ=${V_MAJ//[^0-9]/}; V_MAJ=${V_MAJ:-1}
+          V_MIN=${V_MIN//[^0-9]/}; V_MIN=${V_MIN:-0}
+          V_PATCH=${V_PATCH//[^0-9]/}; V_PATCH=${V_PATCH:-$RUN_NUM}
+          VER_CODE=$(( V_MAJ * 10000 + V_MIN * 100 + V_PATCH ))
+          if [ "$VER_CODE" -lt "$RUN_NUM" ]; then
+            VER_CODE="$RUN_NUM"
+          fi
+          echo "version_name=$VER_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VER_CODE" >> $GITHUB_OUTPUT
+
+          # Extract annotated tag message (if any) so in-app OTA updater shows clean changelog
+          TAG_MSG=$(git tag -l --format='%(contents)' "$TAG" 2>/dev/null || true)
+          {
+            echo "tag_notes<<EOF_NOTES"
+            echo "$TAG_MSG"
+            echo "EOF_NOTES"
+          } >> $GITHUB_OUTPUT
+
+      - name: Build Signed APK
+        run: gradle assembleRelease -PversionCode=${{ steps.check_release.outputs.version_code }} -PversionName=${{ steps.check_release.outputs.version_name }} --no-daemon --stacktrace
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GameUpscaler-${{ steps.check_release.outputs.tag }}
+          path: app/build/outputs/apk/release/app-release.apk
 
       - name: Publish APK to Releases
         uses: softprops/action-gh-release@v2
@@ -94,6 +116,7 @@ jobs:
         with:
           tag_name: ${{ steps.check_release.outputs.tag }}
           name: "GameUpscaler ${{ steps.check_release.outputs.tag }}"
+          body: ${{ steps.check_release.outputs.tag_notes }}
           files: app/build/outputs/apk/release/app-release.apk
           generate_release_notes: true
         env:

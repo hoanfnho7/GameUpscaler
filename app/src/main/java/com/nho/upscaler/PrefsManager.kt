@@ -150,6 +150,11 @@ class PrefsManager(context: Context) {
         get() = prefs.getBoolean("dual_cell_battery", false)
         set(value) = prefs.edit().putBoolean("dual_cell_battery", value).apply()
 
+    // In-app OTA update: remember version tag skipped by user for auto-prompt
+    var skippedUpdateTag: String
+        get() = prefs.getString("skipped_update_tag", "") ?: ""
+        set(value) = prefs.edit().putString("skipped_update_tag", value).apply()
+
     fun getCustomGames(): Set<String> {
         return prefs.getStringSet("custom_games", emptySet()) ?: emptySet()
     }
