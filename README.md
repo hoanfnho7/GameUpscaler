@@ -25,13 +25,13 @@
 
 <div align="center">
 
-| 📊 Trang chủ (Tổng quan) | ⚡ Kho game & SSAA | 🎛️ Tùy biến thanh đo HUD |
-| :---: | :---: | :---: |
-| <img src="screenshots/trang-chu.jpg" width="260" alt="Trang chủ" /> | <img src="screenshots/kho-game-upscale.jpg" width="260" alt="Kho Game & SSAA" /> | <img src="screenshots/config-thanh-do.jpg" width="260" alt="Cấu hình HUD" /> |
+| 📊 Trang chủ | ⚡ Kho game & SSAA | 🎛️ Cấu hình HUD | 📈 Biểu đồ Log |
+| :---: | :---: | :---: | :---: |
+| <img src="screenshots/trang-chu.jpg" width="195" alt="Trang chủ" /> | <img src="screenshots/kho-game-upscale.jpg" width="195" alt="Kho Game & SSAA" /> | <img src="screenshots/config-thanh-do.jpg" width="195" alt="Cấu hình HUD" /> | <img src="screenshots/luu-log.jpg" width="195" alt="Biểu đồ hiệu năng" /> |
 
-| 🎮 Thanh đo HUD ingame | 📲 Phím tắt Control Center | 📈 Biểu đồ hiệu năng (Log) |
-| :---: | :---: | :---: |
-| <img src="screenshots/thanh-do.jpg" width="260" alt="Thanh đo thực tế" /> | <img src="screenshots/phim-tat.jpg" width="260" alt="Phím tắt Control Center" /> | <img src="screenshots/luu-log.jpg" width="260" alt="Biểu đồ hiệu năng" /> |
+| 🎮 Thanh đo HUD ingame | 📲 Phím tắt Control Center |
+| :---: | :---: |
+| <img src="screenshots/thanh-do.jpg" width="400" alt="Thanh đo thực tế" /> | <img src="screenshots/phim-tat.jpg" width="400" alt="Phím tắt Control Center" /> |
 
 </div>
 
